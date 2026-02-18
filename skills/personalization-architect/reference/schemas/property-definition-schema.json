@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Property Definition",
+  "description": "Schema for defining a property within a governed memory collection.",
+  "type": "object",
+  "required": ["name", "systemName", "type", "description"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique property identifier. Auto-generated if not provided."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable property name displayed in UIs and extraction results.",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "systemName": {
+      "type": "string",
+      "description": "Machine-readable identifier. Lowercase, underscored. Used for programmatic lookup.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 50
+    },
+    "type": {
+      "type": "string",
+      "enum": ["text", "number", "date", "boolean", "options", "array"],
+      "description": "Data type for the extracted value."
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description guiding the extraction model. Include scope, examples, boundaries, and edge cases. This is the most important field for extraction quality.",
+      "minLength": 20
+    },
+    "extractionHints": {
+      "type": "string",
+      "description": "Additional guidance for the extraction model. Supplements the description with content-specific tips."
+    },
+    "options": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Allowed values when type is 'options'. The extraction model will only return values from this list.",
+      "minItems": 2
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for property selection boosting. Properties with tags matching the content context receive higher relevance scores."
+    },
+    "updateSemantics": {
+      "type": "string",
+      "enum": ["replace", "append"],
+      "default": "replace",
+      "description": "'replace': new values overwrite existing. 'append': values accumulate over time (e.g., 'pain points mentioned')."
+    }
+  },
+  "additionalProperties": false
+}

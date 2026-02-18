@@ -1,0 +1,151 @@
+{
+  "id": "col_company",
+  "name": "Company Properties",
+  "entityType": "Company",
+  "description": "Firmographic and relationship intelligence for organizations. Combines enrichment data (Apollo, Clearbit, ZoomInfo) for structured firmographics with AI-extracted relationship signals from conversations and interactions with the company's contacts.",
+  "properties": [
+    {
+      "name": "Company Name",
+      "systemName": "company_name",
+      "type": "text",
+      "description": "The official registered name of the company. Populated from CRM or enrichment tools. Use the formal name (e.g., 'Acme Corporation') not abbreviations or nicknames.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Website",
+      "systemName": "website",
+      "type": "text",
+      "description": "The company's primary website URL. Populated from enrichment tools or CRM. Full URL format: 'https://acme.com'.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Industry",
+      "systemName": "industry",
+      "type": "text",
+      "description": "The company's primary industry or sector. Populated from enrichment tools (Apollo, Clearbit). Use standard industry labels (e.g., 'Enterprise Software', 'Healthcare Technology', 'Financial Services', 'E-commerce'). Not reliable for AI extraction — use enrichment data.",
+      "autoSystem": false,
+      "tags": ["enrichment", "firmographic"]
+    },
+    {
+      "name": "Employee Count",
+      "systemName": "employee_count",
+      "type": "number",
+      "description": "The approximate number of employees at the company. Populated from enrichment tools (Apollo, LinkedIn, Clearbit). Represents the total headcount, not a specific department. Updated periodically via enrichment sync.",
+      "autoSystem": false,
+      "tags": ["enrichment", "firmographic", "queryable"]
+    },
+    {
+      "name": "Annual Revenue",
+      "systemName": "annual_revenue",
+      "type": "number",
+      "description": "The company's estimated annual revenue in USD. Populated from enrichment tools. Represents the most recent available estimate. For private companies, this is often a range midpoint from data providers.",
+      "autoSystem": false,
+      "tags": ["enrichment", "firmographic", "queryable"]
+    },
+    {
+      "name": "Headquarters",
+      "systemName": "headquarters",
+      "type": "text",
+      "description": "The company's headquarters location. Populated from enrichment tools. Format: 'City, State/Province, Country' (e.g., 'San Francisco, CA, USA').",
+      "autoSystem": false,
+      "tags": ["enrichment", "firmographic"]
+    },
+    {
+      "name": "Funding Stage",
+      "systemName": "funding_stage",
+      "type": "options",
+      "description": "The company's current funding stage. Populated from enrichment tools (Crunchbase, Apollo). Bootstrapped = no external funding. Public = publicly traded company.",
+      "options": ["Bootstrapped", "Seed", "Series A", "Series B", "Series C+", "Public"],
+      "autoSystem": false,
+      "tags": ["enrichment", "firmographic", "queryable"]
+    },
+    {
+      "name": "Business Model",
+      "systemName": "business_model",
+      "type": "options",
+      "description": "The company's primary business model. Can come from enrichment data or AI can infer from conversations (e.g., 'we sell to enterprise customers' suggests B2B, 'our marketplace connects buyers and sellers' suggests Marketplace).",
+      "options": ["B2B", "B2C", "B2B2C", "Marketplace", "Platform"],
+      "autoSystem": true,
+      "tags": ["hybrid", "firmographic", "queryable"]
+    },
+    {
+      "name": "ICPs",
+      "systemName": "icps",
+      "type": "array",
+      "description": "Ideal Customer Profile segments this company matches. AI evaluates by comparing the company's industry, size, revenue, technology stack, and business model against ICP definitions stored in governance variables. Each entry is the name of a matching ICP (e.g., 'Mid-Market SaaS', 'Enterprise Healthcare', 'High-Growth Startup'). A company can match multiple ICPs. Requires ICP governance variables to be configured.",
+      "autoSystem": true,
+      "updateSemantics": "replace",
+      "tags": ["ai-extracted", "segmentation", "queryable"]
+    },
+    {
+      "name": "Technology Stack",
+      "systemName": "technology_stack",
+      "type": "array",
+      "description": "Technologies, platforms, and tools used by the company. AI extracts from technical conversations with the company's contacts (e.g., 'we run on AWS', 'our frontend is React', 'we use Snowflake for analytics'). Each entry is a specific technology name. Focus on infrastructure and development stack, not generic SaaS tools.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "technical"]
+    },
+    {
+      "name": "Key Decision Makers",
+      "systemName": "key_decision_makers",
+      "type": "array",
+      "description": "Names and roles of people involved in purchasing or strategic decisions at this company. AI extracts from conversations (e.g., 'let me loop in our CTO Sarah Chen', 'the final sign-off comes from our VP of Ops'). Each entry should include name and role when available (e.g., 'Sarah Chen - CTO', 'Mike Rivera - VP Operations').",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "qualification"]
+    },
+    {
+      "name": "Company Summary",
+      "systemName": "company_summary",
+      "type": "text",
+      "description": "AI-compiled snapshot of everything known about this company from all interactions across all contacts. Synthesizes: what the company does, their current priorities, relationship history, active opportunities, and any notable patterns. Updated after each new interaction with any of the company's contacts. This is the 'quick brief' for anyone engaging with this account.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "summary"]
+    },
+    {
+      "name": "Buying Signals",
+      "systemName": "buying_signals",
+      "type": "array",
+      "description": "Indicators of purchase intent or readiness detected from conversations with the company's contacts. AI extracts explicit signals ('we have budget allocated for Q2', 'our contract with [competitor] expires in March') and implicit ones ('can you send pricing?', 'who else in our industry uses this?'). Each entry is a concise signal description (5-20 words) with approximate date if available.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "pipeline"]
+    },
+    {
+      "name": "Active Customer",
+      "systemName": "active_customer",
+      "type": "boolean",
+      "description": "Whether this company is a current paying customer. AI infers from conversation context: references to 'our account', 'our subscription', support ticket language, or renewal discussions indicate true. Prospecting language, demo requests, or evaluation discussions indicate false.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "segmentation", "queryable"]
+    },
+    {
+      "name": "Account Health",
+      "systemName": "account_health",
+      "type": "options",
+      "description": "Overall health of the relationship with this company. AI assesses from interaction patterns across all contacts: Thriving = expanding usage, positive sentiment, active engagement. Stable = consistent usage, no red flags. At Risk = declining engagement, frustration signals, competitor mentions, missed renewals. Churned = confirmed cancellation or complete disengagement.",
+      "options": ["Thriving", "Stable", "At Risk", "Churned"],
+      "autoSystem": true,
+      "tags": ["ai-extracted", "health", "queryable"]
+    },
+    {
+      "name": "Competitor User",
+      "systemName": "competitor_user",
+      "type": "boolean",
+      "description": "Whether this company is currently using or evaluating a competing product. AI detects from conversations: 'we're currently using [competitor]', 'we're comparing you with [competitor]', 'we're migrating from [competitor]'. True if any competitor usage or evaluation is mentioned. Useful for competitive displacement campaigns.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "competitive", "queryable"]
+    },
+    {
+      "name": "Contract Renewal Date",
+      "systemName": "contract_renewal_date",
+      "type": "date",
+      "description": "The date when the company's current contract or subscription is due for renewal. Primarily populated from CRM or billing system. AI can extract if mentioned in conversation ('our contract is up in June', 'we renew in Q3'). ISO 8601 format. Critical for triggering renewal campaigns and CS outreach.",
+      "autoSystem": true,
+      "tags": ["hybrid", "pipeline", "queryable"]
+    }
+  ]
+}

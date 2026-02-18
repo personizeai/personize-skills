@@ -1,0 +1,62 @@
+{
+  "id": "col_pulse_agent",
+  "name": "Pulse — Agent Activity",
+  "entityType": "Contact",
+  "description": "Pre-defined collection for autonomous AI agent activity. Captures tasks, decisions, logs, notes, alerts, and monitors generated during proactive agent operations (heartbeat). Designed as an append-only audit trail with selective mutability.",
+  "properties": [
+    {
+      "name": "Tasks",
+      "systemName": "tasks",
+      "type": "array",
+      "description": "Action items created or updated by the agent. Each task is an object: { title, description, status (pending | in_progress | completed | cancelled), owner (agent or user ID), assignedBy, priority (low | medium | high | urgent), dueDate (ISO 8601), completedAt, outcome }. Agents append new tasks and update status on existing ones.",
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["action", "lifecycle"]
+    },
+    {
+      "name": "AI Log",
+      "systemName": "ai_log",
+      "type": "array",
+      "description": "Immutable record of what the agent checked or did. Each log is an object: { event (heartbeat_check | action_taken | error | decision), summary (one-line description), details (full context), trigger (scheduled | event | user_request), status (ok | acted | flagged | error | skipped), agentId, references (array of related memory IDs) }. Never update existing logs — append only.",
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["audit", "observability"]
+    },
+    {
+      "name": "AI Note",
+      "systemName": "ai_note",
+      "type": "array",
+      "description": "Point-in-time observations and insights derived by the agent. Each note is an object: { title, content, category (insight | observation | user_preference | pattern), confidence (low | medium | high), source (derived | stated | observed), references (array of related log or memory IDs) }. If an insight evolves, write a new note — do not overwrite.",
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["learning", "insight"]
+    },
+    {
+      "name": "Alerts",
+      "systemName": "alerts",
+      "type": "array",
+      "description": "Notifications requiring human attention. Each alert is an object: { title, severity (info | warning | critical), category (anomaly | threshold | reminder | escalation), message, status (open | acknowledged | resolved | dismissed), acknowledgedBy (user ID or null), resolvedAt (ISO 8601 or null) }. Agents create alerts; humans acknowledge or dismiss them.",
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["notification", "escalation"]
+    },
+    {
+      "name": "Decisions",
+      "systemName": "decisions",
+      "type": "array",
+      "description": "Record of autonomous agent decisions with full reasoning. Each decision is an object: { question (what was being decided), decision (chosen action), reasoning (why this choice), alternatives (array of other options considered), confidence (low | medium | high), autonomous (boolean — true if agent decided alone), approvedBy (user ID or null) }. Immutable — provides the explainability layer for governance.",
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["explainability", "governance"]
+    },
+    {
+      "name": "Monitors",
+      "systemName": "monitors",
+      "type": "array",
+      "description": "Persistent watchlist items the agent checks on each pulse. Each monitor is an object: { target (what to watch, e.g. 'CRM pipeline > $2M'), description, type (threshold | change_detection | schedule), frequency (every_pulse | daily | weekly), status (active | paused | retired), lastChecked (ISO 8601), lastResult (ok | triggered | error) }. Agents update status and lastChecked on each pulse cycle.",
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["proactive", "monitoring"]
+    }
+  ]
+}

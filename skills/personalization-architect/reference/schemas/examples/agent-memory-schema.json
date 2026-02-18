@@ -1,0 +1,87 @@
+{
+  "id": "col_agent_memory",
+  "name": "Agent Memory",
+  "entityType": "Contact",
+  "description": "The AI agent's dedicated workspace for each entity it manages. Stores everything the agent thinks, decides, plans, and does — tasks it creates, decisions it makes with full reasoning, insights it derives, alerts it raises, conditions it monitors, and messages it sends. This is the agent's persistent memory across autonomous cycles: its operational context, audit trail, and intelligence layer combined. Designed for A2A (agent-to-agent) and human-to-agent transparency.",
+  "properties": [
+    {
+      "name": "Agent Context",
+      "systemName": "agent_context",
+      "type": "text",
+      "description": "The agent's current working memory for this entity — its understanding of what's happening, what matters, and what to focus on next. A narrative summary that persists across autonomous cycles, giving the agent continuity between pulse runs. Includes: current priorities, active goals, recent observations, and pending decisions. Replaced on each cycle with the agent's updated understanding. Think of this as the agent's 'mental model' of this entity.",
+      "autoSystem": true,
+      "updateSemantics": "replace",
+      "tags": ["context", "working-memory"]
+    },
+    {
+      "name": "Tasks",
+      "systemName": "tasks",
+      "type": "array",
+      "description": "Action items created or updated by the agent. Each task is an object: { title, description, status (pending | in_progress | completed | cancelled), owner (agent | user ID), assignedBy (agent ID or user ID), priority (low | medium | high | urgent), dueDate (ISO 8601), completedAt (ISO 8601 or null), outcome (result description or null) }. Agents append new tasks and update status on existing ones. This is where 'next steps' live — the agent translates relationship intelligence into concrete actions.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["action", "lifecycle", "operational"]
+    },
+    {
+      "name": "Activity Log",
+      "systemName": "activity_log",
+      "type": "array",
+      "description": "Immutable record of what the agent checked, observed, or did on each cycle. Each entry is an object: { event (heartbeat_check | action_taken | error | data_change | escalation), summary (one-line description), details (full context), trigger (scheduled | event | user_request | monitor), status (ok | acted | flagged | error | skipped), severity (info | warning | error), agentId, timestamp (ISO 8601), references (array of related memory IDs) }. Never update existing entries — append only. This is the audit trail.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["audit", "observability", "immutable"]
+    },
+    {
+      "name": "Insights",
+      "systemName": "insights",
+      "type": "array",
+      "description": "Intelligence and patterns the agent has derived from accumulated data — things it has learned about this entity over time. Each insight is an object: { title, content, category (insight | observation | preference | pattern | anomaly), confidence (low | medium | high), source (derived | stated | observed), createdAt (ISO 8601), references (array of related memory or log IDs) }. If an insight evolves, write a new entry — do not overwrite. These represent the agent's growing understanding.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["intelligence", "learning", "immutable"]
+    },
+    {
+      "name": "Decisions",
+      "systemName": "decisions",
+      "type": "array",
+      "description": "Record of autonomous agent decisions with full reasoning — the explainability layer. Each decision is an object: { question (what was being decided), decision (chosen action), reasoning (why this choice), alternatives (array of other options considered), confidence (low | medium | high), autonomous (boolean — true if agent decided alone, false if human-approved), approvedBy (user ID or null), timestamp (ISO 8601) }. Immutable — provides the governance and accountability trail.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["explainability", "governance", "immutable"]
+    },
+    {
+      "name": "Alerts",
+      "systemName": "alerts",
+      "type": "array",
+      "description": "Notifications the agent raises that require human attention or awareness. Each alert is an object: { title, severity (info | warning | critical), category (anomaly | threshold | reminder | escalation | opportunity), message, targetAudience (user | team | manager — who should see this), action (notify | escalate | auto_act — what should happen), status (open | acknowledged | resolved | dismissed), acknowledgedBy (user ID or null), resolvedAt (ISO 8601 or null) }. Agents create alerts; humans acknowledge or dismiss them.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["notification", "escalation", "operational"]
+    },
+    {
+      "name": "Monitors",
+      "systemName": "monitors",
+      "type": "array",
+      "description": "Persistent watchlist items the agent checks on each autonomous cycle. Each monitor is an object: { target (what to watch, e.g. 'deal value > $100K', 'no reply in 7 days'), description, type (threshold | change_detection | schedule | absence), frequency (every_pulse | daily | weekly), action (notify | escalate | auto_act — what to do when triggered), status (active | paused | retired), lastChecked (ISO 8601), lastResult (ok | triggered | error) }. Agents update status and lastChecked on each cycle.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["proactive", "monitoring", "operational"]
+    },
+    {
+      "name": "Messages Sent",
+      "systemName": "messages_sent",
+      "type": "array",
+      "description": "Record of outbound communications the agent has triggered or generated for this entity. Each message is an object: { channel (email | slack | sms | push | in_app | webhook), recipient (email or identifier), subject (if applicable), summary (concise description of what was sent), templateUsed (if applicable), sentAt (ISO 8601), triggeredBy (task ID, monitor ID, or 'autonomous'), status (sent | failed | scheduled) }. Closes the feedback loop — the agent knows what it already communicated and can avoid repetition.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["communication", "audit", "immutable"]
+    }
+  ]
+}

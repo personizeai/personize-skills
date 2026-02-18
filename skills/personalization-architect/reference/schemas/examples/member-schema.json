@@ -1,0 +1,144 @@
+{
+  "id": "col_member",
+  "name": "Member Properties",
+  "entityType": "Member",
+  "description": "Properties for tracking community members, association members, cohort participants, or alumni. Combines registration data with AI-extracted engagement intelligence from posts, discussions, events, and interactions within the community platform.",
+  "properties": [
+    {
+      "name": "First Name",
+      "systemName": "first_name",
+      "type": "text",
+      "description": "The member's first/given name. Populated from registration form or membership system.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Last Name",
+      "systemName": "last_name",
+      "type": "text",
+      "description": "The member's last/family name. Populated from registration form or membership system.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Full Name",
+      "systemName": "full_name",
+      "type": "text",
+      "description": "The member's full display name. Populated from registration or concatenated from first + last name.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Membership Tier",
+      "systemName": "membership_tier",
+      "type": "options",
+      "description": "The member's current membership level or plan. Populated from the membership/billing system. Determines access levels and feature availability.",
+      "options": ["Free", "Basic", "Premium", "VIP", "Founding"],
+      "autoSystem": false,
+      "tags": ["profile", "queryable"]
+    },
+    {
+      "name": "Member Since",
+      "systemName": "member_since",
+      "type": "date",
+      "description": "The date the member joined the community. Populated from registration system. ISO 8601 format. Used for tenure-based personalization and milestone communications.",
+      "autoSystem": false,
+      "tags": ["profile", "queryable"]
+    },
+    {
+      "name": "Bio / About",
+      "systemName": "bio_about",
+      "type": "text",
+      "description": "The member's self-written biography or introduction. Populated from their profile form. Used as context for AI personalization — helps the AI understand who this person is in their own words.",
+      "autoSystem": false,
+      "tags": ["profile", "context"]
+    },
+    {
+      "name": "Primary Interest",
+      "systemName": "primary_interest",
+      "type": "text",
+      "description": "The main topic or area that brought this member to the community and keeps them engaged. AI infers from their most frequent discussion topics, questions asked, and content consumed. Should be a concise label (e.g., 'AI/ML engineering', 'startup fundraising', 'sustainable agriculture'). Updated as interests evolve.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "personalization"]
+    },
+    {
+      "name": "Expertise Areas",
+      "systemName": "expertise_areas",
+      "type": "array",
+      "description": "Topics and skills this member can help others with. AI extracts from answers they provide, content they share, and expertise demonstrated in discussions. Each entry is a specific domain (e.g., 'React performance optimization', 'fundraising pitch decks', 'GDPR compliance'). Distinct from interests — expertise is what they GIVE, interests are what they SEEK.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "matching"]
+    },
+    {
+      "name": "Engagement Level",
+      "systemName": "engagement_level",
+      "type": "options",
+      "description": "How actively this member participates in the community. AI assesses from interaction patterns: Lurker = reads but rarely posts. Occasional = posts/comments a few times per month. Active = regular weekly participation. Power User = daily engagement, creates content. Champion = actively recruits members, organizes events, mentors others.",
+      "options": ["Lurker", "Occasional", "Active", "Power User", "Champion"],
+      "autoSystem": true,
+      "tags": ["ai-extracted", "engagement", "queryable"]
+    },
+    {
+      "name": "Goals",
+      "systemName": "goals",
+      "type": "array",
+      "description": "What the member wants to achieve through the community. AI extracts from introduction posts, questions asked, goal-setting threads, and conversations. Each entry is a concise goal (e.g., 'find a technical co-founder', 'learn data engineering', 'grow professional network in fintech', 'get first 100 customers').",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "personalization"]
+    },
+    {
+      "name": "Contributions",
+      "systemName": "contributions",
+      "type": "array",
+      "description": "Notable contributions the member has made to the community. AI tracks posts, answers, resources shared, events organized, and help provided. Each entry is a concise description (e.g., 'wrote guide on Docker deployment', 'organized March AI meetup', 'mentored 3 new members', 'answered 15 questions on auth patterns').",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "recognition"]
+    },
+    {
+      "name": "Connections",
+      "systemName": "connections",
+      "type": "array",
+      "description": "Other community members this person interacts with frequently. AI identifies from reply patterns, DM activity, event co-attendance, and collaboration mentions. Each entry is a member name or identifier. Useful for network analysis, introduction suggestions, and group recommendations.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "network"]
+    },
+    {
+      "name": "Active",
+      "systemName": "active",
+      "type": "boolean",
+      "description": "Whether this member is currently active in the community. True if they have had any interaction (post, comment, reaction, event attendance) within the last 30 days. False if dormant for 30+ days. AI infers from activity patterns. Used to segment re-engagement campaigns.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "engagement", "queryable"]
+    },
+    {
+      "name": "Mentor / Mentee",
+      "systemName": "mentor_mentee",
+      "type": "options",
+      "description": "Whether this member tends to act as a mentor, mentee, or both in the community. AI infers from interaction patterns: Mentor = frequently answers questions, provides guidance, shares expertise. Mentee = frequently asks questions, seeks advice, learning-oriented. Both = switches roles depending on topic. Neither = primarily social/networking participation.",
+      "options": ["Mentor", "Mentee", "Both", "Neither"],
+      "autoSystem": true,
+      "tags": ["ai-extracted", "matching", "queryable"]
+    },
+    {
+      "name": "Content Creator",
+      "systemName": "content_creator",
+      "type": "boolean",
+      "description": "Whether this member regularly creates original content (posts, guides, tutorials, videos, event talks) as opposed to primarily consuming or commenting. True if they have created 3+ pieces of original content. AI identifies from posting patterns and content type analysis. Used to nurture creator programs.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "engagement", "queryable"]
+    },
+    {
+      "name": "Satisfaction",
+      "systemName": "satisfaction",
+      "type": "options",
+      "description": "The member's overall sentiment toward the community. AI assesses from post tone, feedback, survey responses, and engagement trajectory. Promoter = enthusiastic, recommends to others. Neutral = satisfied but not vocal. Detractor = has expressed dissatisfaction, declining engagement, or complaints about community value.",
+      "options": ["Promoter", "Neutral", "Detractor"],
+      "autoSystem": true,
+      "tags": ["ai-extracted", "health", "queryable"]
+    }
+  ]
+}

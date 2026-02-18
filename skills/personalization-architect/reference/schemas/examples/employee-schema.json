@@ -1,0 +1,160 @@
+{
+  "id": "col_employee",
+  "name": "Employee Properties",
+  "entityType": "Employee",
+  "description": "Properties for tracking internal team members. Combines HR system data (role, department, start date) with AI-extracted insights from 1:1 notes, standups, Slack messages, performance reviews, and internal communications. Designed for people teams, managers, and internal communication tools.",
+  "properties": [
+    {
+      "name": "First Name",
+      "systemName": "first_name",
+      "type": "text",
+      "description": "The employee's first/given name. Populated from HR system (HRIS, Workday, BambooHR).",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Last Name",
+      "systemName": "last_name",
+      "type": "text",
+      "description": "The employee's last/family name. Populated from HR system.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Full Name",
+      "systemName": "full_name",
+      "type": "text",
+      "description": "The employee's full display name. Populated from HR system or concatenated from first + last name.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Role / Title",
+      "systemName": "role_title",
+      "type": "text",
+      "description": "The employee's official job title. Populated from HR system. This is the formal title, not a colloquial description of their work.",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Department",
+      "systemName": "department",
+      "type": "options",
+      "description": "The employee's primary department or function. Populated from HR system. If the employee sits across multiple departments, use the one they report into.",
+      "options": ["Engineering", "Product", "Design", "Sales", "Marketing", "Customer Success", "Operations", "HR", "Finance", "Legal", "Executive"],
+      "autoSystem": false,
+      "tags": ["profile", "queryable"]
+    },
+    {
+      "name": "Manager",
+      "systemName": "manager",
+      "type": "text",
+      "description": "The name of the employee's direct manager. Populated from HR system. Format: 'Full Name' (e.g., 'Sarah Chen').",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Location",
+      "systemName": "location",
+      "type": "text",
+      "description": "The employee's primary work location. Populated from HR system. Format: 'City, State/Country' (e.g., 'New York, NY' or 'London, UK').",
+      "autoSystem": false,
+      "tags": ["profile", "identity"]
+    },
+    {
+      "name": "Start Date",
+      "systemName": "start_date",
+      "type": "date",
+      "description": "The employee's first day at the company. Populated from HR system. ISO 8601 format. Used to calculate tenure and trigger onboarding/milestone communications.",
+      "autoSystem": false,
+      "tags": ["profile", "queryable"]
+    },
+    {
+      "name": "Work Arrangement",
+      "systemName": "work_arrangement",
+      "type": "options",
+      "description": "The employee's work arrangement. Populated from HR system or team records.",
+      "options": ["Remote", "Hybrid", "On-site"],
+      "autoSystem": false,
+      "tags": ["profile", "queryable"]
+    },
+    {
+      "name": "Tenure Band",
+      "systemName": "tenure_band",
+      "type": "options",
+      "description": "The employee's tenure bracket, derived from their start date. Can be auto-computed or populated from HR system. Used for segmenting communications — new hires need different messaging than veterans.",
+      "options": ["<6 months", "6-12 months", "1-2 years", "2-5 years", "5+ years"],
+      "autoSystem": false,
+      "tags": ["profile", "queryable"]
+    },
+    {
+      "name": "Skills & Expertise",
+      "systemName": "skills_expertise",
+      "type": "array",
+      "description": "Technical and professional skills the employee has demonstrated or mentioned. AI extracts from 1:1 notes ('I've been learning Rust'), project updates ('led the Kubernetes migration'), Slack messages, and performance reviews. Each entry is a specific skill or domain (e.g., 'Kubernetes', 'data modeling', 'public speaking', 'React Native').",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "development"]
+    },
+    {
+      "name": "Current Projects",
+      "systemName": "current_projects",
+      "type": "array",
+      "description": "Projects or initiatives the employee is actively working on. AI extracts from standups, project updates, 1:1 notes, and team channels. Each entry is a concise project name or description (e.g., 'API v2 migration', 'Q1 marketing campaign', 'customer onboarding redesign'). Replaces with current set — old projects are dropped.",
+      "autoSystem": true,
+      "updateSemantics": "replace",
+      "tags": ["ai-extracted", "context"]
+    },
+    {
+      "name": "Career Goals",
+      "systemName": "career_goals",
+      "type": "text",
+      "description": "The employee's stated career aspirations and development goals. AI extracts from 1:1 notes, performance reviews, and development conversations (e.g., 'wants to move into a management role', 'interested in transitioning to product', 'working toward staff engineer'). Updated when new goals are expressed — captures the most current aspiration.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "development"]
+    },
+    {
+      "name": "Recognition & Wins",
+      "systemName": "recognition_wins",
+      "type": "array",
+      "description": "Accomplishments, kudos, and notable achievements. AI extracts from Slack shoutouts, performance reviews, standup highlights, and manager notes. Each entry is a concise description of the win (e.g., 'shipped payment integration 2 weeks early', 'closed largest deal in Q4', 'led successful incident response for production outage').",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "recognition"]
+    },
+    {
+      "name": "Feedback Themes",
+      "systemName": "feedback_themes",
+      "type": "array",
+      "description": "Recurring patterns and themes from feedback — both given and received. AI extracts from survey responses, 1:1 notes, 360 reviews, and retrospectives. Each entry is a theme (e.g., 'wants more cross-team collaboration', 'requests clearer priorities', 'strong mentoring ability', 'struggles with deadline estimation'). Includes both strengths and growth areas.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": ["ai-extracted", "development"]
+    },
+    {
+      "name": "Engagement Signals",
+      "systemName": "engagement_signals",
+      "type": "text",
+      "description": "AI-assessed summary of the employee's engagement and morale based on communication patterns. Considers: participation in meetings, Slack activity, enthusiasm in 1:1s, voluntary contributions, and any explicit statements about job satisfaction. This is a narrative assessment, not a score — e.g., 'Highly engaged — proactively volunteering for new initiatives and mentoring junior team members' or 'Showing signs of disengagement — declining optional meetings, shorter responses in 1:1s'.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "health"]
+    },
+    {
+      "name": "Flight Risk",
+      "systemName": "flight_risk",
+      "type": "boolean",
+      "description": "Whether the employee shows signs of potential departure. AI infers from: declining engagement patterns, expressions of frustration or burnout, mentions of external opportunities, reduced participation in long-term planning, or explicit statements about considering leaving. True = signals detected. False = no concerning signals. Sensitive — should be visible only to direct managers and HR.",
+      "autoSystem": true,
+      "tags": ["ai-extracted", "health", "queryable"]
+    },
+    {
+      "name": "Performance Trend",
+      "systemName": "performance_trend",
+      "type": "options",
+      "description": "The employee's performance trajectory based on recent review data and AI-observed patterns. Exceeding = consistently above expectations. Meeting = delivering as expected. Below = underperforming or struggling. New = too early to assess (typically < 3 months). AI infers from review notes, project outcomes, and manager feedback.",
+      "options": ["Exceeding", "Meeting", "Below", "New"],
+      "autoSystem": true,
+      "tags": ["ai-extracted", "performance", "queryable"]
+    }
+  ]
+}
