@@ -26,6 +26,7 @@ npx skills add hataheri/personize-skills -a antigravity
 | **personalization-architect** | Discovers and implements opportunities for AI-powered memory and personalization across software, workflows, and AI agents. |
 | **integration-builder** | Builds data sync integrations that pull records from CRMs and databases into Personize memory. |
 | **n8n-workflows** | Generates importable n8n workflow JSON files that sync data between Personize and 400+ apps. |
+| **gtm-workflows-builder-trigger-dev** | Builds production-ready GTM workflow pipelines using Trigger.dev and the Personize SDK — outbound sequences, inbound lead processing, enrichment, and signal monitoring. |
 
 ## Prerequisites
 
