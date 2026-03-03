@@ -1,0 +1,117 @@
+{
+  "id": "col_shared_workspace_evolved",
+  "name": "Shared Workspace (Evolved)",
+  "entityType": "Contact",
+  "description": "A fully evolved shared workspace with all expansion properties. This represents a mature workspace where agents make autonomous decisions, watch for conditions proactively, send messages, generate reports, and track their own team. Most workspaces should NOT start here — start with the 5-property starter (workspace-starter.json) and grow as needs emerge.",
+  "properties": [
+    {
+      "name": "Context",
+      "systemName": "context",
+      "type": "text",
+      "description": "Current state summary for this record — what's happening, what matters most, and what's next. Any participant (agent or human) can rewrite this when they have a materially updated understanding. This is the 'start here' for anyone engaging with this entity. Should be a concise narrative (1-3 paragraphs) covering: current situation, active priorities, recent changes, and recommended next actions. Replaced on each update — not a history, but the latest understanding.",
+      "autoSystem": true,
+      "updateSemantics": "replace",
+      "tags": ["workspace", "context", "working-memory"]
+    },
+    {
+      "name": "Updates",
+      "systemName": "updates",
+      "type": "array",
+      "description": "Chronological record of what happened on this entity. Each entry is an object: { author (who contributed this — agent ID, user name, or system name), type (observation | action | change | milestone), summary (one-line description), details (full context if needed), timestamp (ISO 8601) }. Append only — never update or delete existing entries. This is the timeline that keeps all participants aware of what others have done.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["workspace", "timeline", "immutable"]
+    },
+    {
+      "name": "Tasks",
+      "systemName": "tasks",
+      "type": "array",
+      "description": "Action items for this entity. Each entry is an object: { title, description (enough context that anyone picking this up understands what to do and why), status (pending | in_progress | done | cancelled), owner (who should do this — agent ID, role, or person name), createdBy (who created this task), priority (low | medium | high | urgent), dueDate (ISO 8601 or null), outcome (result description when completed, null otherwise) }. Any participant can create tasks. Any participant can update status on tasks they own or observe.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["workspace", "action", "operational"]
+    },
+    {
+      "name": "Notes",
+      "systemName": "notes",
+      "type": "array",
+      "description": "Knowledge, observations, and ideas from any contributor. Each entry is an object: { author, content (the note itself), category (observation | analysis | idea | reference | question), timestamp (ISO 8601) }. Append only — notes are permanent.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["workspace", "knowledge", "immutable"]
+    },
+    {
+      "name": "Issues",
+      "systemName": "issues",
+      "type": "array",
+      "description": "Problems, blockers, risks, and concerns. Each entry is an object: { title, description, severity (low | medium | high | critical), status (open | investigating | resolved | dismissed), raisedBy, resolvedBy, resolution, timestamp (ISO 8601) }. Critical severity = implicit escalation.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["workspace", "risk", "operational"]
+    },
+    {
+      "name": "Decisions",
+      "systemName": "decisions",
+      "type": "array",
+      "description": "Record of decisions made about this entity, with full reasoning — the explainability layer. Each entry is an object: { question (what was being decided), decision (chosen action), reasoning (why this choice — include data points and logic), alternatives (array of other options considered), confidence (low | medium | high), autonomous (boolean — true if agent decided alone), approvedBy (user ID or null), timestamp (ISO 8601) }. Immutable — decisions are historical record. If reversed, add a new decision explaining why.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["workspace", "explainability", "governance", "immutable"]
+    },
+    {
+      "name": "Messages Sent",
+      "systemName": "messages_sent",
+      "type": "array",
+      "description": "Record of outbound communications related to this entity. Each entry is an object: { channel (email | slack | sms | push | in_app | webhook), recipient, subject (if applicable), summary (what was sent — not the full body), sentAt (ISO 8601), triggeredBy (task ID, agent name, or 'manual'), status (sent | failed | scheduled) }. Immutable — communication history should never be altered.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["workspace", "communication", "audit", "immutable"]
+    },
+    {
+      "name": "Monitors",
+      "systemName": "monitors",
+      "type": "array",
+      "description": "Persistent conditions to watch for on each agent cycle. Each entry is an object: { target (what to watch), description (why it matters), type (threshold | change_detection | schedule | absence), frequency (every_pulse | daily | weekly), action (notify | escalate | auto_act), status (active | paused | retired), createdBy, lastChecked (ISO 8601), lastResult (ok | triggered | error) }. Agents update status and lastChecked on each cycle.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["workspace", "proactive", "monitoring", "operational"]
+    },
+    {
+      "name": "Alerts",
+      "systemName": "alerts",
+      "type": "array",
+      "description": "Notifications requiring human attention. Each entry is an object: { title, severity (info | warning | critical), category (anomaly | threshold | reminder | escalation | opportunity), message, targetAudience (user | team | manager), action (notify | escalate | auto_act), status (open | acknowledged | resolved | dismissed), acknowledgedBy, resolvedAt, timestamp (ISO 8601) }. Agents create alerts. Humans acknowledge or dismiss them.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["workspace", "notification", "escalation", "operational"]
+    },
+    {
+      "name": "Reports",
+      "systemName": "reports",
+      "type": "array",
+      "description": "Periodic summaries generated from workspace activity. Each entry is an object: { title, content (markdown-formatted report), period (e.g., 'week of 2026-02-17'), generatedBy, audience, highlights (array of 3-5 key findings), timestamp (ISO 8601) }. Immutable — reports are snapshots in time.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["workspace", "reporting", "summary", "immutable"]
+    },
+    {
+      "name": "Participants",
+      "systemName": "participants",
+      "type": "array",
+      "description": "Registry of all agents, humans, and systems contributing to this workspace. Each entry is an object: { participantId, type (agent | human | system), role (owner | contributor | observer | approver), scope (what this participant focuses on), lastActive (ISO 8601), status (active | paused | retired) }. Updated when participants join, leave, or change roles.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["workspace", "team", "coordination"]
+    }
+  ]
+}

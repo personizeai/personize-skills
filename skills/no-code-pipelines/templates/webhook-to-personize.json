@@ -1,0 +1,83 @@
+{
+  "name": "Webhook → Personize Memory (Real-time)",
+  "nodes": [
+    {
+      "id": "pz-webhook-001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "path": "personize-ingest",
+        "httpMethod": "POST",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "pz-code-001",
+      "name": "Build Memorize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "jsCode": "// Extract data from webhook body\nconst data = $json.body || $json;\n\n// Build content string from available fields\nconst parts = [];\nif (data.name) parts.push('Name: ' + data.name);\nif (data.email) parts.push('Email: ' + data.email);\nif (data.company) parts.push('Company: ' + data.company);\nif (data.title) parts.push('Title: ' + data.title);\nif (data.phone) parts.push('Phone: ' + data.phone);\nif (data.notes) parts.push('Notes: ' + data.notes);\nif (data.message) parts.push('Message: ' + data.message);\n\nconst content = parts.join('\\n') || JSON.stringify(data);\n\nreturn [{\n  json: {\n    content: content,\n    speaker: data.source || 'webhook',\n    enhanced: true,\n    tags: ['webhook', 'real-time', data.source || 'unknown'].filter(Boolean),\n    email: data.email || undefined,\n    website_url: data.website || data.website_url || undefined\n  }\n}];"
+      }
+    },
+    {
+      "id": "pz-api-001",
+      "name": "Personize: Memorize Pro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.personize.ai/api/v1/memorize",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pz-cred",
+          "name": "Personize API Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 60000
+    },
+    {
+      "id": "pz-respond-001",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300],
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nreturn [{\n  json: {\n    success: result.success || false,\n    message: result.success ? 'Memorized successfully' : 'Failed to memorize',\n    data: result.data || null\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Build Memorize Payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Memorize Payload": {
+      "main": [
+        [{ "node": "Personize: Memorize Pro", "type": "main", "index": 0 }]
+      ]
+    },
+    "Personize: Memorize Pro": {
+      "main": [
+        [{ "node": "Build Response", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

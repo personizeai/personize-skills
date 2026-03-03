@@ -1,0 +1,57 @@
+{
+  "id": "col_shared_workspace",
+  "name": "Shared Workspace",
+  "entityType": "Contact",
+  "description": "A shared collaboration surface for any entity. Multiple agents, humans, and systems contribute updates, tasks, notes, and issues to the same record. The workspace IS the coordination — no orchestrator, no message bus. Everyone reads the same state via smartDigest() and writes their contributions via memorize(). Attach this to any entity type: Contact, Company, Deal, Project, Ticket, or custom.",
+  "properties": [
+    {
+      "name": "Context",
+      "systemName": "context",
+      "type": "text",
+      "description": "Current state summary for this record — what's happening, what matters most, and what's next. Any participant (agent or human) can rewrite this when they have a materially updated understanding. This is the 'start here' for anyone engaging with this entity. Should be a concise narrative (1-3 paragraphs) covering: current situation, active priorities, recent changes, and recommended next actions. Replaced on each update — not a history, but the latest understanding.",
+      "autoSystem": true,
+      "updateSemantics": "replace",
+      "tags": ["workspace", "context", "working-memory"]
+    },
+    {
+      "name": "Updates",
+      "systemName": "updates",
+      "type": "array",
+      "description": "Chronological record of what happened on this entity. Each entry is an object: { author (who contributed this — agent ID, user name, or system name), type (observation | action | change | milestone), summary (one-line description), details (full context if needed), timestamp (ISO 8601) }. Append only — never update or delete existing entries. This is the timeline that keeps all participants aware of what others have done without meetings or status pings.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["workspace", "timeline", "immutable"]
+    },
+    {
+      "name": "Tasks",
+      "systemName": "tasks",
+      "type": "array",
+      "description": "Action items for this entity. Each entry is an object: { title, description (enough context that anyone picking this up understands what to do and why), status (pending | in_progress | done | cancelled), owner (who should do this — agent ID, role, or person name), createdBy (who created this task), priority (low | medium | high | urgent), dueDate (ISO 8601 or null), outcome (result description when completed, null otherwise) }. Any participant can create tasks. Any participant can update status on tasks they own or observe. A task assigned to someone IS a handoff — the description carries the context.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["workspace", "action", "operational"]
+    },
+    {
+      "name": "Notes",
+      "systemName": "notes",
+      "type": "array",
+      "description": "Knowledge, observations, and ideas from any contributor — things that matter for understanding this entity but aren't tasks or timeline events. Each entry is an object: { author, content (the note itself — can be a paragraph, a bullet list, an analysis, a gut feeling, a strategic observation), category (observation | analysis | idea | reference | question), timestamp (ISO 8601) }. Append only — notes are permanent. If an observation changes, add a new note referencing the old one. A sales rep's gut feeling after a call, an agent's pattern analysis, a manager's strategic direction — all belong here.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": false,
+      "tags": ["workspace", "knowledge", "immutable"]
+    },
+    {
+      "name": "Issues",
+      "systemName": "issues",
+      "type": "array",
+      "description": "Problems, blockers, risks, and concerns for this entity. Each entry is an object: { title, description (what's wrong and why it matters), severity (low | medium | high | critical), status (open | investigating | resolved | dismissed), raisedBy (who flagged this), resolvedBy (who resolved it, null if unresolved), resolution (how it was resolved, null if unresolved), timestamp (ISO 8601) }. Any participant can raise issues. Issues with severity 'critical' are implicit escalations — they demand immediate attention. Mutable — status, resolvedBy, and resolution get updated as the issue progresses.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "update": true,
+      "tags": ["workspace", "risk", "operational"]
+    }
+  ]
+}
