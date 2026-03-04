@@ -41,7 +41,7 @@ Generate importable n8n workflow JSON files that sync data between Personize and
 
 ## Personize API Endpoints for n8n
 
-All requests go to `https://api.personize.ai` with `Authorization: Bearer sk_live_...` header.
+All requests go to `https://agent.personize.ai` with `Authorization: Bearer sk_live_...` header.
 
 | Action | Method | Path | Use Case |
 |--------|--------|------|----------|
@@ -117,7 +117,7 @@ All Personize API calls use the same HTTP Request node pattern:
   "position": [860, 300],
   "parameters": {
     "method": "POST",
-    "url": "https://api.personize.ai/api/v1/batch-memorize",
+    "url": "https://agent.personize.ai/api/v1/batch-memorize",
     "authentication": "predefinedCredentialType",
     "nodeCredentialType": "httpHeaderAuth",
     "sendBody": true,

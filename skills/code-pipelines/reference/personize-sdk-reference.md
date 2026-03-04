@@ -8,9 +8,9 @@ Quick reference for the `@personize/sdk` methods used in GTM pipelines.
 |-----------|--------|---------------|-------------|
 | *(root)* | `test()` | `GET /api/v1/test` | Verify API key is valid. No credits consumed. |
 | *(root)* | `me()` | `GET /api/v1/me` | Get current org, user, and plan details. |
-| `variables` | `list()`, `create()`, `update()`, `delete()` | `GET/POST/PATCH/DELETE /api/v1/variables` | CRUD for governance variables. |
-| `variables` | `getStructure()`, `getSection()` | `GET /api/v1/variables/:id/structure\|section` | Read variable headings or a specific section. |
-| `variables` | `history()` | `GET /api/v1/actions/:id/history` | Version history for a variable. |
+| `guidelines` | `list()`, `create()`, `update()`, `delete()` | `GET/POST/PATCH/DELETE /api/v1/guidelines` | CRUD for governance guidelines. |
+| `guidelines` | `getStructure()`, `getSection()` | `GET /api/v1/guidelines/:id/structure\|section` | Read guideline headings or a specific section. |
+| `guidelines` | `history()` | `GET /api/v1/actions/:id/history` | Version history for a guideline. |
 | `collections` | `list()`, `create()`, `update()`, `delete()` | `GET/POST/PATCH/DELETE /api/v1/collections` | CRUD for property collections. |
 | `collections` | `history()` | `GET /api/v1/collections/:id/history` | Version history for a collection. |
 | `ai` | `smartGuidelines()` | `POST /api/v1/ai/smart-guidelines` | Semantic routing to org guidelines. |

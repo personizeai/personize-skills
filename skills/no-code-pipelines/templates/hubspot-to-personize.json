@@ -57,7 +57,7 @@
       "position": [860, 300],
       "parameters": {
         "method": "POST",
-        "url": "https://api.personize.ai/api/v1/batch-memorize",
+        "url": "https://agent.personize.ai/api/v1/batch-memorize",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "httpHeaderAuth",
         "sendBody": true,

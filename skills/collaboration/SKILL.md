@@ -60,7 +60,7 @@ This skill helps developers set up shared workspaces on any Personize entity so 
 | What you want | SDK method | MCP tool |
 |---|---|---|
 | Write to workspace | `client.memory.memorize()` | `memory_store_pro` |
-| Batch write | `client.memory.memorizeBatch()` | `memory_batch_store_pro` |
+| Batch write | `client.memory.memorizeBatch()` | (SDK only) |
 | Read workspace digest | `client.memory.smartDigest()` | (SDK only — use `memory_recall_pro` with targeted queries) |
 | Search workspace | `client.memory.smartRecall()` | `memory_recall_pro` |
 | Simple lookup | `client.memory.recall()` | `memory_recall_pro` |

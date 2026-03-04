@@ -26,7 +26,7 @@
       "position": [420, 300],
       "parameters": {
         "method": "POST",
-        "url": "https://api.personize.ai/api/v1/search",
+        "url": "https://agent.personize.ai/api/v1/search",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "httpHeaderAuth",
         "sendBody": true,
