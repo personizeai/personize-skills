@@ -53,16 +53,18 @@ const batch = {
 ## Common Root Causes (ranked by likelihood)
 
 1. **Wrong extractMemories flags** — structured fields marked for extraction, or rich text fields NOT marked for extraction
-2. **Input too short** — the AI needs enough context to extract meaningful facts
-3. **Input already processed** — running content through an LLM before memorizing with `enhanced: true` wastes tokens and degrades extraction
-4. **Missing property mapping** — properties not included in the `memorizeBatch()` call
-5. **Schema mismatch** — property names don't match what downstream code expects
+2. **Identity fields not selected** — generic properties (first name, company name, location) score low in embedding similarity because they match everything weakly. The extraction is highly precise (see our research paper) — this is a completeness issue, not an accuracy issue
+3. **Input too short** — the AI needs enough context to extract meaningful facts
+4. **Input already processed** — running content through an LLM before memorizing with `enhanced: true` wastes tokens and degrades extraction
+5. **Missing property mapping** — properties not included in the `memorizeBatch()` call
+6. **Schema mismatch** — property names don't match what downstream code expects
 
 ## Fixes
 
 | Root Cause | Fix |
 |---|---|
 | Wrong flags | Use `extractMemories: false` for structured data (name, email, title), `true` for unstructured text (bios, notes, conversations) |
+| Identity fields not selected | Prepend extraction hints to content: `"Also extract First Name, Last Name, Company Name if mentioned.\n\n" + rawContent`. This boosts similarity with those property definitions so they get selected alongside the 15+ content-relevant properties. The selector still picks all relevant properties — hints just ensure identity fields are in the mix. See entity-memory skill → `reference/memorize.md` → "Extraction Hints" |
 | Input too short | Include full context: paragraphs, not fragments |
 | Double-processing | Pass raw content to `memorize({ enhanced: true })` — the extraction pipeline is optimized for raw input |
 | Missing mapping | Ensure every field you want as a property is included in the `properties` object of `memorizeBatch()` |
@@ -72,4 +74,4 @@ const batch = {
 
 - Follow the entity-memory skill's constraint: **MUST NOT** pre-process content with an LLM before calling `memorize()` with `enhanced: true`
 - Use `extractMemories: true` only on fields with rich unstructured content
-- Verify extractions immediately after batch sync (see **verify-setup** skill → VERIFY-MEMORY)
+- Verify extractions immediately after batch sync (see VERIFY-MEMORY action)

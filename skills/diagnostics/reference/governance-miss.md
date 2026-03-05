@@ -75,5 +75,5 @@ console.log('Headers:', structure.data);
 
 - Write guideline headers as search queries, not document titles
 - Limit each guideline to one topic or policy domain
-- Always verify with `smartGuidelines()` after creating or updating (see **verify-setup** skill)
+- Always verify with `smartGuidelines()` after creating or updating (see VERIFY-GOVERNANCE action)
 - Use the governance skill constraint: **MUST** call `smartGuidelines()` after any create or update to verify visibility

@@ -108,6 +108,6 @@ await client.memory.memorize({
 ## Prevention
 
 - Include the workspace write step in every agent template
-- Run weekly health checks to catch stale workspaces early (see **verify-setup** skill)
+- Run weekly health checks to catch stale workspaces early (see HEALTH-CHECK action)
 - Set up alerts for workspaces with no activity in 7+ days
 - Document the expected contributor list for each workspace entity type

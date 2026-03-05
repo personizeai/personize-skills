@@ -8,35 +8,123 @@ Complete guide to retrieving data from Personize memory — method signatures, q
 
 | Method | Returns | Best For |
 |---|---|---|
-| `memory.recall()` | Ranked semantic search results | "What do we know about X topic?" |
+| `memory.smartRecall()` | Ranked semantic search + optional reflection/answer | "What do we know about X topic?" (recommended) |
+| `memory.recall()` | Direct DynamoDB lookup — properties + freeform memories (`type` required) | "Give me all stored data for this record" (no AI, no LanceDB) |
 | `memory.smartDigest()` | Compiled markdown context for one entity | "Give me everything about this person/company" |
 | `memory.search()` | Filtered records with property values | "List all contacts matching criteria X" |
 | `ai.smartGuidelines()` | Governance variables matching a topic | "What are our guidelines for X?" |
 
 ---
 
-## `memory.recall()` — Semantic Search
+## `memory.smartRecall()` — Semantic Search (Recommended)
 
-Searches vector embeddings to find memories matching a natural language query. Returns ranked results with relevance scores.
+Searches vector embeddings to find memories matching a natural language query. Returns ranked results with relevance scores. Supports reflection loops for improved coverage, AI-generated answers, and fast mode.
 
 ### Full Signature
 
 ```typescript
-interface RecallProOptions {
+interface SmartRecallOptions {
     query: string;                     // Natural language query (required)
     limit?: number;                    // Max results (default: 10)
     minScore?: number;                 // Minimum relevance score 0-1 (default: 0)
     email?: string;                    // Scope to one contact
     website_url?: string;              // Scope to one company
     record_id?: string;                // Scope to one record
-    type?: string;                     // Entity type filter
+    type?: string;                     // Entity type filter (optional — inferred from email/website_url)
     include_property_values?: boolean; // Include structured properties alongside memories
     enable_reflection?: boolean;       // AI reflects on results for deeper insight
     generate_answer?: boolean;         // AI generates a direct answer from results
-    fast_mode?: boolean;               // Skip reflection + answer gen, ~700ms (default: false)
+    fast_mode?: boolean;               // Skip reflection + answer gen, ~500ms (default: false)
     min_score?: number;                // Server-side score filter (in fast_mode, defaults to 0.3)
 }
 ```
+
+## `memory.recall()` — Direct DynamoDB Lookup (No AI)
+
+Returns all stored data for a record directly from DynamoDB — **no vector search, no AI, no LanceDB**. Reads structured properties from the RecordSnapshot table AND freeform memories from the Freeform table.
+
+Use this when you need a complete, deterministic dump of everything stored for a record.
+
+```typescript
+interface RecallOptions {
+    query: string;                     // Natural language query (required — used for logging, not for search)
+    type: string;                      // Entity type — REQUIRED (e.g. 'Contact', 'Company')
+    record_id?: string;                // Scope to one record
+    email?: string;                    // Scope to one contact
+    website_url?: string;              // Scope to one company
+    filters?: Record<string, unknown>; // Additional filters
+}
+```
+
+### Response Shape
+
+```typescript
+{
+    success: true,
+    data: {
+        memories: [...],              // Structured properties from DynamoDB Snapshot
+        freeformMemories: [...],      // AI-extracted memories from DynamoDB Freeform table
+        memoryCount: number,          // Count of structured properties
+        freeformMemoryCount: number,  // Count of freeform memories
+        recordId: string,
+        type: string,
+        systemIntro: string,          // Pre-formatted context string
+    }
+}
+```
+
+> **`type` is required** for `recall()`. Omitting it returns a 400 error. If you don't want to specify type, use `smartRecall()` instead — it infers type from email/website_url.
+>
+> **Key difference from `smartRecall()`**: `recall()` reads directly from DynamoDB (deterministic, fast). `smartRecall()` searches LanceDB vectors with optional AI reflection (semantic, slower). Use `recall()` for "show me everything about this record". Use `smartRecall()` for "find memories matching this question".
+
+---
+
+### Entity Scoping: With vs. Without CRM Keys
+
+Every recall method accepts optional CRM keys (`email`, `website_url`, `record_id`) to scope results to a specific entity. Understanding when to use them — and what happens when you don't — is important.
+
+**With CRM keys** (scoped to one entity):
+```typescript
+// "What pain points did Sarah mention?"
+await client.memory.smartRecall({
+    query: 'pain points and challenges',
+    email: 'sarah.chen@initech.com',
+    limit: 10,
+});
+```
+- Results come from one record only
+- Fast, precise, low noise
+- **Recommended for**: personalization, context assembly, entity-specific questions
+
+**Without CRM keys** (org-wide search):
+```typescript
+// "Which contacts mentioned Kubernetes?"
+await client.memory.smartRecall({
+    query: 'Kubernetes container orchestration',
+    type: 'Contact',
+    limit: 20,
+    minScore: 0.5,
+});
+```
+- Searches across ALL memories in the organization
+- Each result includes a `record_id` field so you can identify which entity it belongs to
+- Results are ranked by semantic similarity, not grouped by entity — you may get multiple results from the same record
+- **Use cases**: cross-entity research, segmentation signals, finding patterns across your data
+
+**Benefits of org-wide search:**
+- Discover which contacts/companies match a topic
+- Find patterns across your entire customer base
+- Power search features in your product
+
+**Risks to be aware of:**
+- Results are capped by `limit` / `topK` (default 10, fast_mode default 100, max 5,000) — you get the best matches, not an exhaustive list
+- If 1,000 records mention "Kubernetes", you'll get the top N most relevant chunks, not all 1,000
+- For an exhaustive list of all records matching criteria, use `memory.search()` with filter conditions instead — it's designed for that
+- Higher `limit` values increase response size but have negligible cost impact (vector search, no LLM calls)
+
+**The same applies to `memorize()`:** storing data without a CRM key (`email`, `website_url`, or `record_id`) creates an orphan memory that isn't tied to any entity. It still exists in the org's memory and is searchable via org-wide recall, but it won't appear in `smartDigest()` or entity-scoped queries. Always provide at least one identifier when memorizing.
+
+---
 
 ### Query Writing Strategies
 
@@ -71,7 +159,7 @@ The quality of recall results depends heavily on how you phrase the query:
 
 ```typescript
 // Basic semantic search scoped to a contact
-const results = await client.memory.recall({
+const results = await client.memory.smartRecall({
     query: 'what pain points did this contact mention?',
     email: 'sarah.chen@initech.com',
     limit: 10,
@@ -79,7 +167,7 @@ const results = await client.memory.recall({
 });
 
 // With structured properties included
-const results = await client.memory.recall({
+const results = await client.memory.smartRecall({
     query: 'recent interactions and engagement',
     email: 'sarah.chen@initech.com',
     limit: 15,
@@ -88,7 +176,7 @@ const results = await client.memory.recall({
 });
 
 // AI-generated answer from results
-const answer = await client.memory.recall({
+const answer = await client.memory.smartRecall({
     query: 'summarize the key concerns this contact has raised',
     email: 'sarah.chen@initech.com',
     limit: 20,
@@ -97,7 +185,7 @@ const answer = await client.memory.recall({
 });
 
 // With reflection for deeper analysis
-const reflected = await client.memory.recall({
+const reflected = await client.memory.smartRecall({
     query: 'what is the relationship history with this company?',
     website_url: 'https://initech.com',
     limit: 20,
@@ -106,7 +194,7 @@ const reflected = await client.memory.recall({
 });
 
 // Unscoped search across all records
-const allResults = await client.memory.recall({
+const allResults = await client.memory.smartRecall({
     query: 'contacts interested in SOC2 compliance',
     type: 'Contact',
     limit: 20,
@@ -114,14 +202,14 @@ const allResults = await client.memory.recall({
 });
 
 // Fast mode — skip reflection, ~700ms response
-const fast = await client.memory.recall({
+const fast = await client.memory.smartRecall({
     query: 'what do we know about this contact?',
     email: 'sarah.chen@initech.com',
     fast_mode: true,
 });
 
 // Fast mode with custom score threshold
-const fastStrict = await client.memory.recall({
+const fastStrict = await client.memory.smartRecall({
     query: 'budget and pricing discussions',
     email: 'sarah.chen@initech.com',
     fast_mode: true,
@@ -139,7 +227,8 @@ Use `fast_mode: true` when latency matters more than depth. It skips the reflect
 | **Reflection** | 2 rounds (LLM calls) | Skipped |
 | **Answer generation** | Optional | Skipped |
 | **Min score** | None (or caller-specified) | 0.3 default (override via `min_score`) |
-| **Result limit** | `limit` value | No hard limit — all results above score threshold |
+| **Result limit** | `limit` value (default 10) | Up to 100 results above score threshold (override via `limit`) |
+| **Max results** | Up to 5,000 | Up to 5,000 |
 
 **When to use fast_mode:**
 - Real-time UIs (autocomplete, preview panels)
@@ -429,7 +518,7 @@ async function assembleContext(email: string, task: string): Promise<string> {
     }
 
     // 3. Task-specific facts — semantic search
-    const recalled = await client.memory.recall({
+    const recalled = await client.memory.smartRecall({
         query: task,
         email,
         limit: 10,
@@ -489,7 +578,7 @@ When assembling context, fetch independent layers in parallel:
 const [governance, digest, recalled] = await Promise.all([
     client.ai.smartGuidelines({ message: `${task} — guidelines` }),
     client.memory.smartDigest({ email, type: 'Contact', token_budget: 2000 }),
-    client.memory.recall({ query: task, email, fast_mode: true }),  // fast_mode for hot paths
+    client.memory.smartRecall({ query: task, email, fast_mode: true }),  // fast_mode for hot paths
 ]);
 ```
 

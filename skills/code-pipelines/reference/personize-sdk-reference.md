@@ -19,11 +19,11 @@ Quick reference for the `@personize/sdk` methods used in GTM pipelines.
 | `agents` | `get(id)` | `GET /api/v1/agents/:id` | Get agent config + expected `{{input}}` variables. |
 | `agents` | `run(id)` | `POST /api/v1/agents/:id/run` | Execute an agent. |
 | `memory` | `memorize()` | `POST /api/v1/memorize` | AI extraction + vector storage. |
-| `memory` | `recall()` | `POST /api/v1/smart-recall` | Semantic search with optional reflection. |
+| `memory` | `smartRecall()` | `POST /api/v1/smart-recall` | Semantic search with reflection + answer gen (recommended). |
+| `memory` | `recall()` | `POST /api/v1/recall` | Direct lookup from DynamoDB (`type` required, no AI). |
 | `memory` | `smartDigest()` | `POST /api/v1/smart-memory-digest` | Compiled entity context bundle. |
-| `memory` | `upsert()` | `POST /api/v1/upsert` | Structured storage (no AI). |
-| `memory` | `upsertBatch()` | `POST /api/v1/upsert` | Batch structured storage (no AI). |
-| `memory` | `memorizeBatch()` | `POST /api/v1/batch-memorize` | Bulk sync with per-property AI control. |
+| `memory` | `memorizeBatch()` | `POST /api/v1/batch-memorize` | Bulk sync with per-property AI control (`extractMemories` flag). |
+| `memory` | `search()` | `POST /api/v1/search` | Filter and export records. |
 | `memory` | `search()` | `POST /api/v1/search` | Filter and export records. |
 | `evaluate` | `memorizationAccuracy()` | `POST /api/v1/evaluate/memorization-accuracy` | Three-phase collection schema evaluation. |
 
@@ -48,9 +48,10 @@ const personize = new Personize({
 ### memorize — Store + AI Extract
 
 ```typescript
+// Tip: prepend extraction hints for identity fields to ensure they're captured
 await personize.memory.memorize({
   email: "lead@company.com",           // entity identifier
-  content: "Meeting notes: discussed pricing...",
+  content: "Also extract First Name, Last Name, Company Name, and Job Title if mentioned.\n\nMeeting notes: discussed pricing...",
   speaker: "sales-call",               // source label
   enhanced: true,                      // enable AI extraction
   tags: ["meeting", "pricing"],        // property selection tags
@@ -86,37 +87,6 @@ const digest = await personize.memory.smartDigest({
 // digest.data.compiledContext — ready-to-use markdown
 // digest.data.properties — structured key-value pairs
 // digest.data.memories — list of memories
-```
-
-### upsert — Structured Storage (No AI)
-
-Store structured key-value properties directly. No AI extraction, no vector embeddings — just fast DynamoDB writes. Use for deterministic data you already have in structured form.
-
-```typescript
-await personize.memory.upsert({
-  type: "Contact",
-  properties: {
-    "Full Name":  { value: "Jane Smith",     collectionId: "col_xxx", collectionName: "Standard" },
-    "Company":    { value: "Acme Corp",      collectionId: "col_xxx", collectionName: "Standard" },
-    "Deal Stage": { value: "Negotiation",    collectionId: "col_yyy", collectionName: "CRM" },
-  },
-  matchKeys: { email: "jane@acme.com" },    // dedup key
-  source: "CRM Sync",
-});
-```
-
-### upsertBatch — Batch Structured Storage (No AI)
-
-```typescript
-await personize.memory.upsertBatch({
-  type: "Contact",
-  email: "jane@acme.com",
-  memories: [
-    { memoryName: "Full Name", result: "Jane Smith", collectionId: "col_xxx" },
-    { memoryName: "Company",   result: "Acme Corp",  collectionId: "col_xxx" },
-  ],
-  source: "CRM Sync",
-});
 ```
 
 ### memorizeBatch — Bulk Sync from CRM

@@ -26,7 +26,7 @@ Every pipeline is TypeScript. Every pipeline is testable. Every pipeline uses th
 
 - User wants no-code/visual workflows → use the **no-code-pipelines** skill instead
 - User only needs a one-time data import → use the **entity-memory** skill with `batch-memorize`
-- User wants a simple prompt/response → use the **personalization** skill
+- User wants a simple prompt/response → use the **solution-architect** skill
 
 ---
 

@@ -39,7 +39,7 @@ The intelligence comes from Personize SDK — memory, governance, and AI. Signal
 - Need raw memory operations → use **entity-memory**
 - Need shared workspaces without notifications → use **collaboration**
 - Need governance rules without notifications → use **governance**
-- Need CRM data sync → use **data-sync**
+- Need CRM data sync → use **entity-memory** (CRM sync section)
 
 ---
 

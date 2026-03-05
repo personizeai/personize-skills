@@ -1,14 +1,14 @@
 ---
-name: personalization
-description: "Architect and implementation guide for deploying unified customer memory, a governance layer, and AI-powered personalization across products, websites, and workflows using the Personize SDK. Covers the full journey — discovery, schema design, memorization pipelines, governance setup, content generation with guardrails, system wiring, and integration review. Use when a company wants to centralize what they know about each customer, unify the guidelines their AI agents follow, and deliver personalized experiences across every channel."
+name: solution-architect
+description: "Personize Solution Architect — plans, designs, and validates complete Personize integrations. Covers the full journey: discovery, schema design, memorization pipelines, governance setup, content generation with guardrails, system wiring, and integration review with a production-readiness checklist. Use when a company wants to centralize customer knowledge, unify AI governance, deploy personalization across channels, or validate an existing Personize integration end-to-end."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F3AF", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
 ---
 
-# Skill: Personalization
+# Skill: Personize Solution Architect
 
-This skill is your architect and implementation guide for deploying AI-powered personalization at scale using the Personize SDK.
+This skill is your architect and implementation guide for deploying Personize at scale — unified customer memory, shared AI governance, and personalized experiences across every channel.
 
 ## What This Skill Solves
 
@@ -55,7 +55,7 @@ This skill guides the developer through the full journey — from understanding 
 ## When NOT to Use This Skill
 
 - Need a production pipeline with retries, scheduling, and durable execution → use **code-pipelines**
-- Need to sync CRM data before personalizing → use **data-sync** or **no-code-pipelines** first
+- Need to sync CRM data before personalizing → use **entity-memory** (CRM sync section) or **no-code-pipelines** first
 - Only need to store/retrieve entity data → use **entity-memory** directly
 - Only need to manage org rules → use **governance**
 
@@ -73,7 +73,7 @@ You have 7 actions available. Use whichever is appropriate for what the develope
 | **SCHEMA** | Developer needs to design collections and properties | `reference/schema.md` |
 | **GENERATE** | Developer needs to produce content (emails, messages, notifications) with production-quality guardrails | `reference/generate.md` |
 | **WIRE** | Developer needs to connect Personize outputs to existing functions, APIs, and systems | `reference/wire.md` |
-| **REVIEW** | Developer already has Personize integrated — audit and improve | `reference/review.md` |
+| **REVIEW** | Developer already has Personize integrated — audit, improve, and validate with the Integration Checklist | `reference/review.md`, `reference/integration-checklist.md` |
 
 **Before each action:** Read the reference file for full details, questions, checklists, and code examples.
 
@@ -400,26 +400,76 @@ async function personalizationMiddleware(req, res, next) {
 
 ## Action: REVIEW
 
-When the developer already has Personize integrated, audit their implementation and suggest improvements.
-
-**What to audit:**
-
-1. **Data completeness** — What are they memorizing vs. what data do they have? Find gaps.
-2. **`extractMemories` decisions** — Are unstructured fields using `true`? Are structured fields wasting AI on `true`?
-3. **Recall quality** — Are they using `smartDigest()` for entity context? Are they using `recall()` for task-specific facts?
-4. **Governance** — Do they have governance variables? Are they using `smartGuidelines()` to fetch guidelines before generating?
-5. **Prompt quality** — Are they using multi-step `instructions[]`? Is there self-evaluation? Do prompts reference specific facts?
-6. **Feedback loop** — Are they storing generated outputs back in memory? Does the AI know what it already sent?
-7. **Missing opportunities** — Based on their codebase, what personalization touchpoints are they not using?
-8. **Rate limit efficiency** — Are they batching correctly? Are they respecting plan limits?
+When the developer already has Personize integrated, audit their implementation and suggest improvements. Use the **Integration Checklist** below as your review framework.
 
 **Review workflow:**
 1. Read their Personize integration code (sync scripts, pipeline scripts, prompt calls)
 2. Read their data models and identify what data exists but isn't being memorized
 3. Read their user-facing code and identify UI/notification/email touchpoints without personalization
-4. Present findings: "Here's what you're doing well, here's what you're missing, here's how to improve"
+4. Walk through the Integration Checklist — flag anything missing or misconfigured
+5. Present findings: "Here's what you're doing well, here's what you're missing, here's how to improve"
 
 > **Full guide:** Read `reference/review.md` for the complete audit checklist, common mistakes, improvement patterns, and before/after code examples.
+
+### Integration Checklist
+
+Use this to verify a Personize integration is complete. Each section builds on the previous.
+
+**1. Connect** — Pick at least one integration path:
+- [ ] **SDK** installed (`@personize/sdk`) — `client.me()` → `GET /api/v1/me` returns org name
+- [ ] **MCP** server added to agent tools — `memory_recall_pro`, `ai_smart_guidelines` available
+- [ ] **Zapier** connected — memorizing data from external apps
+- [ ] **Skills** installed — `npx skills add personizeai/personize-skills`
+
+**2. Schema** — Collections designed with intent:
+- [ ] Collections created → `POST /api/v1/collections`
+- [ ] Every property has a **description** (not just a name) — descriptions drive AI extraction quality
+- [ ] Property display types match the data (text, number, date, list, badge)
+
+**3. Memorize** — Data flowing in through the right endpoint:
+- [ ] Rich text → `POST /api/v1/memorize` with `extractMemories: true`
+- [ ] Batch CRM/DB sync → `POST /api/v1/batch-memorize` with per-property `extractMemories` flags
+- [ ] Structured upsert → `POST /api/v1/upsert` (no AI needed)
+- [ ] Not pre-processing with LLM before memorizing
+- [ ] 429 retry logic in batch operations
+
+**4. Recall** — Right method for each use case:
+- [ ] Semantic search → `POST /api/v1/smart-recall` via `smartRecall()`
+- [ ] Entity context bundle → `POST /api/v1/smart-memory-digest` via `smartDigest()`
+- [ ] Direct lookup → `POST /api/v1/recall` via `recall()`
+- [ ] Filter/export → `POST /api/v1/search` via `search()`
+- [ ] Cross-entity context: pulling company when working on contact
+
+**5. Governance** — Rules set and maintained:
+- [ ] At least one guideline created → `POST /api/v1/guidelines`
+- [ ] `triggerKeywords` set on each guideline (drives retrieval scoring)
+- [ ] `smartGuidelines()` → `POST /api/v1/ai/smart-guidelines` returns content for real tasks
+- [ ] Guidelines reviewed and updated regularly — not set-and-forget
+
+**6. Generate** — `/prompt` used correctly:
+- [ ] Multi-step `instructions[]` → `POST /api/v1/prompt` via `client.ai.prompt()`
+- [ ] Structured `outputs: [{ name: "..." }]` for machine-readable results
+- [ ] `memorize: { email, captureToolResults: true }` saves output back to memory
+- [ ] `evaluate: true` for quality scoring on production runs
+- [ ] External MCP tools connected via dashboard if needed
+
+**7. Agents** — Reusable prompt actions:
+- [ ] Common patterns saved as agents → `POST /api/v1/agents/:id/run`
+- [ ] Agent input variables (`{{input}}`) documented
+- [ ] Agents tested with real entity data
+
+**8. Workspaces** — Multi-agent coordination:
+- [ ] Workspace schema attached to entities that need coordination
+- [ ] Agents read workspace via `smartDigest()` / `smartRecall()` before acting
+- [ ] Agents write contributions back via `memorize()` with workspace tags
+
+**9. Production readiness:**
+- [ ] Context assembly: `smartGuidelines()` + `smartDigest()` + `smartRecall()` — all three, every time
+- [ ] Generated outputs memorized after delivery — feedback loop closed
+- [ ] Sensitive content (pricing, legal, medical) flagged for human review
+- [ ] Rate limits read from `client.me()`, not hardcoded
+
+> **Full checklist with examples and verify commands:** Read `reference/integration-checklist.md`.
 
 ---
 
@@ -453,15 +503,7 @@ Every pipeline follows this agentic loop — steps can be skipped or combined ba
 OBSERVE → REMEMBER → RECALL → REASON → PLAN → DECIDE → GENERATE → ACT → UPDATE → REPEAT
 ```
 
-This loop is powered by the **three-layer agent operating model**:
-
-| Layer | Powers which steps | Method |
-|---|---|---|
-| **Guidelines** | REASON, PLAN, DECIDE — organizational rules constrain how the agent thinks | `smartGuidelines()` |
-| **Memory** | OBSERVE, REMEMBER, RECALL — entity knowledge informs what the agent knows | `smartDigest()`, `recall()` |
-| **Workspace** | ACT, UPDATE, REPEAT — coordination state tracks what's been done and what's next | `recall()` by workspace tags, `memorize()` |
-
-Every cycle, the agent assembles context from all three layers before acting. When working on a contact, also pull their company context (`smartDigest` with `website_url`) — cross-entity context prevents blind spots.
+This loop is powered by the **three-layer agent operating model**: **Guidelines** (`smartGuidelines()`) constrain how the agent reasons, **Memory** (`smartDigest()`/`recall()`) informs what it knows, and **Workspace** (workspace-tagged `recall()`/`memorize()`) tracks coordination. Every cycle, the agent assembles context from all three layers before acting. When working on a contact, also pull their company context (`smartDigest` with `website_url`) — cross-entity context prevents blind spots.
 
 > **Full architecture guide:** See the `collaboration` skill's `reference/architecture.md` for the complete three-layer model with code patterns.
 
@@ -469,14 +511,7 @@ Every cycle, the agent assembles context from all three layers before acting. Wh
 
 ### Rate Limits
 
-| Plan | Per Minute | Per Month | Records/min (est.) |
-|---|---|---|---|
-| Free | 60 | 10,000 | ~10 |
-| Starter | 120 | 50,000 | ~20 |
-| Pro | 300 | 250,000 | ~50 |
-| Enterprise | 1,000 | 2,000,000 | ~166 |
-
-Always call `client.me()` first to get actual limits.
+Always call `client.me()` first to get actual limits — the response includes `plan.limits.maxApiCallsPerMinute` and `plan.limits.maxApiCallsPerMonth`. Each record uses ~4-6 API calls, so divide per-minute limit by 6 for estimated records/min throughput.
 
 ---
 
@@ -492,6 +527,7 @@ Always call `client.me()` first to get actual limits.
 | `reference/generate.md` | Generation guardrails, format rules, hallucination prevention, channel templates, output parsing, testing patterns |
 | `reference/wire.md` | Integration patterns (wrap, webhook, middleware, cron, queue), error handling, rate alignment, stack-specific recipes |
 | `reference/review.md` | Audit checklist, common mistakes, improvement patterns |
+| `reference/integration-checklist.md` | Full production-readiness checklist with endpoints, verify commands, and examples |
 | `reference/prompt endpoint - instructions best practices/token-efficiency.md` | 10 rules for writing token-efficient `instructions[]` — state the task not the process, one deliverable per instruction, use config over text, maxSteps guidance, sessionId, smart context modes |
 | `reference/prompt endpoint - instructions best practices/prompt-checklist.md` | Quick-reference checklist for `client.ai.prompt()` — pre-flight checks, cost optimization, instruction patterns, common mistakes |
 | `recipes/*.ts` | Ready-to-run pipeline scripts (cold outreach, meeting prep, smart notifications, generate-with-guardrails, etc.) |

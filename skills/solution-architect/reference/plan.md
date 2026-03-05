@@ -140,8 +140,9 @@ async function observe(): Promise<{ recordId: string; properties: Record<string,
 
 **Single item (real-time):**
 ```typescript
+// Prepend identity hints to ensure demographic fields are captured alongside content-relevant ones
 await client.memory.memorize({
-    content: 'John mentioned their vendor lacks SOC2 compliance. Security team approval needed. Q2 timeline.',
+    content: 'Also extract First Name, Last Name, Company Name, and Job Title if mentioned.\n\nJohn mentioned their vendor lacks SOC2 compliance. Security team approval needed. Q2 timeline.',
     speaker: 'Demo Call Notes',
     enhanced: true,
     tags: ['interaction', 'demo-call', 'objection:security'],
@@ -372,14 +373,7 @@ const recordsPerMinute = Math.floor(perMinute / 6);
 const delayBetweenRecords = Math.ceil(60_000 / recordsPerMinute);
 ```
 
-| Plan | Per Minute | Per Month | Records/min |
-|---|---|---|---|
-| Free | 60 | 10,000 | ~10 |
-| Starter | 120 | 50,000 | ~20 |
-| Pro | 300 | 250,000 | ~50 |
-| Enterprise | 1,000 | 2,000,000 | ~166 |
-
-Always call `client.me()` first to get actual limits.
+Always call `client.me()` first to get actual limits — the response includes `plan.limits.maxApiCallsPerMinute` and `plan.limits.maxApiCallsPerMonth`. Each record uses ~4-6 API calls, so divide per-minute limit by 6 for estimated records/min throughput.
 
 ---
 

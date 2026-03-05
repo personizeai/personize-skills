@@ -51,7 +51,7 @@ This skill helps developers set up shared workspaces on any Personize entity so 
 
 - Need to store entity data (not coordination state) → use **entity-memory**
 - Need to manage organizational rules/policies → use **governance**
-- Need to build a data sync pipeline → use **data-sync** or **no-code-pipelines**
+- Need to build a data sync pipeline → use **entity-memory** (CRM sync section) or **no-code-pipelines**
 
 ---
 

@@ -20,7 +20,7 @@ Guidelines are stored as markdown documents and are automatically available to a
 
 - Need to store data about contacts/companies → use **entity-memory**
 - Need multi-agent coordination state (tasks, updates, issues) → use **collaboration**
-- Need to generate personalized content → use **personalization**
+- Need to plan a full Personize integration → use **solution-architect**
 
 ---
 
@@ -64,6 +64,8 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `client.ai.smartGuidelines({ message })` | `ai_smart_guidelines(message)` | Verify/fetch guidelines |
 
 > **`governanceScope`** is a read-only field returned on `guideline_list` and `guideline_read` (structure mode). It contains `alwaysOn` (boolean) and `triggerKeywords` (string array) — auto-inferred at save time. See the "Governance Scope" section below for details.
+
+> **Response shape note:** `client.guidelines.list()` returns `{ data: { actions: [...], count, nextToken? } }` — guidelines are in `data.actions`, not a top-level array. Iterate with `res.data?.actions || []`.
 
 **When reading this skill document:**
 - If you're connected via **MCP**, use the MCP tool names (`guideline_list`, `guideline_update`, etc.)
@@ -225,15 +227,7 @@ These are inferred by LLM and stored automatically. Keep alwaysOn guidelines to 
 └────────────┘   └──────────────┘   └──────────────────┘
 ```
 
-Guidelines are one layer of the **three-layer agent operating model**. The complete model:
-
-| Layer | What it provides | Skill |
-|---|---|---|
-| **Guidelines** (this skill) | Organizational rules — brand voice, policies, playbooks, compliance | `governance` |
-| **Memory** | Entity knowledge — properties, facts, conversation history | `entity-memory` |
-| **Workspace** | Coordination state — updates, tasks, notes, issues from all contributors | `collaboration` |
-
-Every agent should call `smartGuidelines()` for rules, `smartDigest()`/`recall()` for entity knowledge, and `recall()` by workspace tags for coordination state — all before acting. Guidelines provide the governance that makes the other two layers safe to use autonomously.
+Guidelines are one layer of the **three-layer agent operating model** — together with **Memory** (`entity-memory` skill) and **Workspace** (`collaboration` skill). Every agent should call `smartGuidelines()` for rules, `smartDigest()`/`recall()` for entity knowledge, and `recall()` by workspace tags for coordination — all before acting. Guidelines provide the governance that makes the other two layers safe to use autonomously.
 
 > **Full architecture guide:** See the `collaboration` skill's `reference/architecture.md` for the complete three-layer model, composition patterns, and adoption path.
 

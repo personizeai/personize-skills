@@ -9,9 +9,7 @@ Complete guide to storing data in Personize memory — method signatures, decisi
 | Method | When | AI Extraction | Batch |
 |---|---|---|---|
 | `memory.memorize()` | Rich text — notes, transcripts, emails | Yes (`enhanced: true`) | No |
-| `memory.memorizeBatch()` | CRM/DB sync — per-property control | Per-property | Yes |
-| `memory.upsert()` | Structured key-value pairs | No | No |
-| `memory.upsertBatch()` | Multiple structured items | No | Yes |
+| `memory.memorizeBatch()` | CRM/DB sync — per-property control | Per-property (`extractMemories` flag) | Yes |
 
 ---
 
@@ -114,7 +112,7 @@ interface BatchMemorizeOptions {
             sourceField: string;       // Source field name in row data
             collectionId: string;      // Target collection ID
             collectionName: string;    // Target collection name
-            extractMemories?: boolean; // AI extraction for this property
+            extractMemories?: boolean; // Default: false. Set true on rich text fields for AI extraction + vectors.
         }>;
     };
     rows: Record<string, unknown>[]; // Source data rows
@@ -125,31 +123,25 @@ interface BatchMemorizeOptions {
 
 ### The `extractMemories` Decision Tree
 
-This is the most important decision for every property:
+`extractMemories` defaults to **`false`**. You **must** set `extractMemories: true` on rich text fields to get AI extraction and semantic search. Without it, data is stored as structured properties only — no memories, no vectors.
 
 ```
+Is the value free-form text (notes, transcripts, emails, descriptions)?
+  → extractMemories: true  ← YOU MUST SET THIS or no memories are created
+
 Is the value structured data (email, name, ID, count, date, flag)?
-  → extractMemories: false (already structured, no AI needed)
-
-Is the value free-form text that needs interpretation?
-  → extractMemories: true (AI extracts facts + creates vectors)
-
-Is the value an AI-generated output you want to remember?
-  → extractMemories: true (enables the feedback loop)
-
-Is the value a URL, binary flag, or machine-generated ID?
-  → extractMemories: false (no semantic content)
+  → extractMemories: false (default — already structured, no AI needed)
 ```
 
 | Data Type | `extractMemories` | Example |
 |---|---|---|
-| Email, name, phone | `false` | `john@acme.com`, `John Doe` |
-| Job title, company name | `false` | `VP of Sales`, `Acme Corp` |
-| Plan tier, status, stage | `false` | `enterprise`, `active`, `qualified` |
-| Dates, counts, amounts | `false` | `2025-01-15`, `42`, `$50,000` |
-| Call notes, descriptions | `true` | `"Discussed budget concerns..."` |
-| Email body, transcripts | `true` | `"Hi Sarah, following up on..."` |
-| AI-generated summaries | `true` | `"Key takeaway: they need SOC2..."` |
+| Call notes, descriptions | **`true`** (set explicitly) | `"Discussed budget concerns..."` |
+| Email body, transcripts | **`true`** (set explicitly) | `"Hi Sarah, following up on..."` |
+| AI-generated summaries | **`true`** (set explicitly) | `"Key takeaway: they need SOC2..."` |
+| Email, name, phone | `false` (default) | `john@acme.com`, `John Doe` |
+| Job title, company name | `false` (default) | `VP of Sales`, `Acme Corp` |
+| Plan tier, status, stage | `false` (default) | `enterprise`, `active`, `qualified` |
+| Dates, counts, amounts | `false` (default) | `2025-01-15`, `42`, `$50,000` |
 
 ### Source-Specific Recipes
 
@@ -253,80 +245,9 @@ app.post('/webhooks/intercom', async (req, res) => {
 
 ---
 
-## `memory.upsert()` — Structured Storage (No AI)
+## Structured Storage Without AI
 
-Best for: exact key-value pairs where you don't need AI extraction — email, plan tier, login count, last activity date.
-
-### Full Signature
-
-```typescript
-interface UpsertOptions {
-    type: string;              // Entity type ('Contact', 'Company')
-    properties: Record<string, {
-        value: PropertyValue;          // string | number | boolean | null
-        collectionId?: string;
-        collectionName?: string;
-    }>;
-    matchKeys?: {
-        email?: string;
-        websiteUrl?: string;
-    };
-    source?: string;           // Source label ('CRM Sync', 'Webhook')
-}
-```
-
-### Example
-
-```typescript
-await client.memory.upsert({
-    type: 'Contact',
-    matchKeys: { email: 'sarah.chen@initech.com' },
-    properties: {
-        plan_tier:    { value: 'enterprise', collectionId: 'col_xxx', collectionName: 'Contacts' },
-        login_count:  { value: 42,           collectionId: 'col_xxx', collectionName: 'Contacts' },
-        last_login:   { value: '2025-02-10', collectionId: 'col_xxx', collectionName: 'Contacts' },
-        is_champion:  { value: true,         collectionId: 'col_xxx', collectionName: 'Contacts' },
-    },
-    source: 'Product Analytics',
-});
-```
-
----
-
-## `memory.upsertBatch()` — Batch Structured Storage
-
-Best for: storing multiple structured items for the same record at once.
-
-### Full Signature
-
-```typescript
-interface UpsertBatchOptions {
-    type: string;              // Entity type
-    memories: Array<{
-        memoryName: string;
-        result: PropertyValue | Record<string, unknown>;
-        collection?: string;
-        collectionId?: string;
-    }>;
-    email?: string;
-    websiteUrl?: string;
-    source?: string;
-}
-```
-
-### Example
-
-```typescript
-await client.memory.upsertBatch({
-    type: 'Contact',
-    email: 'sarah.chen@initech.com',
-    source: 'Enrichment Service',
-    memories: [
-        { memoryName: 'linkedin_url', result: 'https://linkedin.com/in/sarahchen', collectionId: 'col_xxx' },
-        { memoryName: 'company_size', result: '500-1000',                          collectionId: 'col_xxx' },
-        { memoryName: 'funding_stage', result: 'Series B',                         collectionId: 'col_xxx' },
-    ],
-});
+For exact key-value pairs where you don't need AI extraction (email, plan tier, login count), use `memorizeBatch()` with `extractMemories: false` on the property mapping. See the `memorizeBatch()` section above for full details and examples.
 ```
 
 ---
@@ -440,6 +361,47 @@ await client.memory.memorize({
     timestamp: new Date().toISOString(),
 });
 ```
+
+---
+
+## Extraction Hints — Ensure Completeness for Identity Fields
+
+Personize extraction shows high precision across a wide range of content types (see our [research paper](../../paper/) for benchmark results). The property selector uses embedding similarity to pick the most relevant schema properties for each piece of content — and it works well. This isn't about fixing accuracy. It's about **ensuring completeness** for identity and demographic fields.
+
+Properties like first name, company name, job title, and location are **always worth capturing** when mentioned — but they're content-agnostic. A call transcript about SOC2 compliance naturally matches properties like "pain points" or "security requirements" with high similarity, but "first name" scores low because it matches *everything* weakly. The property selector still picks 15+ properties based on the content — this pattern just makes sure identity fields are in that mix.
+
+### The Pattern: Prepend Extraction Hints
+
+Prepend a short line to your `content` listing the identity/demographic properties you want captured. This doesn't limit the selector — it still picks all content-relevant properties. The hint just ensures the fields you always care about are included.
+
+```typescript
+// Call transcript — ensure identity fields are captured alongside content-relevant ones
+await client.memory.memorize({
+    content: `Also extract First Name, Last Name, Company Name, and Job Title if mentioned.\n\n${callTranscript}`,
+    email: 'sarah.chen@initech.com',
+    enhanced: true,
+    tags: ['call-notes', 'source:fireflies'],
+});
+```
+
+**Why this works (two effects):**
+1. **Selection boost** — the content embedding now includes "first name", "company name" tokens, increasing cosine similarity with those property definitions so they get selected alongside the 15+ content-relevant properties
+2. **Extraction boost** — the LLM sees an explicit instruction in the content itself, reinforcing extraction of those fields
+
+**Best practices:**
+- **Keep hints short** — just property names, not descriptions. Content is truncated to 1000 words for property selection; long prefixes eat into actual content.
+- **Only hint identity/demographic fields** — the selector already does a great job on content-relevant properties. Hint only for fields that are always worth checking: name, company, title, location, email, phone.
+- **Best used when fields may be empty** — if you already have someone's name stored, the hint is harmless but unnecessary. The biggest value is on first memorization for a record.
+
+### When to Use Hints vs. When Not To
+
+| Scenario | Use Hints? | Why |
+|---|---|---|
+| First memorization for a new contact | **Yes** | Identity fields are empty — maximize capture |
+| Ongoing call notes for a known contact | **Optional** | Identity is already stored; selector handles content-relevant props |
+| Batch sync from CRM with `memorizeBatch()` | **No** | Identity fields come as structured data (`extractMemories: false`) |
+| Webhook with raw transcript/email body | **Yes** | Fresh content, identity might be mentioned |
+| Storing AI-generated output (feedback loop) | **No** | You control the content; identity is already known |
 
 ---
 

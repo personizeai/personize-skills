@@ -23,7 +23,7 @@ Generate importable n8n workflow JSON files that sync data between Personize and
 
 ## When NOT to Use This Skill
 
-- Want TypeScript/SDK code you can test and version → use **data-sync**
+- Want TypeScript/SDK code you can test and version → use **entity-memory** (CRM sync section)
 - Need durable pipelines with retries, waits, and complex orchestration → use **code-pipelines**
 - Only need a single API call → use **entity-memory** directly
 
@@ -198,13 +198,7 @@ return [{ json: { payload } }];
 
 ### Per-Property `extractMemories` Decision
 
-| Source Field Type | `extractMemories` | Reason |
-|---|---|---|
-| Email, Phone, Address | omit (false) | Structured, no AI needed |
-| Name, Title, Company | omit (false) | Structured lookup fields |
-| Research Reports, Notes | `true` | Unstructured, benefits from semantic search |
-| Email Bodies, Call Scripts | `true` | Generated content, AI extracts facts |
-| Revenue, Employee Count | omit (false) | Numeric fields |
+> **Rule of thumb:** Set `extractMemories: true` on free-form text (notes, transcripts, emails). Omit it for structured fields (email, name, dates, counts). See the `entity-memory` skill's `reference/memorize.md` for the complete decision table and examples.
 
 ---
 
@@ -357,14 +351,7 @@ Add a **Wait** node (type `n8n-nodes-base.wait`) after each batch call:
 }
 ```
 
-### Plan Limits
-
-| Plan | Per Minute | Per Month |
-|---|---|---|
-| Free | 60 | 10,000 |
-| Starter | 120 | 50,000 |
-| Pro | 300 | 250,000 |
-| Enterprise | 1,000 | 2,000,000 |
+Always call `GET /api/v1/me` first to read the actual limits for the user's plan.
 
 ---
 

@@ -105,4 +105,4 @@ export const myTask = task({
 - Add logging at every pipeline step
 - Set up error notifications (Slack, email) for failed runs
 - Test pipelines with a single record before running batch
-- Monitor pipeline health in weekly health checks (see **verify-setup** skill)
+- Monitor pipeline health in weekly health checks (see HEALTH-CHECK action)

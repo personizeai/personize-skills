@@ -157,16 +157,19 @@ res.json(JSON.parse(result.data));
 | **Meeting Prep Briefs** | AI compiles everything known about a contact into a one-page brief before meetings | *"As a sales rep, before every call I get a brief with talking points, landmines to avoid, and the prospect's recent activity."* |
 | **Internal Team Alerts** | AI notifies the right team member about the right customer event | *"As a support lead, when a VIP customer submits a ticket, I get a Slack alert with their full context and history."* |
 
-### Delivery Channels
+### Getting Results Out
 
-| Channel | Integration | Template |
-|---|---|---|
-| **Email** | SendGrid, AWS SES, Resend | `channels/sendgrid.md` |
-| **Slack** | Webhook + Web API | `channels/slack.md` |
-| **SMS / WhatsApp** | Twilio | `channels/twilio.md` |
-| **Webhook** (any destination) | Generic HTTP POST | `channels/webhook.md` |
-| **In-App** | Your own notification API | Via webhook pattern |
-| **CRM Writeback** | HubSpot, Salesforce API | Via webhook pattern |
+**Webhook Destinations** are the primary way to receive results from Personize. Set up a destination in the dashboard (**Integrations > Destinations**) and Personize pushes event payloads to your endpoint automatically — execution results, memorization completions, and more. See `channels/webhook.md` for the full guide including signature verification.
+
+From your webhook receiver, you can route results to any downstream system:
+
+| Downstream | How |
+|---|---|
+| **Email** (SendGrid, SES, Resend) | Your webhook handler sends the email — see `channels/sendgrid.md` |
+| **Slack** | Your webhook handler posts to Slack — see `channels/slack.md` |
+| **In-App Notifications** | Your webhook handler calls your notification API |
+| **CRM Writeback** | Your webhook handler updates HubSpot, Salesforce, etc. |
+| **Zapier / Make / n8n** | Point the destination URL directly at the automation platform's webhook URL |
 
 ### Technical Pattern
 

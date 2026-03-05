@@ -76,6 +76,6 @@ recall.data.memories.forEach((m, i) => {
 
 ## Prevention
 
-- Always verify recall immediately after memorize (see **verify-setup** skill)
+- Always verify recall immediately after memorize (see VERIFY-MEMORY action)
 - Use `smartDigest()` instead of raw `recall()` when you need a compiled view
 - Structure content for AI consumption: include entity name, context, and key facts in each memorize call

@@ -30,7 +30,7 @@ This skill gives you the ability to store and retrieve data using the Personize 
 
 ## When NOT to Use This Skill
 
-- Need a production-grade CRM sync with deploy templates → use **data-sync**
+- For CRM sync with deploy templates → see the **CRM / Database Sync** section below
 - Need no-code visual workflows → use **no-code-pipelines**
 - Need durable scheduled pipelines with retries → use **code-pipelines**
 - Need to manage organizational rules, not entity data → use **governance**
@@ -52,10 +52,10 @@ This skill works identically whether the LLM accesses memory via the **SDK** (co
 | SDK Method | MCP Tool | Purpose |
 |---|---|---|
 | `client.memory.memorize(opts)` | `memory_store_pro(content, email, ...)` | Store data with AI extraction |
-| `client.memory.recall(opts)` | `memory_recall_pro(query, email, ...)` | Semantic search across memories |
+| `client.memory.smartRecall(opts)` | `memory_recall_pro(query, email, ...)` | Semantic search (recommended) |
+| `client.memory.recall(opts)` | *(SDK only)* | Direct DynamoDB lookup — properties + freeform memories (`type` required, no AI) |
 | `client.memory.smartDigest(opts)` | *(SDK only)* | Compiled entity context (properties + memories) |
 | `client.memory.search(opts)` | *(SDK only)* | Filter and export records |
-| `client.memory.upsert(opts)` | *(SDK only)* | Structured upsert (no AI) |
 | `client.memory.memorizeBatch(opts)` | *(SDK only)* | Batch sync with per-property control |
 | `client.ai.smartGuidelines(opts)` | `ai_smart_guidelines(message)` | Fetch guidelines by topic |
 
@@ -104,29 +104,28 @@ Store data into Personize memory. The right method depends on what you're storin
 |---|---|---|
 | **One item, with AI extraction** | `memory.memorize()` | Rich text (notes, transcripts, emails) → AI extracts facts and creates vectors |
 | **Batch sync from CRM/DB** | `memory.memorizeBatch()` | Multiple records with per-property `extractMemories` control |
-| **Structured data, no AI needed** | `memory.upsert()` | Store exact key-value pairs (email, plan_tier, login_count) |
-| **Batch structured storage** | `memory.upsertBatch()` | Multiple structured items at once |
+| **Structured data, no AI needed** | `memory.memorizeBatch()` with `extractMemories: false` | Store exact key-value pairs (email, plan_tier, login_count) without AI overhead |
 
 ### The `extractMemories` Decision
 
-This is the most important decision for every property:
+`extractMemories` defaults to **`false`**. You **must** set `extractMemories: true` on rich text fields to enable AI extraction and semantic search. Without it, batch-synced data is stored as structured properties only — no memories, no vector embeddings, no semantic recall.
 
 | Data Type | `extractMemories` | Reasoning |
 |---|---|---|
-| **Structured facts** (email, name, plan, dates, counts) | `false` | Already structured — AI extraction wastes tokens and adds latency |
-| **Rich text** (notes, transcripts, emails, descriptions) | `true` | AI extracts facts, creates vector embeddings for semantic search |
-| **Generated content** (AI outputs you want to remember) | `true` | Enables the feedback loop — AI knows what it already said |
-| **ML outputs with explanations** (churn reason, lead score rationale) | `true` | The explanation text benefits from extraction |
-| **Binary flags, IDs, URLs** | `false` | No semantic content to extract |
+| **Rich text** (notes, transcripts, emails, descriptions) | **`true`** (must set explicitly) | AI extracts facts, creates vector embeddings for semantic search |
+| **Generated content** (AI outputs you want to remember) | **`true`** (must set explicitly) | Enables the feedback loop — AI knows what it already said |
+| **ML outputs with explanations** (churn reason, lead score rationale) | **`true`** (must set explicitly) | The explanation text benefits from extraction |
+| **Structured facts** (email, name, plan, dates, counts) | `false` (default) | Already structured — AI extraction wastes tokens and adds latency |
+| **Binary flags, IDs, URLs** | `false` (default) | No semantic content to extract |
 
-> **Rule of thumb:** If a human would need to *read and interpret* the value to understand it → `extractMemories: true`. If it's a fact that stands on its own → `false`.
+> **Rule of thumb:** Always set `extractMemories: true` on any field containing free-form text. If you skip it, those fields get stored as properties but produce zero memories — `smartRecall()` and `smartDigest()` won't find them.
 
 ### Quick Example
 
 ```typescript
-// Single item — AI extraction
+// Single item — AI extraction with identity hints
 await client.memory.memorize({
-    content: 'Call with Sarah Chen (VP Eng, Initech). She mentioned they are evaluating SOC2 compliance tools. Main pain point: manual audit prep taking 2 weeks per quarter. Budget approved for Q2.',
+    content: 'Also extract First Name, Last Name, Company Name, and Job Title if mentioned.\n\nCall with Sarah Chen (VP Eng, Initech). She mentioned they are evaluating SOC2 compliance tools. Main pain point: manual audit prep taking 2 weeks per quarter. Budget approved for Q2.',
     speaker: 'Sales Team',
     email: 'sarah.chen@initech.com',
     enhanced: true,
@@ -148,6 +147,8 @@ await client.memory.memorizeBatch({
     },
     rows: crmContacts,  // array of objects from your CRM
 });
+// ⚠️ memorizeBatch() is async — records land in ~1-2 minutes (EventBridge → Lambda).
+// Verify with search() or smartDigest() after processing completes.
 ```
 
 ### Constraints
@@ -161,8 +162,19 @@ await client.memory.memorizeBatch({
 5. **SHOULD** memorize generated outputs (emails, notifications, reports) after delivery -- because the feedback loop lets future recalls see what was already sent, preventing repetition.
 6. **SHOULD** use `client.collections.create/update/delete()` or the web app for schema changes -- because collections define the extraction schema and ad-hoc creation risks inconsistency.
 7. **MUST** call `client.me()` before batch operations to read plan rate limits -- because exceeding limits causes 429 errors and partial syncs with no automatic resume.
+8. **SHOULD** prepend extraction hints for identity/demographic fields (name, company, title, location) when those fields may be empty for the record -- because the property selector uses embedding similarity, and generic identity fields score low against specific content; hints ensure they are selected alongside the content-relevant properties without limiting the selector. See `reference/memorize.md` → "Extraction Hints" for the full pattern.
 
 > **Full guide:** Read `reference/memorize.md` for complete method signatures, data mapping patterns, all source-specific recipes (CRM, database, webhook, CSV), batch strategies, error handling, and the feedback loop.
+
+### CRM / Database Sync
+
+For production-grade data sync from CRMs and databases (Salesforce, HubSpot, Postgres), this skill includes source-specific connector templates and deployment configs:
+
+- **Source templates:** `templates/salesforce.md`, `templates/hubspot.md`, `templates/postgres.md` — fetch patterns, auth setup, field mapping for each source
+- **Deployment:** `deploy/Dockerfile`, `deploy/render.yaml`, `deploy/github-action.yml` — scheduled sync on Render, GitHub Actions, or any container platform
+- **Advanced patterns:** `reference/sync-advanced-patterns.md` — incremental sync with state tracking, multi-source architecture, batch export with pagination, complete end-to-end example
+
+The integration pattern: initialize project → `client.me()` for auth + limits → fetch rows from source → `client.collections.list()` for collection IDs → build property mapping → `memorizeBatch()` in chunks with 429 retry → verify with `search()` or `smartDigest()`. See `recipes/data-sync.ts` for a runnable example.
 
 ---
 
@@ -174,39 +186,44 @@ Retrieve data from Personize memory. The right method depends on what kind of an
 
 | Need | Method | Returns |
 |---|---|---|
-| **"What do we know about X topic?"** | `memory.recall()` | Semantic search results — ranked memories matching a query |
+| **"What do we know about X topic?"** | `memory.smartRecall()` | Semantic search results with optional reflection/answers (recommended) |
+| **"Quick vector lookup, no frills"** | `memory.recall()` | Direct vector search (`type` required, no reflection) |
 | **"Give me everything about this person/company"** | `memory.smartDigest()` | Compiled markdown context — all properties + memories for one entity |
 | **"List all contacts matching criteria X"** | `memory.search()` | Filtered records with property values |
 | **"What are our guidelines for X?"** | `ai.smartGuidelines()` | Governance variables matching a topic |
 
+> **`smartRecall()` vs `recall()`**: Use `smartRecall()` for most use cases — it supports reflection, answer generation, `fast_mode`, and infers `type` from email/website_url. Use `recall()` only for simple direct lookups — `type` is **required** (e.g. `type: 'Contact'`).
+
 ### When to Use What
 
 ```
-Need specific facts about a topic?         → recall()
+Need specific facts about a topic?         → smartRecall()
 Need full context about ONE entity?         → smartDigest()
 Need to filter/segment a list of records?   → search()
 Need organizational rules/guidelines?       → smartGuidelines()
 
-Building a generation prompt?               → smartGuidelines() + smartDigest() + recall()
+Building a generation prompt?               → smartGuidelines() + smartDigest() + smartRecall()
                                               (governance + entity + task-specific facts)
 ```
 
 ### Quick Example
 
 ```typescript
-// Semantic search — find specific facts
-const results = await client.memory.recall({
+// Semantic search — find specific facts (recommended)
+const results = await client.memory.smartRecall({
     query: 'what pain points did this contact mention?',
     email: 'sarah.chen@initech.com',
+    type: 'Contact',
     limit: 10,
     minScore: 0.4,
     include_property_values: true,
 });
 
-// Fast recall — skip reflection, ~700ms response
-const fast = await client.memory.recall({
+// Fast recall — skip reflection, ~500ms response
+const fast = await client.memory.smartRecall({
     query: 'what do we know about this contact?',
     email: 'sarah.chen@initech.com',
+    type: 'Contact',
     fast_mode: true,
 });
 
@@ -237,15 +254,7 @@ const exported = await client.memory.search({
 
 ### The Three-Layer Agent Operating Model
 
-Memory is one of three layers every agent should assemble before acting:
-
-| Layer | Question | Method |
-|---|---|---|
-| **Guidelines** | What are the rules for this task? | `smartGuidelines()` / `ai_smart_guidelines` |
-| **Memory** | What do I know about this entity? | `smartDigest()` / `recall()` / `memory_recall_pro` |
-| **Workspace** | What's been done and what's next? | `recall()` by workspace tags / `memorize()` |
-
-Without Guidelines, the agent ignores organizational rules. Without Memory, it doesn't know who the entity is. Without Workspace, it doesn't know what other contributors have done. All three together: the agent acts within governance, with full context, in coordination with others.
+Memory is one of three layers every agent should assemble before acting: **Guidelines** (organizational rules via `smartGuidelines()`), **Memory** (entity knowledge via `smartDigest()`/`recall()`), and **Workspace** (coordination state via workspace-tagged `recall()`/`memorize()`). All three together: the agent acts within governance, with full context, in coordination with others.
 
 > **Full architecture guide:** See the `collaboration` skill's `reference/architecture.md` for the complete three-layer model, composition patterns, and adoption path.
 
@@ -301,9 +310,11 @@ async function assembleContext(email: string, task: string): Promise<string> {
     }
 
     // 3. Task-specific facts — semantic search
-    const recalled = await client.memory.recall({
+    const recalled = await client.memory.smartRecall({
         query: task,
         email,
+        type: 'Contact',
+        fast_mode: true,
         limit: 10,
         minScore: 0.3,
     });
@@ -322,10 +333,10 @@ async function assembleContext(email: string, task: string): Promise<string> {
 > Keywords follow [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119): **MUST** = non-negotiable, **SHOULD** = strong default (override with stated reasoning), **MAY** = agent discretion.
 
 1. **MUST** set an explicit `token_budget` on every `smartDigest()` call -- because the default (1000) may truncate critical context for deep personalization or waste tokens for simple lookups.
-2. **SHOULD** set `minScore` on `recall()` (0.3 for broad context, 0.5+ for precision) -- because omitting it returns low-relevance noise that dilutes the context window.
-3. **SHOULD** use `fast_mode: true` for context injection, real-time UIs, and batch processing -- because it cuts recall latency from ~10-20s to ~700ms; override for exploratory queries where reflection adds value.
-4. **SHOULD** assemble context from all three layers (`smartGuidelines` + `smartDigest` + `recall`) before generating -- because single-source context produces governance-blind, entity-ignorant, or task-irrelevant output. Use `mode: 'fast'` for real-time agent flows (~200ms), `mode: 'full'` for first-call or complex planning tasks (~3s).
-5. **MAY** set `include_property_values: true` on `recall()` -- because it returns structured properties alongside semantic results, useful when the caller needs both.
+2. **SHOULD** set `minScore` on `smartRecall()` (0.3 for broad context, 0.5+ for precision) -- because omitting it returns low-relevance noise that dilutes the context window.
+3. **SHOULD** use `fast_mode: true` for context injection, real-time UIs, and batch processing -- because it cuts recall latency from ~10-20s to ~500ms; override for exploratory queries where reflection adds value.
+4. **SHOULD** assemble context from all three layers (`smartGuidelines` + `smartDigest` + `smartRecall`) before generating -- because single-source context produces governance-blind, entity-ignorant, or task-irrelevant output. Use `mode: 'fast'` for real-time agent flows (~200ms), `mode: 'full'` for first-call or complex planning tasks (~3s).
+5. **MAY** set `include_property_values: true` on `smartRecall()` -- because it returns structured properties alongside semantic results, useful when the caller needs both.
 6. **MUST** paginate `export()` calls using `page` and `pageSize` -- because unbounded exports can time out or exceed memory limits on large datasets. Default pageSize is 50.
 7. **MAY** cache `smartDigest()` results within a single pipeline run when the same entity is referenced multiple times -- because redundant API calls waste tokens and add latency.
 
@@ -345,15 +356,14 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `memory.memorize(opts)` | `POST /api/v1/memorize` | Store single item with AI extraction |
-| `memory.memorizeBatch(opts)` | `POST /api/v1/batch-memorize` | Batch sync with per-property `extractMemories` |
-| `memory.upsert(opts)` | `POST /api/v1/upsert` | Structured upsert (no AI) |
-| `memory.upsertBatch(opts)` | `POST /api/v1/upsert` | Batch structured upsert |
+| `memory.memorizeBatch(opts)` | `POST /api/v1/batch-memorize` | Batch sync with per-property `extractMemories` control |
 
 ### Recall Methods
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `memory.recall(opts)` | `POST /api/v1/smart-recall` | Semantic search with optional reflection |
+| `memory.smartRecall(opts)` | `POST /api/v1/smart-recall` | Semantic search with reflection + answer gen (recommended) |
+| `memory.recall(opts)` | `POST /api/v1/recall` | Direct DynamoDB lookup — properties + freeform memories (`type` required, no AI) |
 | `memory.smartDigest(opts)` | `POST /api/v1/smart-memory-digest` | Compiled entity context (properties + memories) |
 | `memory.search(opts)` | `POST /api/v1/search` | Filter and export records |
 | `ai.smartGuidelines(opts)` | `POST /api/v1/ai/smart-guidelines` | Fetch governance variables by topic |
@@ -396,20 +406,30 @@ interface BatchMemorizeOptions {
     chunkSize?: number;        // Rows per chunk (default: 1)
 }
 
-// recall() — semantic search
-interface RecallProOptions {
+// smartRecall() — semantic search (recommended)
+interface SmartRecallOptions {
     query: string;             // Natural language query
     limit?: number;            // Max results (default: 10)
     minScore?: number;         // Minimum relevance score (0-1)
     email?: string;            // Scope to one contact
     website_url?: string;      // Scope to one company
     record_id?: string;        // Scope to one record
-    type?: string;             // Entity type filter
+    type?: string;             // Entity type filter (optional — inferred from email/website_url)
     include_property_values?: boolean; // Include structured properties
     enable_reflection?: boolean;       // AI reflects on results
     generate_answer?: boolean;         // AI generates a direct answer
-    fast_mode?: boolean;       // Skip reflection + answer gen, ~700ms (default: false)
+    fast_mode?: boolean;       // Skip reflection + answer gen, ~500ms (default: false)
     min_score?: number;        // Server-side score filter (in fast_mode, defaults to 0.3)
+}
+
+// recall() — direct lookup (simpler, type required)
+interface RecallOptions {
+    query: string;             // Natural language query
+    type: string;              // Entity type — REQUIRED (e.g. 'Contact', 'Company')
+    record_id?: string;        // Scope to one record
+    email?: string;            // Scope to one contact
+    website_url?: string;      // Scope to one company
+    filters?: Record<string, unknown>; // Additional filters
 }
 
 // smartDigest() — entity context
@@ -446,8 +466,8 @@ interface SmartDigestOptions {
 │  └───────────────────┘    └──────────────────────────────┘  │
 │           │                            │                    │
 │           ▼                            ▼                    │
-│     export() filters           recall() searches            │
-│     upsert() writes            memorize() writes            │
+│     search() filters           smartRecall() searches        │
+│     memorize() writes          memorizeBatch() writes       │
 │     smartDigest() reads both ──────────┘                    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -511,17 +531,19 @@ On the **next evaluation** for the same entity, the engine recalls recent `signa
 
 ```typescript
 // What notifications has Signal sent to this contact?
-const sent = await client.memory.recall({
+const sent = await client.memory.smartRecall({
     query: 'notifications sent by signal',
     email: 'jane@acme.com',
+    type: 'Contact',
     fast_mode: true,
     limit: 10,
 });
 
 // What's pending in the digest queue?
-const pending = await client.memory.recall({
+const pending = await client.memory.smartRecall({
     query: 'deferred notifications pending digest',
     email: 'jane@acme.com',
+    type: 'Contact',
     fast_mode: true,
     limit: 20,
 });
