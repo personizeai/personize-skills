@@ -4,16 +4,17 @@
  * Automatically extracts learnings from commits/incidents and persists them as
  * guideline updates.
  *
- * Default behavior (backward compatible):
- * - scan-git applies updates automatically.
+ * Default behavior (safe by default):
+ * - scan-git writes proposals JSON only. No guidelines are mutated unless you
+ *   explicitly opt in with --auto-apply.
  *
- * Opt-in production guardrails (disabled by default):
- * - --require-approval: writes proposals JSON, no mutations
- * - --dry-run: no mutations
+ * Flags:
+ * - --auto-apply: apply extracted learnings directly (opt-in, off by default)
+ * - --require-approval: writes proposals JSON, no mutations (default behavior)
+ * - --dry-run: no mutations, no file writes
  * - --min-confidence 0.65: skip low-confidence extractions
  * - --max-updates 10: cap writes per run
  * - --proposals-file <path>: where proposals are written
- * - --no-auto-apply: disables writes for scan-git
  */
 
 import 'dotenv/config';
@@ -218,16 +219,24 @@ async function processBatch(filePath: string, options: RunOptions = {}): Promise
 }
 
 async function scanGitCommits(since: string, options: ScanOptions): Promise<void> {
-    const { execSync } = await import('child_process');
+    const { spawnSync } = await import('child_process');
     const fs = await import('fs');
     const path = await import('path');
 
     console.log(`\nScanning git commits since "${since}"...\n`);
 
-    const log = execSync(
-        `git log --since="${since}" --format="%H%x1e%s%x1e%b%x00" --no-merges`,
+    // Use spawnSync with an args array to prevent shell injection — never
+    // interpolate user-controlled values into a shell command string.
+    const result = spawnSync(
+        'git',
+        ['log', `--since=${since}`, '--format=%H%x1e%s%x1e%b%x00', '--no-merges'],
         { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
     );
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+        throw new Error(`git log failed: ${result.stderr}`);
+    }
+    const log = result.stdout;
 
     const commits = log
         .split('\0')
@@ -377,9 +386,10 @@ async function main() {
 
         case 'scan-git': {
             const since = getArg('--since') || '7 days ago';
-            const noAutoApply = hasFlag('--no-auto-apply');
-            const autoApply = hasFlag('--autoApply') ? true : !noAutoApply;
-            const requireApproval = hasFlag('--require-approval');
+            // Safe by default: auto-apply is OFF unless explicitly requested.
+            // Developers must pass --auto-apply to mutate governance variables.
+            const autoApply = hasFlag('--auto-apply');
+            const requireApproval = !autoApply || hasFlag('--require-approval');
             const dryRun = hasFlag('--dry-run');
             const proposalsFile = getArg('--proposals-file');
             const minConfidence = Number(getArg('--min-confidence') || '0');
@@ -405,14 +415,13 @@ Commands:
   batch --file <path.json>                  Process a batch of learnings from JSON
   scan-git [--since "7 days ago"]           Extract learnings from recent git commits
 
-Guardrails (opt-in, disabled by default):
-  --dry-run                                 Propose only, never mutate guidelines
-  --require-approval                        Write proposals file instead of applying
-  --proposals-file <path>                   Path for proposal JSON
+Flags:
+  --auto-apply                              Apply learnings directly (opt-in — off by default)
+  --dry-run                                 Propose only, never mutate guidelines or write files
+  --require-approval                        Write proposals file instead of applying (default)
+  --proposals-file <path>                   Path for proposal JSON (default: governance-learning-proposals.json)
   --min-confidence <0..1>                   Skip low-confidence AI extractions
   --max-updates <N>                         Cap number of updates per run
-  --no-auto-apply                           Disable writes for scan-git
-  --autoApply                               Explicitly enable writes (default behavior)
 `);
     }
 }
