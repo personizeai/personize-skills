@@ -58,36 +58,166 @@ await personize.memory.memorize({
 });
 ```
 
-### recall — Semantic Search
+### recall — Direct Lookup
+
+Returns structured properties and free-form memories from DynamoDB for a specific record. No AI processing — fast, deterministic.
+
+**Parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `query` | Yes | Natural-language query |
+| `type` | Yes | Entity type: `'Contact'`, `'Company'`, etc. |
+| `email` | No* | Contact email (identifier) |
+| `websiteUrl` / `website_url` | No* | Company website URL (identifier) |
+| `recordId` / `record_id` | No* | Direct record ID (`REC#...`) |
+| `collectionIds` | No | Scope to specific collections |
+| `propertyIds` | No | Return only specific properties |
+
+\* At least one identifier is needed to scope to an entity. Without one, returns org-wide results.
+
+Both camelCase and snake_case are accepted for all identifier parameters.
 
 ```typescript
+// By email
 const results = await personize.memory.recall({
+  query: "what do we know about this contact",
+  email: "lead@company.com",
+  type: "Contact",
+});
+
+// By website URL
+const results = await personize.memory.recall({
+  query: "company overview",
+  websiteUrl: "https://acme.com",
+  type: "Company",
+});
+
+// By recordId (if you already have it)
+const results = await personize.memory.recall({
+  query: "everything",
+  recordId: "REC#abc123...",
+  type: "Contact",
+});
+
+// results.data.memories — structured properties from DynamoDB
+// results.data.freeformMemories — AI-extracted memories
+// results.data.systemIntro — pre-formatted context string
+```
+
+### smartRecall — Semantic Search with Reflection
+
+AI-powered semantic search across LanceDB vector store. Supports reflection loops for deeper recall, answer generation, and entity scoping.
+
+**Parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `query` | Yes | Natural-language query |
+| `email` | No | Contact email (identifier) |
+| `websiteUrl` / `website_url` | No | Company website URL (identifier) |
+| `recordId` / `record_id` | No | Direct record ID (identifier) |
+| `phoneNumber` / `phone_number` | No | Phone number (identifier) |
+| `postalCode` / `postal_code` | No | Postal code (identifier) |
+| `deviceId` / `device_id` | No | Device ID (identifier) |
+| `contentId` / `content_id` | No | Content ID (identifier) |
+| `type` | No | Entity type filter |
+| `limit` | No | Max results (default: 10) |
+| `min_score` | No | Min similarity score 0-1 |
+| `include_property_values` | No | Include DynamoDB properties in response |
+| `enable_reflection` | No | Reflection loop for better coverage (default: true) |
+| `max_reflection_rounds` | No | Max reflection iterations (default: 2) |
+| `generate_answer` | No | AI-synthesized answer from results |
+| `fast_mode` | No | Skip reflection/answer, minScore 0.3, ~700ms (default: false) |
+| `enable_planning` | No | Query decomposition for multi-hop questions |
+| `collectionIds` | No | Scope to specific collection IDs |
+| `collectionNames` | No | Scope to collections by name (resolved server-side) |
+| `prefer_recent` | No | Apply recency decay to scores |
+| `recency_half_life_days` | No | Half-life in days for recency decay (default: 90) |
+| `filters` | No | Metadata filters `Record<string, unknown>` |
+
+Both camelCase and snake_case accepted for all identifier parameters.
+
+```typescript
+// Full search with reflection + answer
+const results = await personize.memory.smartRecall({
   email: "lead@company.com",
   query: "what pricing concerns did they raise",
   include_property_values: true,
-  fast_mode: false,                    // true = ~700ms, false = deeper search
-  generate_answer: true,              // AI-synthesized answer from results
+  fast_mode: false,
+  generate_answer: true,
 });
 
-// results.data.answer.text — synthesized answer
-// results.data.results — raw memory matches
-// results.data.property_values — structured properties
+// Fast mode — ~700ms, no reflection
+const fast = await personize.memory.smartRecall({
+  recordId: "REC#abc123...",
+  query: "latest interaction",
+  fast_mode: true,
+});
+
+// results.data.answer.text — synthesized answer (if generate_answer: true)
+// results.data.results — array of memory matches with scores
+// results.data.property_values — structured properties (if include_property_values: true)
 ```
 
 ### smartDigest — Compiled Entity Context
 
+Assembles a complete entity context bundle: DynamoDB properties + LanceDB free-form memories, compiled into a token-budgeted markdown string ready for LLM injection.
+
+**Parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `email` | No* | Contact email (identifier) |
+| `websiteUrl` / `website_url` | No* | Company website URL (identifier) |
+| `recordId` / `record_id` | No* | Direct record ID (identifier) |
+| `type` | No | Entity type. Auto-inferred from identifier if omitted. |
+| `token_budget` / `tokenBudget` | No | Max tokens for compiled context (default: 1000) |
+| `max_memories` / `maxMemories` | No | Max free-form memories to include (default: 20) |
+| `include_properties` / `includeProperties` | No | Include DynamoDB properties (default: true) |
+| `include_memories` / `includeMemories` | No | Include LanceDB free-form memories (default: true) |
+
+\* At least one identifier is required to scope to an entity.
+
+Both camelCase and snake_case accepted for all parameters.
+
 ```typescript
+// By email
 const digest = await personize.memory.smartDigest({
   email: "lead@company.com",
   include_properties: true,
   include_memories: true,
-  token_budget: 3000,                 // max tokens for compiled context
+  token_budget: 3000,
 });
 
-// digest.data.compiledContext — ready-to-use markdown
+// By recordId
+const digest = await personize.memory.smartDigest({
+  recordId: "REC#abc123...",
+  type: "Contact",
+  tokenBudget: 2000,
+  maxMemories: 10,
+});
+
+// By website URL
+const digest = await personize.memory.smartDigest({
+  websiteUrl: "https://acme.com",
+  type: "Company",
+});
+
+// digest.data.compiledContext — ready-to-use markdown for LLM injection
 // digest.data.properties — structured key-value pairs
-// digest.data.memories — list of memories
+// digest.data.memories — list of memories included
 ```
+
+### Common Mistakes
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| Missing `type` in `recall()` | 400 error: "type is required" | Add `type: 'Contact'` or `type: 'Company'` |
+| Using `recordId` with `smartDigest` (snake_case only) | Empty results — parameter silently ignored | Use `recordId` (camelCase) or `record_id` (snake_case) — both work now |
+| No identifier provided | Returns nothing or org-wide noise | Pass at least one of: `email`, `websiteUrl`, `recordId` |
+| Wrong entity type | No matching record in DynamoDB | Check the type used during memorize. Common: `'Contact'` for emails, `'Company'` for websites |
+| Mixing up `recall` vs `smartRecall` | `recall` is DynamoDB lookup; `smartRecall` is vector search | Use `smartRecall` for semantic queries, `recall` for structured data |
 
 ### memorizeBatch — Bulk Sync from CRM
 
@@ -125,8 +255,6 @@ await personize.memory.memorizeBatch({
 ```typescript
 const results = await personize.memory.search({
   groups: [{
-    id: "g1",
-    logic: "AND",
     conditions: [
       { field: "lifecycle_stage", operator: "EQ", value: "opportunity" },
       { field: "last_contacted", operator: "IS_SET" },

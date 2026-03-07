@@ -22,20 +22,49 @@ Searches vector embeddings to find memories matching a natural language query. R
 
 ### Full Signature
 
+All identifier parameters accept both camelCase and snake_case (e.g., `recordId` or `record_id`).
+
 ```typescript
 interface SmartRecallOptions {
     query: string;                     // Natural language query (required)
     limit?: number;                    // Max results (default: 10)
     minScore?: number;                 // Minimum relevance score 0-1 (default: 0)
-    email?: string;                    // Scope to one contact
-    website_url?: string;              // Scope to one company
-    record_id?: string;                // Scope to one record
-    type?: string;                     // Entity type filter (optional — inferred from email/website_url)
+
+    // Entity identifiers — pass at least one to scope to a specific entity
+    email?: string;                    // Contact email
+    record_id?: string;                // Direct record ID (REC#...)
+    recordId?: string;                 // camelCase alias for record_id
+    website_url?: string;              // Company website URL
+    websiteUrl?: string;               // camelCase alias for website_url
+    phoneNumber?: string;              // Phone number (digits extracted)
+    phone_number?: string;             // snake_case alias
+    postalCode?: string;               // Postal/zip code
+    postal_code?: string;              // snake_case alias
+    deviceId?: string;                 // Device identifier
+    device_id?: string;                // snake_case alias
+    contentId?: string;                // Content item identifier
+    content_id?: string;               // snake_case alias
+
+    type?: string;                     // Entity type filter (optional — inferred from identifier)
+
+    // Search behavior
     include_property_values?: boolean; // Include structured properties alongside memories
-    enable_reflection?: boolean;       // AI reflects on results for deeper insight
+    enable_reflection?: boolean;       // AI reflects on results for deeper insight (default: true)
+    max_reflection_rounds?: number;    // Max reflection iterations (default: 2)
     generate_answer?: boolean;         // AI generates a direct answer from results
     fast_mode?: boolean;               // Skip reflection + answer gen, ~500ms (default: false)
     min_score?: number;                // Server-side score filter (in fast_mode, defaults to 0.3)
+    enable_planning?: boolean;         // Query decomposition for multi-hop questions
+
+    // Collection scoping
+    collectionIds?: string[];          // Scope to specific collection IDs
+    collectionNames?: string[];        // Scope to collections by name (resolved server-side)
+
+    // Recency
+    prefer_recent?: boolean;           // Apply recency decay to scores
+    recency_half_life_days?: number;   // Half-life in days (default: 90)
+
+    filters?: Record<string, unknown>; // Additional metadata filters
 }
 ```
 
@@ -45,13 +74,19 @@ Returns all stored data for a record directly from DynamoDB — **no vector sear
 
 Use this when you need a complete, deterministic dump of everything stored for a record.
 
+All identifier parameters accept both camelCase and snake_case.
+
 ```typescript
 interface RecallOptions {
-    query: string;                     // Natural language query (required — used for logging, not for search)
+    query: string;                     // Natural language query (required)
     type: string;                      // Entity type — REQUIRED (e.g. 'Contact', 'Company')
-    record_id?: string;                // Scope to one record
-    email?: string;                    // Scope to one contact
-    website_url?: string;              // Scope to one company
+    email?: string;                    // Contact email
+    record_id?: string;                // Direct record ID (REC#...)
+    recordId?: string;                 // camelCase alias for record_id
+    website_url?: string;              // Company website URL
+    websiteUrl?: string;               // camelCase alias for website_url
+    collectionIds?: string[];          // Scope to specific collections
+    propertyIds?: string[];            // Return only specific properties
     filters?: Record<string, unknown>; // Additional filters
 }
 ```
@@ -249,16 +284,26 @@ Compiles a complete context bundle for one entity: structured properties (Dynamo
 
 ### Full Signature
 
+All parameters accept both camelCase and snake_case.
+
 ```typescript
 interface SmartDigestOptions {
-    record_id?: string;                // CRM record ID
+    // Entity identifiers — at least one is required
     email?: string;                    // Contact email
-    website_url?: string;              // Company website
-    type?: string;                     // Entity type ('Contact', 'Company')
+    record_id?: string;                // Direct record ID (REC#...)
+    recordId?: string;                 // camelCase alias
+    website_url?: string;              // Company website URL
+    websiteUrl?: string;               // camelCase alias
+
+    type?: string;                     // Entity type ('Contact', 'Company'). Auto-inferred if omitted.
     token_budget?: number;             // Max tokens for output (default: 1000)
+    tokenBudget?: number;              // camelCase alias
     max_memories?: number;             // Max memories to include (default: 20)
+    maxMemories?: number;              // camelCase alias
     include_properties?: boolean;      // Include structured properties (default: true)
+    includeProperties?: boolean;       // camelCase alias
     include_memories?: boolean;        // Include free-form memories (default: true)
+    includeMemories?: boolean;         // camelCase alias
 }
 
 interface SmartDigestResponse {

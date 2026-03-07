@@ -194,6 +194,8 @@ Retrieve data from Personize memory. The right method depends on what kind of an
 
 > **`smartRecall()` vs `recall()`**: Use `smartRecall()` for most use cases — it supports reflection, answer generation, `fast_mode`, and infers `type` from email/website_url. Use `recall()` only for simple direct lookups — `type` is **required** (e.g. `type: 'Contact'`).
 
+> **Identifier behavior** — how `email`, `websiteUrl`, `recordId`, `type`-only, and no identifier affect each endpoint (error vs empty vs org-wide search) → read `reference/identifier-scenarios.md`.
+
 ### When to Use What
 
 ```
@@ -243,7 +245,6 @@ const exported = await client.memory.search({
     returnRecords: true,
     pageSize: 50,
     groups: [{
-        id: 'enterprise', logic: 'AND',
         conditions: [
             { field: 'plan_tier', operator: 'EQUALS', value: 'enterprise' },
             { field: 'email', operator: 'IS_SET' },
@@ -484,6 +485,7 @@ interface SmartDigestOptions {
 |---|---|
 | `reference/memorize.md` | Full memorize guide: method signatures, data mapping, extractMemories decision tree, source recipes, batch strategies, error handling, feedback loop |
 | `reference/recall.md` | Full recall guide: method signatures, query strategies, token budgets, scoring, context assembly, export filtering, performance tips |
+| `reference/identifier-scenarios.md` | How each endpoint (memorize, recall, smartRecall, smartDigest) behaves with email, websiteUrl, recordId, type-only, or no identifier — scenarios A–G with error vs empty vs success table |
 | `recipes/data-sync.ts` | Batch sync from CRM/database with validation and error handling |
 | `recipes/context-assembly.ts` | Complete context assembly pattern combining all recall methods |
 

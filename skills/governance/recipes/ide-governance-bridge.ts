@@ -153,6 +153,22 @@ async function showStructure(variableName: string) {
 async function generateClaudeMd(tags?: string[], outputPath: string = './GOVERNANCE-CONTEXT.md') {
     console.log(`\n🔨 Generating governance context file...`);
 
+    // Prevent path traversal: resolve the output path and ensure it stays
+    // within the current working directory.
+    const pathModule = await import('path');
+    const resolvedOutput = pathModule.resolve(outputPath);
+    const cwd = process.cwd();
+    if (!resolvedOutput.startsWith(cwd + pathModule.sep) && resolvedOutput !== cwd) {
+        console.error(`Error: --output path must be inside the current directory.\n  Resolved: ${resolvedOutput}\n  Allowed:  ${cwd}`);
+        process.exit(1);
+    }
+    // Only allow .md and .txt output files
+    const ext = pathModule.extname(resolvedOutput).toLowerCase();
+    if (ext !== '.md' && ext !== '.txt') {
+        console.error(`Error: --output must be a .md or .txt file (got "${ext}").`);
+        process.exit(1);
+    }
+
     const variables = await client.guidelines.list();
     const filtered = tags
         ? (variables.data?.actions || []).filter((v: any) => v.payload.tags?.some((t: string) => tags.includes(t)))
@@ -172,8 +188,8 @@ async function generateClaudeMd(tags?: string[], outputPath: string = './GOVERNA
     }
 
     const fs = await import('fs');
-    fs.writeFileSync(outputPath, content, 'utf-8');
-    console.log(`✅ Written to ${outputPath} (${filtered.length} variables)`);
+    fs.writeFileSync(resolvedOutput, content, 'utf-8');
+    console.log(`✅ Written to ${resolvedOutput} (${filtered.length} variables)`);
 }
 
 // ─── CLI ─────────────────────────────────────────────────────────────────────

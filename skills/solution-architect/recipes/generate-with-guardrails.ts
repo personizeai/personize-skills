@@ -349,10 +349,25 @@ async function run() {
         await new Promise(r => setTimeout(r, 2000)); // rate limit pause
     }
 
-    // Write review file in dry run mode
+    // Write review file in dry run mode.
+    // Strip raw HTML from the persisted review — store only plain text so the
+    // file never contains executable markup from untrusted LLM output.
     if (DRY_RUN && results.length > 0) {
+        const safeResults = results.map(r => ({
+            email: r.email,
+            warnings: r.warnings,
+            content: {
+                channel: r.content.channel,
+                subject: r.content.subject,
+                // bodyHtml omitted — plain text version is sufficient for review
+                bodyText: r.content.bodyText,
+                buttonLabel: r.content.buttonLabel,
+                buttonUrl: r.content.buttonUrl,
+                reviewFlag: r.content.reviewFlag,
+            },
+        }));
         const reviewFile = `generation-review-${Date.now()}.json`;
-        fs.writeFileSync(reviewFile, JSON.stringify(results, null, 2));
+        fs.writeFileSync(reviewFile, JSON.stringify(safeResults, null, 2));
         console.log(`\nReview file written: ${reviewFile}`);
         console.log(`Inspect the generated content before enabling delivery (DRY_RUN=false).`);
     }

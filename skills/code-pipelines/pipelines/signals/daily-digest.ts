@@ -60,8 +60,6 @@ export const dailyEngagementDigest = schedules.task({
     const [activeLeads, engagedLeads, stalledLeads] = await Promise.all([
       personize.memory.search({
         groups: [{
-          id: "active",
-          logic: "AND",
           conditions: [{ field: "lifecycle_stage", operator: "EQ", value: "lead" }],
         }],
         type: "Contact",
@@ -69,8 +67,6 @@ export const dailyEngagementDigest = schedules.task({
       }),
       personize.memory.search({
         groups: [{
-          id: "engaged",
-          logic: "AND",
           conditions: [{ field: "engagement_status", operator: "EQ", value: "engaged" }],
         }],
         type: "Contact",
@@ -78,8 +74,6 @@ export const dailyEngagementDigest = schedules.task({
       }),
       personize.memory.search({
         groups: [{
-          id: "stalled",
-          logic: "AND",
           conditions: [{ field: "engagement_status", operator: "EQ", value: "stalled" }],
         }],
         type: "Contact",

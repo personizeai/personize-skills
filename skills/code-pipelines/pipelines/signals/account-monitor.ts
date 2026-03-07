@@ -23,8 +23,6 @@ export const accountSignalMonitor = schedules.task({
     const accounts = await personize.memory.search({
       groups: [
         {
-          id: "target-accounts",
-          logic: "OR",
           conditions: [
             { field: "account_status", operator: "EQ", value: "target" },
             { field: "account_status", operator: "EQ", value: "active" },
