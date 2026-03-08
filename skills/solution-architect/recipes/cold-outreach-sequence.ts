@@ -60,14 +60,15 @@ async function assembleContext(email: string): Promise<string> {
     }
 
     // Semantic recall — previous outreach history
-    const recalled = await client.memory.recall({
+    const recalled = await client.memory.smartRecall({
         query: 'previous outreach emails sent, responses received',
         email,
         limit: 5,
-        minScore: 0.4,
+        min_score: 0.4,
+        fast_mode: true,
     });
-    if (recalled.data && Array.isArray(recalled.data) && recalled.data.length > 0) {
-        sections.push('## Previous Outreach\n' + recalled.data.map((m: any) =>
+    if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
+        sections.push('## Previous Outreach\n' + recalled.data.results.map((m: any) =>
             `- ${m.text || m.content || JSON.stringify(m)}`
         ).join('\n'));
     }
@@ -145,7 +146,7 @@ async function run() {
         groups: [{
             id: 'g1', logic: 'AND',
             conditions: [
-                { field: 'email', operator: 'IS_SET' },
+                { property: 'email', operator: 'IS_SET' },
             ],
         }],
     });

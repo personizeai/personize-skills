@@ -60,7 +60,7 @@ Before writing code, fetch organizational guidelines:
 - Always check guidelines for: coding standards, API patterns, naming conventions,
   security requirements, deployment procedures
 - After fixing bugs or discovering patterns, update guidelines so the whole team benefits
-- See `sdk/skills/Guidelines/templates/project-governance-setup.md` for full setup
+- See `governance/templates/project-governance-setup.md` for full setup
 ```
 
 ### Why Developers Love This

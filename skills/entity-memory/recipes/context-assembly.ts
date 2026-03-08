@@ -89,11 +89,12 @@ async function assembleContext(
               }),
         skipRecall
             ? Promise.resolve(null)
-            : client.memory.recall({
+            : client.memory.smartRecall({
                   query: task,
                   email,
                   limit: recallLimit,
-                  minScore: recallMinScore,
+                  min_score: recallMinScore,
+                  fast_mode: true,
               }),
     ]);
 
@@ -103,11 +104,11 @@ async function assembleContext(
 
     let facts: string | null = null;
     if (
-        recallResult?.data &&
-        Array.isArray(recallResult.data) &&
-        recallResult.data.length > 0
+        recallResult?.data?.results &&
+        Array.isArray(recallResult.data.results) &&
+        recallResult.data.results.length > 0
     ) {
-        facts = recallResult.data
+        facts = recallResult.data.results
             .map((m: any) => `- ${m.text || m.content || JSON.stringify(m)}`)
             .join('\n');
     }

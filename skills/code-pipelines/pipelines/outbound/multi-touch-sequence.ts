@@ -29,7 +29,7 @@ export const multiTouchSequence = task({
     const { email, company, attempt } = payload;
 
     // ── Check if they replied since last touch ──────────
-    const replyCheck = await personize.memory.recall({
+    const replyCheck = await personize.memory.smartRecall({
       email,
       query: "did this contact reply to our email or respond in any way",
       fast_mode: true,

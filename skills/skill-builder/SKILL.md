@@ -1,6 +1,6 @@
 ---
 name: skill-builder
-description: How to create, structure, and install skills for this codebase following OpenAI's Codex CLI skills framework.
+description: "How to create, structure, and install skills for this codebase. Use this skill whenever the user wants to create a new skill, add agent capabilities, write a SKILL.md, structure a skill folder, or follow the skills framework. Also trigger when they mention 'new skill', 'add a skill', 'skill template', or 'extend agent capabilities'."
 metadata:
   short-description: Create and manage skills for agent capabilities
 ---

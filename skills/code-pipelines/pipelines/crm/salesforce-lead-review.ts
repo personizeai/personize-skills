@@ -128,7 +128,7 @@ export const reviewSalesforceLead = task({
     const { email, salesforceId, name, company } = payload;
 
     // ── Check if already enriched ───────────────────────
-    const existing = await personize.memory.recall({
+    const existing = await personize.memory.smartRecall({
       email,
       query: "enrichment data",
       fast_mode: true,

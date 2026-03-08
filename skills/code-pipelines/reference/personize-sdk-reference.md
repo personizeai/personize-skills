@@ -256,8 +256,8 @@ await personize.memory.memorizeBatch({
 const results = await personize.memory.search({
   groups: [{
     conditions: [
-      { field: "lifecycle_stage", operator: "EQ", value: "opportunity" },
-      { field: "last_contacted", operator: "IS_SET" },
+      { property: "lifecycle_stage", operator: "EQ", value: "opportunity" },
+      { property: "last_contacted", operator: "IS_SET" },
     ],
   }],
   type: "Contact",
@@ -311,7 +311,7 @@ const result = await personize.ai.prompt({
     captureToolResults: true,          // also memorize what the AI discovered
   },
 
-  model: "claude-sonnet-4-5-20250929",
+  model: "claude-sonnet-4-6",
 });
 
 // result.data.text — cleaned response (output markers stripped)
@@ -630,7 +630,7 @@ import { ANTHROPIC_TOOLS, executePersonizeTool } from "./lib/personize-tools";
 const anthropic = new Anthropic();
 
 const response = await anthropic.messages.create({
-  model: "claude-sonnet-4-5-20250929",
+  model: "claude-sonnet-4-6",
   max_tokens: 4096,
   messages: [{ role: "user", content: "Prep me for a call with sarah@startup.io" }],
   tools: ANTHROPIC_TOOLS,  // Same tools, Anthropic format

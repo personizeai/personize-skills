@@ -1,6 +1,6 @@
 ---
 name: code-pipelines
-description: "Builds production-ready GTM workflow pipelines using Trigger.dev and the Personize SDK. Generates TypeScript tasks for outbound sequences, inbound lead processing, conversational reply handlers, enrichment pipelines, and account signal monitoring — all backed by Personize memory, AI context, and governance. Use when a developer wants to build GTM automation with durable execution, real code, and the Personize SDK."
+description: "Builds, deploys, and iterates production-ready AI agent pipelines using Trigger.dev and the Personize SDK. Handles the full lifecycle: interview the user about what they want, design the schema and governance, write the pipeline code, deploy it, monitor results, and iterate based on feedback. Generates TypeScript tasks for outbound sequences, inbound lead processing, conversational reply handlers, enrichment pipelines, and account signal monitoring — all backed by Personize memory, AI context, and governance. Use this skill whenever someone wants to build an AI agent, automated workflow, email sequence, drip campaign, cold outreach, lead enrichment, reply handler, account monitor, CRM automation, daily digest, or any durable pipeline — whether they provide technical specs or just describe what they want in plain language. Also trigger for Trigger.dev, background tasks, self-scheduling follow-ups, GTM automation, 'build me an agent that...', or 'I want to automate...'."
 license: Apache-2.0
 compatibility: "Requires Node.js 20+, a Trigger.dev account (cloud or self-hosted), and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\u26A1", "requires": {"env": ["PERSONIZE_SECRET_KEY", "TRIGGER_SECRET_KEY"]}}}
@@ -16,17 +16,23 @@ Every pipeline is TypeScript. Every pipeline is testable. Every pipeline uses th
 
 ## When to Use This Skill
 
+- Someone describes an agent or automation they want built — "I want an agent that monitors leads and sends follow-ups"
 - Developer wants to build GTM automation (outbound, inbound, enrichment, reply handling)
 - Developer asks for "durable workflows", "background tasks", or "scheduled pipelines"
-- Developer wants AI-powered email sequences that learn from every interaction
-- Developer wants to combine CRM data + web research + Personize memory for personalization
-- Developer needs self-scheduling follow-ups that survive server restarts
+- User wants AI-powered email sequences that learn from every interaction
+- User wants to combine CRM data + web research + Personize memory for personalization
+- User needs self-scheduling follow-ups that survive server restarts
+- User says "build me an agent that..." or "I want to automate..."
+
+**You handle two types of users:**
+- **Developers** who know TypeScript → give them scaffold + pipeline templates, they customize
+- **Non-developers** who describe what they want → interview them, design everything, write the code, deploy it, iterate based on their feedback
 
 ## When NOT to Use This Skill
 
 - User wants no-code/visual workflows → use the **no-code-pipelines** skill instead
 - User only needs a one-time data import → use the **entity-memory** skill with `batch-memorize`
-- User wants a simple prompt/response → use the **solution-architect** skill
+- User wants to plan/design before building → use the **solution-architect** skill first, then come here to build
 
 ---
 
@@ -129,6 +135,115 @@ for (const tc of response.choices[0].message.tool_calls || []) {
 ```
 
 See `reference/personize-sdk-reference.md` for full BYOLLM documentation and `pipelines/outbound/cold-outreach-byollm.ts` for all three patterns in action.
+
+---
+
+## Action: BUILD — Full Lifecycle Agent Creation
+
+When the user describes what they want (instead of asking for a specific pipeline template), guide them through the full lifecycle. This is the primary action for non-developer users and for developers who want a faster path.
+
+### Phase 1: Interview (2-5 questions)
+
+Understand the agent's purpose. Ask conversationally, not as a checklist:
+
+1. **"What should this agent do?"** — the core automation (monitor leads, send outreach, handle replies, generate reports)
+2. **"What data does it work with?"** — CRM, email, product usage, web research, manual input
+3. **"Where should results go?"** — Email, Slack, CRM update, webhook, dashboard
+4. **"What rules should it follow?"** — Brand voice, compliance, competitor policy, approval workflows
+5. **"How often should it run?"** — Real-time (webhook trigger), scheduled (daily/hourly cron), or event-driven (on new lead, on reply)
+
+If the user gives a broad description like "I want an agent that handles my leads," ask follow-up questions. If they give a detailed spec, skip to Phase 2.
+
+### Phase 2: Design
+
+Based on the interview, design four things before writing any code:
+
+**1. Schema** — What collections and properties does this agent need?
+```typescript
+// Example: Lead monitoring agent
+await client.collections.create({
+    collectionName: 'Lead',
+    properties: [
+        { propertyName: 'engagement_score', type: 'number', description: 'AI-assessed engagement level 0-100' },
+        { propertyName: 'lifecycle_stage', type: 'options', options: ['new', 'enriched', 'contacted', 'engaged', 'qualified'] },
+        { propertyName: 'last_outreach_date', type: 'date', description: 'Date of most recent outbound communication' },
+        { propertyName: 'enrichment_status', type: 'options', options: ['pending', 'enriched', 'failed'] },
+    ],
+});
+```
+
+**2. Governance** — What rules constrain the agent?
+```typescript
+await client.guidelines.create({
+    name: 'Outbound Email Rules',
+    content: 'Professional but approachable. Max 150 words. Reference a specific fact about the recipient. Never mention competitors by name. Include clear CTA. No emails on weekends.',
+    triggerKeywords: ['email', 'outreach', 'outbound', 'cold', 'follow-up'],
+    tags: ['outbound', 'email', 'brand-voice'],
+});
+```
+
+**3. Pipeline architecture** — Which pipeline template(s) to combine, what trigger, what schedule.
+
+**4. Integration map** — Which external services and credentials are needed (CRM, email, enrichment).
+
+Present this design to the user for confirmation before writing code.
+
+### Phase 3: Implement
+
+Write the complete pipeline code:
+
+1. **Copy the scaffold** as the project base
+2. **Create the schema** — `collections.create()` calls for all entities
+3. **Create governance variables** — `guidelines.create()` calls for all rules
+4. **Write the pipeline** — combine patterns from existing templates, customized to their data model and business logic
+5. **Set up integrations** — configure env vars and auth for external services
+6. **Add monitoring** — include a daily digest pipeline that reports results to Slack or email
+
+Every pipeline MUST follow: **Recall → Contextualize → Act → Memorize → Schedule**
+
+### Phase 4: Deploy
+
+Walk the user through deployment. Read `reference/deploy.md` for the full deployment guide.
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment
+cp .env.example .env
+# Fill in API keys
+
+# 3. Test locally
+npx trigger.dev@latest dev
+
+# 4. Test with a single record
+# Trigger the task manually via Trigger.dev dashboard or CLI
+
+# 5. Deploy to production
+npx trigger.dev@latest deploy
+```
+
+### Phase 5: Monitor & Iterate
+
+After deployment, help the user evaluate results and improve:
+
+1. **Check initial results** — "How do the first few outputs look? Any issues?"
+2. **Adjust governance** — If tone is wrong, update the governance variable. No code change needed.
+3. **Adjust prompts** — If the AI misunderstands the task, refine `instructions[]` or `prompt` text
+4. **Adjust pipeline logic** — If the workflow order is wrong, restructure the pipeline
+5. **Redeploy** — `npx trigger.dev@latest deploy`
+6. **Repeat** until the user is satisfied
+
+**Common iteration patterns:**
+
+| User Feedback | What to Change |
+|---|---|
+| "Emails are too formal" | Update governance variable (brand voice) |
+| "It's emailing people we already talked to" | Add recall check before outreach (dedup) |
+| "I want Slack alerts for high-priority leads" | Add Signal/notification step after scoring |
+| "It's too slow" | Use `fast_mode: true` on smartRecall, reduce `token_budget` |
+| "Some outputs feel hallucinated" | Add `evaluate: true` with `evaluationCriteria`, tighten governance |
+| "I want it to also update HubSpot" | Add HubSpot API call after generation step |
 
 ---
 
@@ -241,6 +356,7 @@ npx trigger.dev@latest deploy # production
 | Personize SDK Reference | `reference/personize-sdk-reference.md` | All SDK methods, MCP tools, auto-memorize patterns |
 | Enrichment APIs | `reference/enrichment-apis.md` | Apollo.io + Tavily API patterns, rate limits, costs |
 | Channel Setup | `reference/channel-setup.md` | Gmail, HubSpot, Salesforce, Slack, Twilio setup |
+| Deploy & Iterate | `reference/deploy.md` | Deployment, env vars, monitoring, iteration patterns, scaling, troubleshooting |
 
 ---
 

@@ -366,7 +366,7 @@ await client.memory.memorize({
 
 ## Extraction Hints — Ensure Completeness for Identity Fields
 
-Personize extraction shows high precision across a wide range of content types (see our [research paper](../../paper/) for benchmark results). The property selector uses embedding similarity to pick the most relevant schema properties for each piece of content — and it works well. This isn't about fixing accuracy. It's about **ensuring completeness** for identity and demographic fields.
+Personize extraction shows high precision across a wide range of content types (see our [white paper](https://www.personize.ai/white-paper) for benchmark results). The property selector uses embedding similarity to pick the most relevant schema properties for each piece of content — and it works well. This isn't about fixing accuracy. It's about **ensuring completeness** for identity and demographic fields.
 
 Properties like first name, company name, job title, and location are **always worth capturing** when mentioned — but they're content-agnostic. A call transcript about SOC2 compliance naturally matches properties like "pain points" or "security requirements" with high similarity, but "first name" scores low because it matches *everything* weakly. The property selector still picks 15+ properties based on the content — this pattern just makes sure identity fields are in that mix.
 

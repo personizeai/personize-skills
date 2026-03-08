@@ -13,7 +13,7 @@ This action includes ready-to-use schema definitions and examples:
 | File | Contents |
 |---|---|
 | `reference/schemas/property-definition-schema.json` | JSON Schema (draft 2020-12) defining valid property fields — use to validate designs |
-| `reference/schemas/README.md` | Property types, schema lifecycle, and tips for writing effective descriptions |
+| `reference/schemas/property-definition-schema.json` | Also includes property types, schema lifecycle, and constraints for valid designs |
 | **Core Entity Schemas** | |
 | `reference/schemas/examples/contact-schema.json` | 19-property Contact schema — profile fields + AI-extracted relationship intelligence (personas, pain points, sentiment, ICP match) |
 | `reference/schemas/examples/company-schema.json` | 17-property Company schema — enrichment firmographics + AI signals (ICPs, buying signals, account health, competitors) |

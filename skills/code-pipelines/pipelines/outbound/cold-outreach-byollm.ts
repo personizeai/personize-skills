@@ -62,9 +62,9 @@ export const coldOutreachContextInjection = task({
     // smartDigest = everything we know about this contact
     const digest = await personize.memory.smartDigest({
       email,
-      include_properties: true,
-      include_memories: true,
-      token_budget: 2000,
+      includeProperties: true,
+      includeMemories: true,
+      tokenBudget: 2000,
     });
 
     // smartGuidelines = org guidelines for this task

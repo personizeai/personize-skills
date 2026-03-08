@@ -98,9 +98,9 @@ export const meetingPrepCommand = task({
     // Get full context digest
     const digest = await personize.memory.smartDigest({
       email,
-      include_properties: true,
-      include_memories: true,
-      token_budget: 4000,
+      includeProperties: true,
+      includeMemories: true,
+      tokenBudget: 4000,
     });
 
     // AI generates a meeting prep brief

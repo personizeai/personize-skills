@@ -54,7 +54,7 @@ async function run() {
         groups: [{
             id: 'g1', logic: 'AND',
             conditions: [
-                { field: 'email', operator: 'IS_SET' },
+                { property: 'email', operator: 'IS_SET' },
             ],
         }],
     });
@@ -93,14 +93,15 @@ async function run() {
                 sections.push('## User Profile & Usage\n' + digest.data.compiledContext);
             }
 
-            const recalled = await client.memory.recall({
+            const recalled = await client.memory.smartRecall({
                 query: 'product usage, feature adoption, login frequency, engagement signals',
                 email,
                 limit: 10,
-                minScore: 0.3,
+                min_score: 0.3,
+                fast_mode: true,
             });
-            if (recalled.data && Array.isArray(recalled.data) && recalled.data.length > 0) {
-                sections.push('## Usage Signals\n' + recalled.data.map((m: any) =>
+            if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
+                sections.push('## Usage Signals\n' + recalled.data.results.map((m: any) =>
                     `- ${m.text || m.content || JSON.stringify(m)}`
                 ).join('\n'));
             }

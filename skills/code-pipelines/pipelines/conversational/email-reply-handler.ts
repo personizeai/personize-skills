@@ -177,9 +177,9 @@ export const handleInboundEmail = task({
       // Get a digest for the AE
       const digest = await personize.memory.smartDigest({
         email: senderEmail,
-        include_properties: true,
-        include_memories: true,
-        token_budget: 2000,
+        includeProperties: true,
+        includeMemories: true,
+        tokenBudget: 2000,
       });
 
       await notifySlack(
@@ -227,7 +227,7 @@ export const scheduledEmailFollowUp = task({
     const { email, attempt } = payload;
 
     // Check if they've replied since we scheduled this
-    const recent = await personize.memory.recall({
+    const recent = await personize.memory.smartRecall({
       email,
       query: "any new messages or replies from this contact in the last week",
       fast_mode: true,

@@ -24,10 +24,10 @@ export const accountSignalMonitor = schedules.task({
       groups: [
         {
           conditions: [
-            { field: "account_status", operator: "EQ", value: "target" },
-            { field: "account_status", operator: "EQ", value: "active" },
+            { property: "account_status", operator: "EQ", value: "target" },
+            { property: "account_status", operator: "EQ", value: "active" },
             // Also include leads we're actively engaging
-            { field: "lifecycle_stage", operator: "EQ", value: "opportunity" },
+            { property: "lifecycle_stage", operator: "EQ", value: "opportunity" },
           ],
         },
       ],

@@ -1,6 +1,6 @@
 ---
 name: no-code-pipelines
-description: "Generates importable n8n workflow JSON files that sync data between Personize and 400+ apps. Produces ready-to-import workflows for batch sync, webhook ingestion, per-record AI enrichment, and data export — no code required. Includes templates for HubSpot, Google Sheets, Slack, and webhook sources. Use when building no-code Personize integrations or n8n workflow automation."
+description: "Generates importable n8n workflow JSON files that sync data between Personize and 400+ apps. Produces ready-to-import workflows for batch sync, webhook ingestion, per-record AI enrichment, and data export — no code required. Use this skill whenever the user wants no-code integrations, visual workflows, n8n automation, or to connect Personize to HubSpot, Salesforce, Google Sheets, Slack, Postgres, or any app without writing code. Also trigger when they mention 'workflow automation', 'scheduled sync without code', 'visual pipeline', or 'connect Personize to [app]' and don't want to write TypeScript."
 license: Apache-2.0
 compatibility: "Requires an n8n instance (cloud or self-hosted) and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F504", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
@@ -217,7 +217,7 @@ return [{
       id: 'g1',
       logic: 'AND',
       conditions: [
-        { field: 'company', operator: 'IS_SET' }
+        { property: 'company', operator: 'IS_SET' }
       ]
     }],
     type: 'Contact',
@@ -272,7 +272,7 @@ const email = $('Personize: Smart Digest').item.json.data.properties?.email || '
 return [{
   json: {
     prompt: `Using the context below, write a personalized outreach email for ${email}.\n\nContext:\n${context}`,
-    model: 'claude-sonnet-4-5-20250929'
+    model: 'claude-sonnet-4-6'
   }
 }];
 ```

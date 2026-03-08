@@ -193,24 +193,22 @@ async function assembleContext(email: string, task: string): Promise<string> {
     });
 
     // 3. Task-specific facts
-    const recalled = await client.memory.recall({
+    const recalled = await client.memory.smartRecall({
         query: task,
         email,
         limit: 10,
-        minScore: 0.5,
+        min_score: 0.5,
         include_property_values: true,
+        fast_mode: true,
     });
 
     const sections: string[] = [];
     if (variables.data?.compiledContext) sections.push('## Guidelines\n' + variables.data.compiledContext);
     if (digest.data?.compiledContext) sections.push('## Contact\n' + digest.data.compiledContext);
-    if (recalled.data) {
-        const memories = Array.isArray(recalled.data) ? recalled.data : [];
-        if (memories.length > 0) {
-            sections.push('## Relevant Memories\n' + memories.map((m: any) =>
-                `- ${m.text || m.content || JSON.stringify(m)}`
-            ).join('\n'));
-        }
+    if (recalled.data?.results && recalled.data.results.length > 0) {
+        sections.push('## Relevant Memories\n' + recalled.data.results.map((m: any) =>
+            `- ${m.text || m.content || JSON.stringify(m)}`
+        ).join('\n'));
     }
     return sections.join('\n\n---\n\n');
 }
@@ -409,7 +407,7 @@ async function runPipeline() {
     // OBSERVE
     const exported = await client.memory.search({
         type: 'Contact', returnRecords: true, pageSize: 50,
-        groups: [{ id: 'g1', logic: 'AND', conditions: [{ field: 'email', operator: 'IS_SET' }] }],
+        groups: [{ id: 'g1', logic: 'AND', conditions: [{ property: 'email', operator: 'IS_SET' }] }],
     });
     const records = exported.data?.records || {};
     const newRecords = Object.entries(records).filter(([id]) => !state.processedRecordIds.includes(id));

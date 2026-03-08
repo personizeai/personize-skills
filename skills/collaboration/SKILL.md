@@ -1,6 +1,6 @@
 ---
 name: collaboration
-description: "Turn any record into a shared workspace where agents and humans collaborate. Attach a simple workspace schema to any entity — contacts, companies, deals, projects, tickets — and let any participant contribute updates, tasks, notes, and issues. The record becomes the coordination. No orchestrator, no message bus — just read the workspace, do your work, record what you did. Intelligence accumulates. Use when multiple agents, humans, or systems need to work on the same entity together."
+description: "Turn any record into a shared workspace where agents and humans collaborate. Attach a simple workspace schema to any entity — contacts, companies, deals, projects, tickets — and let any participant contribute updates, tasks, notes, and issues. Use this skill whenever the user wants multi-agent collaboration, shared context on an entity, agent handoffs, workspace-based coordination, or the three-layer agent operating model (Guidelines + Memory + Workspace). Also trigger when they mention multiple agents working on the same record, deal rooms, account intelligence, customer health monitoring, cross-functional coordination, or progressive autonomy for AI agents."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F91D", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}

@@ -19,6 +19,6 @@ jobs:
       - run: npm ci
 
       - name: Sync variables to Personize
-        run: npx ts-node sdk/skills/governance/sync.ts governance/variables
+        run: npx ts-node governance/recipes/ide-governance-bridge.ts sync governance/variables
         env:
           PERSONIZE_SECRET_KEY: ${{ secrets.PERSONIZE_SECRET_KEY }}

@@ -1,6 +1,6 @@
 ---
 name: governance
-description: "Manages organizational guidelines, policies, and best practices as governance variables accessible to all AI agents via SmartContext. Use when working with company rules, brand voice, compliance policies, playbooks, or when any task needs organizational context before proceeding."
+description: "Manages organizational guidelines, policies, and best practices as governance variables accessible to all AI agents via SmartContext. Use this skill whenever the user wants to create, update, or manage guidelines, brand voice, compliance policies, playbooks, ICPs, sales playbooks, tone rules, or any organizational rules. Also trigger when the user mentions smartGuidelines, governance variables, GitOps sync of policies, team knowledge sharing, AI agent rules, or when they want all their AI tools to follow the same policies. Even if they just say 'set up rules' or 'add a policy', this is the right skill."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk or Personize MCP server and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F4CB", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
@@ -62,6 +62,34 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `client.guidelines.delete(id)` | `guideline_delete(guidelineId)` | Delete guideline |
 | `client.guidelines.history(id)` | `guideline_history(guidelineId)` | View change history |
 | `client.ai.smartGuidelines({ message })` | `ai_smart_guidelines(message)` | Verify/fetch guidelines |
+
+### `smartGuidelines` Mode and Model
+
+`smartGuidelines` has two modes and an optional model override:
+
+| Mode | How it works | Latency | Cost | When to use |
+|---|---|---|---|---|
+| `fast` | Embedding-based routing only — no LLM | ~200ms | 0.1 credits/call | Real-time agents, loops, context injection |
+| `deep` | LLM selects and composes guidelines | ~3s | 0.5 credits/call | First call, complex queries, deep analysis |
+
+1 credit = $0.01. Use `fast` in production pipelines — it handles the majority of cases well at 5× lower cost.
+
+```typescript
+// Fast — embedding-only, no LLM overhead (default for real-time)
+const guidelines = await client.ai.smartGuidelines({
+    message: 'cold email tone and constraints',
+    mode: 'fast',
+});
+
+// Deep — LLM-based routing, optional model override
+const guidelines = await client.ai.smartGuidelines({
+    message: 'cold email tone and constraints',
+    mode: 'deep',
+    model: 'anthropic/claude-sonnet-4-6',  // optional — override the LLM used for routing
+});
+```
+
+No intelligence tiers — `smartGuidelines` does not use the `basic`/`pro`/`pro_fast`/`ultra` tier system (those are for `memorize`/`batch-memorize` only).
 
 > **`governanceScope`** is a read-only field returned on `guideline_list` and `guideline_read` (structure mode). It contains `alwaysOn` (boolean) and `triggerKeywords` (string array) — auto-inferred at save time. See the "Governance Scope" section below for details.
 
@@ -301,391 +329,16 @@ This skill supports three deployment patterns beyond conversational editing:
 
 ## Variables as Code (GitOps Sync)
 
-For teams that prefer managing guidelines in Git, the included `sync.ts` script syncs local `.md` files to Personize variables. The filename becomes the guideline name, the file content becomes the value.
+For teams that prefer managing guidelines in Git, the included `sync.ts` script syncs local `.md` files to Personize variables. Filename = variable name, file content = variable value.
 
-### Folder Convention
-
-```
-governance/
-└── variables/
-    ├── sales-playbook.md
-    ├── icp-definitions.md
-    ├── brand-voice-guidelines.md
-    └── pricing-rules.md
-```
-
-**Rules:**
-- **Filename** = variable name (without `.md`). Use kebab-case.
-- **File content** = variable value (markdown body after optional frontmatter).
-- **YAML frontmatter** (optional) = tags and description:
-
-```markdown
----
-tags: [sales, governance]
-description: Sales team playbook and best practices
----
-# Sales Playbook
-
-Your content here...
-```
-
-- Files prefixed with `_` are ignored (e.g., `_draft-policy.md`).
-- Subdirectories are not scanned — only files directly in `governance/variables/`.
-
-### Sync Algorithm
-
-1. **Read local files** — Scan `governance/variables/*.md`, parse frontmatter and body.
-2. **Fetch remote state** — Call `client.guidelines.list()`.
-3. **Diff by name** — Match local filenames to remote variable names:
-   - **Local only** → **CREATE**
-   - **Both exist, content differs** → **UPDATE**
-   - **Both exist, content identical** → **SKIP**
-   - **Remote only** → **DELETE** (only with `--delete` flag)
-4. **Execute operations** — Create/update/delete via SDK.
-5. **Print summary** — `Created: N, Updated: N, Deleted: N, Unchanged: N`
-
-### CLI Usage
-
+**Quick start:**
 ```bash
-# Dry run — show what would change
-npx ts-node sync.ts --dry-run
-
-# Sync (create + update only, never delete)
-npx ts-node sync.ts
-
-# Sync with deletion of remote-only variables
-npx ts-node sync.ts --delete
-
-# Pull remote variables to local folder (bootstrap)
-npx ts-node sync.ts --pull
-
-# Custom variables directory
-npx ts-node sync.ts ./my-variables/
+npx ts-node sync.ts --pull          # Bootstrap: download remote → local
+npx ts-node sync.ts --dry-run       # Preview changes
+npx ts-node sync.ts                 # Sync (create + update, never delete)
+npx ts-node sync.ts --delete        # Sync with deletion of remote-only
 ```
 
-| Flag | Default | Description |
-|---|---|---|
-| `--dry-run` | off | Show diff without executing changes |
-| `--delete` | off | Delete remote variables with no matching local file |
-| `--no-delete` | on | Never delete (safe default) |
-| `--pull` | off | Download remote variables to local `.md` files |
+**CI integration:** Two GitHub Actions workflows auto-sync on push (`governance-sync.yml`) and auto-extract learnings from code commits (`governance-learn.yml`).
 
-### CI Integration
-
-#### Auto-Sync on Push
-
-Create `.github/workflows/governance-sync.yml` — triggers when anyone pushes changes to `governance/variables/`:
-
-```yaml
-name: Governance Sync
-
-on:
-  push:
-    branches: [master, main]
-    paths:
-      - "governance/variables/**"
-  workflow_dispatch: {}  # Manual trigger
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - run: npm ci
-
-      - name: Sync governance variables to Personize
-        run: npx ts-node Skills/governance/sync.ts governance/variables
-        env:
-          PERSONIZE_SECRET_KEY: ${{ secrets.PERSONIZE_SECRET_KEY }}
-```
-
-**Setup:** Add `PERSONIZE_SECRET_KEY` as a GitHub repository secret (Settings → Secrets → Actions).
-
-The CI workflow uses `--no-delete` by default. Add `--delete` to the run command to enable deletion on push.
-
-#### Auto-Learn from Commits
-
-Create `.github/workflows/governance-learn.yml` — scans source code commits and auto-extracts patterns into the right governance variables:
-
-```yaml
-name: Governance Auto-Learn
-
-on:
-  push:
-    branches: [master, main]
-    paths:
-      - "src/**"
-  workflow_dispatch:
-    inputs:
-      since:
-        description: "How far back to scan (e.g., '7 days ago', '1 day ago')"
-        required: false
-        default: "1 day ago"
-
-jobs:
-  learn:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 50  # Need commit history for scan-git
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - run: npm ci
-
-      - name: Extract learnings from recent commits
-        run: |
-          SINCE="${{ github.event.inputs.since || '1 day ago' }}"
-          npx ts-node Skills/governance/recipes/auto-learning-loop.ts scan-git \
-            --since "$SINCE" \
-            --autoApply
-        env:
-          PERSONIZE_SECRET_KEY: ${{ secrets.PERSONIZE_SECRET_KEY }}
-```
-
-**How it works:** The `auto-learning-loop.ts scan-git` command reads recent commit diffs, classifies each change (bug-fix → `known-bugs-and-workarounds`, security → `security-standards`, pattern → `engineering-standards`, etc.), and appends the learning to the right governance variable. Developers don't need to do anything — their commits teach the shared brain automatically.
-
-### Safety
-
-- **`--delete` is never implied.** Remote-only variables are only removed when explicitly requested.
-- **`--dry-run` shows the full diff** before any changes.
-- **Pull mode** (`--pull`) writes local files but never modifies remote variables.
-- **Frontmatter tags** are preserved during update — only the value is compared.
-- **Version history**: Every update is tracked with the commit message or a sync note.
-
-### Pull Mode (Bootstrap)
-
-```bash
-npx ts-node sync.ts --pull
-```
-
-Downloads all remote variables as local `.md` files with frontmatter. Never overwrites existing local files.
-
-### Example Workflow
-
-1. Bootstrap: `npx ts-node sync.ts --pull`
-2. Edit `governance/variables/sales-playbook.md`
-3. Preview: `npx ts-node sync.ts --dry-run`
-4. Push: `npx ts-node sync.ts`
-5. Commit and push to Git — CI auto-syncs on merge to main
-
----
-
-## Complete Team Setup: Shared Governance as a Service
-
-This section walks through the full setup for using governance as a **shared knowledge layer** across a development team. Every developer contributes knowledge (via markdown files and git commits), and every AI agent consumes it (via `smartGuidelines`).
-
-### How Knowledge Flows
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  HOW KNOWLEDGE FLOWS IN                      │
-│                                                             │
-│  Developer A          Developer B          CI/CD Pipeline   │
-│  (Claude Code)        (Cursor/Copilot)     (GitHub Actions) │
-│       │                    │                     │          │
-│  writes code,         writes code,          merges PR,      │
-│  fixes bugs,          adds patterns,        runs tests      │
-│  learns things        learns things                         │
-│       │                    │                     │          │
-│       ▼                    ▼                     ▼          │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │           governance/variables/*.md                   │   │
-│  │                  (in Git repo)                        │   │
-│  │                                                      │   │
-│  │  coding-standards.md    known-bugs.md                │   │
-│  │  architecture-decisions.md   debugging-patterns.md   │   │
-│  │  api-conventions.md     testing-playbook.md          │   │
-│  │  module-map.md          security-standards.md        │   │
-│  └──────────────────────┬───────────────────────────────┘   │
-│                         │                                   │
-│                    git push / PR merge                       │
-│                         │                                   │
-│                         ▼                                   │
-│              ┌─────────────────────┐                        │
-│              │   GitHub Actions     │                        │
-│              │   governance-sync    │ ← syncs .md to API    │
-│              │   governance-learn   │ ← extracts from code  │
-│              └──────────┬──────────┘                        │
-│                         │                                   │
-│                         ▼                                   │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │         Personize Governance Layer                    │   │
-│  │         (smartGuidelines API)                         │   │
-│  │                                                      │   │
-│  │  Every agent in your org can now query:               │   │
-│  │  "What are our API conventions?"                      │   │
-│  │  "How do we handle auth errors?"                      │   │
-│  │  "What depends on the memory module?"                 │   │
-│  └──────────────────────┬───────────────────────────────┘   │
-│                         │                                   │
-│              HOW KNOWLEDGE FLOWS OUT                         │
-│                         │                                   │
-│       ┌─────────────────┼─────────────────┐                │
-│       ▼                 ▼                 ▼                │
-│  Developer A       Developer B       Any AI Agent          │
-│  (auto-fetches     (auto-fetches     (calls smart          │
-│   governance        governance        Guidelines            │
-│   into CLAUDE.md)   into .cursorrules) before acting)      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Three Layers of Automation
-
-| Layer | What | How | Developer effort |
-|---|---|---|---|
-| **1. GitOps Sync** | `.md` files in Git → Personize API | `governance-sync.yml` GitHub Action on push to `governance/variables/` | Edit a `.md` file, push. Done. |
-| **2. Auto-Learning** | Git commits → governance updates | `governance-learn.yml` GitHub Action scans diffs, classifies changes, appends to right variable | Zero. Commits teach the shared brain. |
-| **3. IDE Bridge** | Agents fetch governance before acting | `bridge.ts` CLI or MCP `ai_smart_guidelines` tool | Zero. Agent checks automatically. |
-
-### Step-by-Step Setup
-
-#### Step 1: Create the governance folder with seed files
-
-```
-governance/
-├── variables/
-│   ├── coding-standards.md          ← Code style, naming, patterns
-│   ├── architecture-decisions.md    ← ADRs, why we chose X over Y
-│   ├── api-conventions.md           ← Endpoint patterns, error handling
-│   ├── testing-playbook.md          ← How/what/when to test
-│   ├── debugging-patterns.md        ← Common issues & solutions
-│   ├── known-bugs-and-workarounds.md ← Living bug knowledge base
-│   ├── security-standards.md        ← Auth, input validation, secrets
-│   ├── onboarding-guide.md          ← New developer quick-start
-│   ├── pr-review-checklist.md       ← What to check in code reviews
-│   ├── module-map.md                ← Every module's purpose, deps, danger zones
-│   └── high-risk-changes.md         ← Cross-cutting concerns, approval rules
-└── bridge.ts                        ← CLI wrapper for IDE use
-```
-
-Each `.md` file should have YAML frontmatter:
-
-```markdown
----
-tags: [engineering, standards, governance]
-description: One-line summary for routing and search
----
-# Title
-
-## Section One
-Content written for AI consumption: explicit rules, concrete examples, tables.
-
-## Section Two
-More content...
-```
-
-**Content guidelines:**
-- Write for AI agents, not humans — explicit rules, no ambiguity
-- Use H2 (`##`) sections — `smartGuidelines` can extract individual sections
-- Front-load important terms in the first 1000 characters (included in embedding)
-- Use tables for comparisons, bullet lists for rules
-- Include "when to use" and "when NOT to use" guidance
-
-#### Step 2: Add GitHub Actions
-
-Create two workflows (see "CI Integration" section above for full YAML):
-
-1. **`.github/workflows/governance-sync.yml`** — Syncs `governance/variables/` to Personize on push to main
-2. **`.github/workflows/governance-learn.yml`** — Extracts learnings from `src/` commits on push to main
-
-**Required secret:** `PERSONIZE_SECRET_KEY` (Settings → Secrets and variables → Actions)
-
-#### Step 3: Create the IDE bridge
-
-Create `governance/bridge.ts` as a thin CLI wrapper:
-
-```typescript
-/**
- * Governance Bridge — Local CLI wrapper for IDE governance integration.
- *
- * Usage:
- *   npx ts-node governance/bridge.ts fetch "how do we handle auth?"
- *   npx ts-node governance/bridge.ts learn "DynamoDB needs LastEvaluatedKey pagination"
- *   npx ts-node governance/bridge.ts list
- *   npx ts-node governance/bridge.ts structure <guidelineId>
- *   npx ts-node governance/bridge.ts generate-claude-md
- *
- * Requires: PERSONIZE_SECRET_KEY environment variable
- */
-import { resolve } from 'path';
-const recipePath = resolve(__dirname, '../Skills/governance/recipes/ide-governance-bridge.ts');
-require(recipePath);
-```
-
-#### Step 4: Add governance to CLAUDE.md (or .cursorrules, or copilot instructions)
-
-Add a governance block to the project's AI agent instructions so every agent checks shared knowledge first:
-
-```markdown
-## Governance — Check Before Acting
-
-Before writing code, modifying a module, or making architectural decisions:
-
-\`\`\`bash
-npx ts-node governance/bridge.ts fetch "your question here"
-\`\`\`
-
-Key files in governance/variables/:
-- module-map.md — Every module's purpose, dependencies, danger zones
-- high-risk-changes.md — What needs approval, migration rules
-- coding-standards.md — Naming, patterns, file structure
-- api-conventions.md — Endpoints, response format, auth
-- security-standards.md — Auth, PII, API key handling
-```
-
-For Cursor: add the same block to `.cursorrules`.
-For Copilot: add to `.github/copilot-instructions.md`.
-
-#### Step 5: Initial sync
-
-```bash
-# Set your API key
-export PERSONIZE_SECRET_KEY=sk_live_...
-
-# Dry run first
-npx ts-node Skills/governance/sync.ts governance/variables --dry-run
-
-# Sync to Personize
-npx ts-node Skills/governance/sync.ts governance/variables
-
-# Verify — should return relevant governance
-npx ts-node governance/bridge.ts fetch "what are our coding standards?"
-```
-
-### Developer Experience
-
-| Concern | Answer |
-|---|---|
-| "I don't want to learn a new tool" | It's just `.md` files in Git. Edit, commit, push. Done. |
-| "I'll forget to contribute" | Auto-learning extracts from your commits automatically. |
-| "How do I find what the team knows?" | Your AI agent queries `smartGuidelines` before every task. |
-| "What if two people edit the same guideline?" | Section-level updates + Git merge = safe concurrent editing. |
-| "How do I get started?" | `npx ts-node Skills/governance/sync.ts --pull` downloads everything locally. |
-| "What if I'm offline?" | `generate-claude-md` creates a local snapshot for offline use. |
-
-### Example Seed Variables for Engineering Teams
-
-These are the most common governance variables for development teams:
-
-| Variable | What it contains | Who maintains |
-|---|---|---|
-| `coding-standards` | Language, framework, naming, module structure | Tech lead |
-| `architecture-decisions` | ADRs: why we chose X over Y | Tech lead + senior devs |
-| `api-conventions` | Endpoint patterns, response format, auth, pagination | Backend team |
-| `testing-playbook` | Framework, test types, how to run, what to test | QA / all devs |
-| `debugging-patterns` | Debug flags, common issues, diagnostic commands | All devs (grows via auto-learn) |
-| `known-bugs-and-workarounds` | Active bugs, recently fixed, open TODOs | All devs (grows via auto-learn) |
-| `security-standards` | Auth patterns, PII redaction, key handling | Security / tech lead |
-| `module-map` | Every module's purpose, deps, consumers, danger zones | Tech lead (grows via auto-learn) |
-| `high-risk-changes` | Cross-cutting concerns, approval rules, migration checklist | Tech lead |
-| `onboarding-guide` | New developer quick-start | All devs |
-| `pr-review-checklist` | What to check in code reviews | All devs |
+> **Full guide:** Read `reference/team-setup.md` for the complete GitOps workflow, folder conventions, YAML frontmatter format, sync algorithm, CI integration YAML, safety guarantees, pull mode, auto-learning from commits, IDE bridge setup, and the step-by-step team onboarding runbook.

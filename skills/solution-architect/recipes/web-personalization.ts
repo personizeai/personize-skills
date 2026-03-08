@@ -331,7 +331,7 @@ async function DashboardPage({ params }: { params: any }) {
 
 // ── React Client-Side (fetch on mount) ──
 
-function usePerosnalizedVariables(page: string) {
+function usePersonalizedVariables(page: string) {
     const [vars, setVars] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -345,7 +345,7 @@ function usePerosnalizedVariables(page: string) {
 }
 
 function Dashboard() {
-    const vars = usePerosnalizedVariables('dashboard');
+    const vars = usePersonalizedVariables('dashboard');
     return <h1>{vars.dashboard_greeting || 'Welcome back!'}</h1>;
 }
 

@@ -218,4 +218,4 @@ Present findings in this format:
 | Not storing generated outputs | AI doesn't know what it already said | Add `memorize()` after every generation |
 | One giant prompt instead of `instructions[]` | No chain-of-thought, worse quality | Split into analyze → plan → generate steps |
 | Same notification for all users | Not personalized, users ignore | Use `smartDigest()` per user for unique content |
-| Creating collections via code | Not supported — collections are web-app only | Direct developer to Personize web app |
+| Creating collections via code without version tracking | Changes aren't auditable | Use `client.collections.create()` with a `historyNote` for traceability |

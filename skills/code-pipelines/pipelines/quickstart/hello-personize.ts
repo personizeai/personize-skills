@@ -28,7 +28,7 @@ export const helloPersonize = task({
         const { email, message } = QuickstartInput.parse(rawPayload);
 
         // ── Step 2: Recall what we know ─────────────────
-        const memories = await personize.memory.recall({
+        const memories = await personize.memory.smartRecall({
             email,
             query: "all context about this contact",
             include_property_values: true,

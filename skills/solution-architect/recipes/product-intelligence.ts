@@ -499,13 +499,14 @@ async function memorizeTelemetry(snapshots: TelemetrySnapshot[]) {
 async function batchMemorizeProductData(rows: Record<string, any>[]) {
     // First, discover your collections
     const collections = await client.collections.list();
-    console.log('Available collections:', collections.data?.map((c: any) => `${c.name} (${c.id})`));
+    const colList = collections.data?.actions || [];
+    console.log('Available collections:', colList.map((c: any) => `${c.payload.collectionName} (${c.payload.collectionId})`));
 
     // Use the first collection or specify your own
-    const stdCol = collections.data?.[0]?.id || 'col_YOUR_STANDARD';
-    const stdColName = collections.data?.[0]?.name || 'Standard';
-    const genCol = collections.data?.[1]?.id || 'col_YOUR_GENERATED';
-    const genColName = collections.data?.[1]?.name || 'Generated Content';
+    const stdCol = colList[0]?.payload.collectionId || 'col_YOUR_STANDARD';
+    const stdColName = colList[0]?.payload.collectionName || 'Standard';
+    const genCol = colList[1]?.payload.collectionId || 'col_YOUR_GENERATED';
+    const genColName = colList[1]?.payload.collectionName || 'Generated Content';
 
     await client.memory.memorizeBatch({
         source: 'Product Intelligence',

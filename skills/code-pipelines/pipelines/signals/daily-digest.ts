@@ -56,25 +56,25 @@ export const dailyEngagementDigest = schedules.task({
     );
 
     // ── Also post a quick pipeline health check ─────────
-    // Use Personize export to get pipeline stats
+    // Use Personize search with countOnly for pipeline stats
     const [activeLeads, engagedLeads, stalledLeads] = await Promise.all([
       personize.memory.search({
         groups: [{
-          conditions: [{ field: "lifecycle_stage", operator: "EQ", value: "lead" }],
+          conditions: [{ property: "lifecycle_stage", operator: "EQ", value: "lead" }],
         }],
         type: "Contact",
         countOnly: true,
       }),
       personize.memory.search({
         groups: [{
-          conditions: [{ field: "engagement_status", operator: "EQ", value: "engaged" }],
+          conditions: [{ property: "engagement_status", operator: "EQ", value: "engaged" }],
         }],
         type: "Contact",
         countOnly: true,
       }),
       personize.memory.search({
         groups: [{
-          conditions: [{ field: "engagement_status", operator: "EQ", value: "stalled" }],
+          conditions: [{ property: "engagement_status", operator: "EQ", value: "stalled" }],
         }],
         type: "Contact",
         countOnly: true,

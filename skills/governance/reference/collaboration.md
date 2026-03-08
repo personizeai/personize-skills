@@ -132,7 +132,7 @@ Best for: autonomous learning loops, high-volume teams, continuous improvement.
 // Weekly guidelines summary — fetch limit: 1 per guideline to keep response minimal
 const all = await client.guidelines.list();
 
-for (const variable of all.actions ?? []) {
+for (const variable of all.data?.actions ?? []) {
     const history = await client.guidelines.history(variable.id, { limit: 1 });
     const latest = history.data?.history?.[0];
 

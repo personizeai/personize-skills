@@ -14,7 +14,7 @@
  */
 import { task, schedules, wait } from "@trigger.dev/sdk/v3";
 import { Client as HubSpotClient } from "@hubspot/api-client";
-import { personize, generateWithTools, ALL_PERSONIZE_TOOLS } from "../lib/personize";
+import { personize, generateWithTools } from "../lib/personize";
 import { enrichWithApollo, searchWithTavily } from "../lib/enrichment";
 import { notifySlack, formatLeadAlert } from "../lib/notifications";
 import { multiTouchSequence } from "../outbound/multi-touch-sequence";
@@ -114,7 +114,7 @@ export const reviewSingleLead = task({
     const name = `${properties.firstname || ""} ${properties.lastname || ""}`.trim();
 
     // ── Enrich if we haven't before ─────────────────────
-    const existingMemory = await personize.memory.recall({
+    const existingMemory = await personize.memory.smartRecall({
       email,
       query: "enrichment data from Apollo",
       fast_mode: true,

@@ -62,7 +62,7 @@ const results = await client.memory.search({
         id: 'g1',
         logic: 'AND',
         conditions: [
-            { field: 'Company', operator: 'EQ', value: 'Acme Corp' },
+            { property: 'Company', operator: 'EQ', value: 'Acme Corp' },
         ],
     }],
     type: 'Contact',

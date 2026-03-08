@@ -32,9 +32,9 @@ export async function buildContextualPrompt(opts: {
   if (opts.email) {
     const digest = await personize.memory.smartDigest({
       email: opts.email,
-      include_properties: true,
-      include_memories: true,
-      token_budget: 2000,
+      includeProperties: true,
+      includeMemories: true,
+      tokenBudget: 2000,
     });
     if (digest.data?.compiledContext) {
       sections.push(`## Contact Context\n${digest.data.compiledContext}`);
@@ -169,7 +169,7 @@ export async function runClaudeWithPersonize(
     maxToolRounds?: number;
   }
 ): Promise<{ content: string; toolCalls: string[] }> {
-  const model = opts.model || "claude-sonnet-4-5-20250929";
+  const model = opts.model || "claude-sonnet-4-6";
   const maxRounds = opts.maxToolRounds || 5;
   const toolCallLog: string[] = [];
 

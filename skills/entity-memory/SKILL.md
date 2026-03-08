@@ -1,6 +1,6 @@
 ---
 name: entity-memory
-description: "Stores and retrieves persistent memory about records — contacts, companies, employees, members, and more. Handles memorization (single and batch with per-property AI extraction), semantic recall, entity digests, and data export. Use when storing data, syncing records, querying memory, or assembling context for personalization."
+description: "Stores and retrieves persistent memory about records — contacts, companies, employees, members, and more. Handles memorization (single and batch with per-property AI extraction), semantic recall, entity digests, and data export. Use this skill whenever the user wants to store data, sync records from a CRM or database, query or search memory, recall what's known about a person or company, assemble context for personalization, import CSV or spreadsheet data, or do anything involving the Personize SDK's memory methods (memorize, recall, smartRecall, smartDigest, search, memorizeBatch). Also use when the user mentions contacts, leads, accounts, customer data, or entity properties."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk or Personize MCP server and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F9E0", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
@@ -151,6 +151,37 @@ await client.memory.memorizeBatch({
 // Verify with search() or smartDigest() after processing completes.
 ```
 
+### Intelligence Tiers (memorize + batch-memorize)
+
+`memorize()` and `memorizeBatch()` accept a `tier` param that selects the LLM pipeline and credit rate. Defaults to `pro` — no breaking change for existing callers.
+
+| Tier | Rate | Models (primary → fallback) | Best For |
+|---|---|---|---|
+| `basic` | 1 credit/1K tokens | Qwen Turbo → DeepSeek V3.2 | High-volume, cost-first |
+| `pro` | 2.5 credits/1K tokens | Grok 4.1 Fast → Gemini 2.5 Flash | **Default** — best quality/cost balance |
+| `pro_fast` | 3.5 credits/1K tokens | Gemini 3 Flash → Gemini 2.5 Flash-Lite | Speed-critical (~8s latency) |
+| `ultra` | 7 credits/1K tokens | Grok 4.1 Fast (+ reasoning) → GLM-5 | Maximum extraction depth, 50 properties |
+
+Tiers also control `maxProperties` (15–50), `chunkMaxWords` (2000–4000), and `minPropertyScore` (0.2–0.4). Model fallback is automatic — if the primary model fails, OpenRouter routes to the fallback. 1 credit = $0.01.
+
+```typescript
+await client.memory.memorize({
+    content: '...',
+    email: 'user@co.com',
+    enhanced: true,
+    tier: 'basic',       // or 'pro' (default), 'pro_fast', 'ultra'
+});
+
+await client.memory.memorizeBatch({
+    source: 'HubSpot',
+    mapping: { ... },
+    rows: contacts,
+    tier: 'pro_fast',    // fast LLMs, lower latency
+});
+```
+
+---
+
 ### Constraints
 
 > Keywords follow [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119): **MUST** = non-negotiable, **SHOULD** = strong default (override with stated reasoning), **MAY** = agent discretion.
@@ -187,7 +218,7 @@ Retrieve data from Personize memory. The right method depends on what kind of an
 | Need | Method | Returns |
 |---|---|---|
 | **"What do we know about X topic?"** | `memory.smartRecall()` | Semantic search results with optional reflection/answers (recommended) |
-| **"Quick vector lookup, no frills"** | `memory.recall()` | Direct vector search (`type` required, no reflection) |
+| **"Quick deterministic lookup, no AI"** | `memory.recall()` | Direct DynamoDB lookup (`type` required, no vector search, no reflection) |
 | **"Give me everything about this person/company"** | `memory.smartDigest()` | Compiled markdown context — all properties + memories for one entity |
 | **"List all contacts matching criteria X"** | `memory.search()` | Filtered records with property values |
 | **"What are our guidelines for X?"** | `ai.smartGuidelines()` | Governance variables matching a topic |
@@ -246,8 +277,8 @@ const exported = await client.memory.search({
     pageSize: 50,
     groups: [{
         conditions: [
-            { field: 'plan_tier', operator: 'EQUALS', value: 'enterprise' },
-            { field: 'email', operator: 'IS_SET' },
+            { property: 'plan_tier', operator: 'EQ', value: 'enterprise' },
+            { property: 'email', operator: 'IS_SET' },
         ],
     }],
 });
@@ -319,8 +350,8 @@ async function assembleContext(email: string, task: string): Promise<string> {
         limit: 10,
         minScore: 0.3,
     });
-    if (recalled.data && Array.isArray(recalled.data) && recalled.data.length > 0) {
-        sections.push('## Relevant Facts\n' + recalled.data.map((m: any) =>
+    if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
+        sections.push('## Relevant Facts\n' + recalled.data.results.map((m: any) =>
             `- ${m.text || m.content || JSON.stringify(m)}`
         ).join('\n'));
     }
@@ -328,6 +359,18 @@ async function assembleContext(email: string, task: string): Promise<string> {
     return sections.join('\n\n---\n\n');
 }
 ```
+
+### Recall Pricing
+
+| Method | Mode | Cost |
+|---|---|---|
+| `recall()` | `fast_mode: false` (default, with reflection) | 0.2 credits/call |
+| `recall()` | `fast_mode: true` (no reflection, ~500ms) | 0.1 credits/call |
+| `smartDigest()` | — | Free (reads cached data) |
+
+1 credit = $0.01. Use `fast_mode: true` in loops and batch pipelines to minimize cost.
+
+---
 
 ### Constraints
 

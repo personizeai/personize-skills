@@ -193,7 +193,7 @@ export async function executePersonizeTool(
 ): Promise<string> {
   switch (toolName) {
     case "personize_recall": {
-      const result = await personize.memory.recall({
+      const result = await personize.memory.smartRecall({
         query: args.query as string,
         email: args.email as string | undefined,
         website_url: args.website_url as string | undefined,
@@ -220,10 +220,10 @@ export async function executePersonizeTool(
     case "personize_smart_digest": {
       const result = await personize.memory.smartDigest({
         email: args.email as string | undefined,
-        website_url: args.website_url as string | undefined,
-        include_properties: true,
-        include_memories: true,
-        token_budget: (args.token_budget as number) || 2000,
+        websiteUrl: args.website_url as string | undefined,
+        includeProperties: true,
+        includeMemories: true,
+        tokenBudget: (args.token_budget as number) || 2000,
       });
       return result.data?.compiledContext || "No data found for this entity.";
     }

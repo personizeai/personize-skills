@@ -1,6 +1,6 @@
 ---
 name: solution-architect
-description: "Personize Solution Architect — plans, designs, and validates complete Personize integrations. Covers the full journey: discovery, schema design, memorization pipelines, governance setup, content generation with guardrails, system wiring, and integration review with a production-readiness checklist. Use when a company wants to centralize customer knowledge, unify AI governance, deploy personalization across channels, or validate an existing Personize integration end-to-end."
+description: "Personize Solution Architect — plans, designs, and validates complete Personize integrations. Covers the full journey: discovery, schema design, memorization pipelines, governance setup, content generation with guardrails, system wiring, and integration review with a production-readiness checklist. Use this skill whenever a developer wants to plan a Personize integration, design their data schema, add personalization to their product, generate AI-powered content with guardrails, wire Personize into existing systems, or review an existing integration. Also trigger when they mention 'help me get started with Personize', 'how should I structure my data', 'personalization architecture', collections design, the integration checklist, or want an end-to-end implementation roadmap. This is the starting point for any new Personize project."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F3AF", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
@@ -95,6 +95,8 @@ Understand the developer's product before proposing anything. Ask questions conv
 **If they share code:** Read it. Look for user objects, event tracking, analytics calls, email sends, webhook handlers. Every `user.email`, `event.track()`, `sendEmail()`, or `notify()` is a personalization opportunity.
 
 > **Full guide:** Read `reference/discover.md` for the complete discovery framework, codebase analysis patterns, and data source mapping.
+>
+> **Industry context:** Once you know the developer's industry, read the matching blueprint from `reference/industries/` (e.g., `saas.md`, `healthcare.md`, `ecommerce.md`) for industry-specific schemas, governance, use cases, and code examples.
 
 ---
 
@@ -117,6 +119,8 @@ After discovery, present a tailored proposal organized by **where personalizatio
 **The magic formula:** `smartGuidelines` (rules) + `smartDigest` (who) + `recall` (what) = deeply personalized AI output. Use `mode: 'fast'` for real-time agents (~200ms), `mode: 'full'` for deep analysis (~3s).
 
 > **Full guide:** Read `reference/propose.md` for all use cases with user stories, before/after examples, technical patterns, and code snippets for each surface area.
+>
+> **Industry-specific proposals:** Read the matching blueprint from `reference/industries/` for 10-15 production-grade use cases per department (Sales, Marketing, CS, Product, Ops) with specific triggers, Personize capabilities used, governance requirements, and agent coordination patterns.
 
 ---
 
@@ -509,6 +513,35 @@ This loop is powered by the **three-layer agent operating model**: **Guidelines*
 
 > **Full technical reference:** Read `reference/plan.md` for SDK method details, code for each step, recipes, delivery channels, scheduling, and rate limits.
 
+### Model Selection and Pricing (`prompt`)
+
+`client.ai.prompt()` routes to any LLM via OpenRouter. Pass `model` (any OpenRouter model string) and `provider`:
+
+```typescript
+await client.ai.prompt({
+    context,
+    instructions: [...],
+    model: 'anthropic/claude-opus-4-6',  // any OpenRouter model string
+    provider: 'openrouter',               // default
+});
+```
+
+Default model: `moonshotai/kimi-k2.5`. Supported: any model available on OpenRouter (Anthropic, Google, xAI, OpenAI, Mistral, etc.).
+
+**Generate tiers** (billed on actual input + output tokens used):
+
+| Tier | Input | Output | Best For |
+|---|---|---|---|
+| `basic` | 0.2 credits/1K tokens | 0.4 credits/1K tokens | High-volume, cost-first |
+| `pro` | 0.5 credits/1K tokens | 1.0 credits/1K tokens | **Default** — balanced |
+| `ultra` | 1.0 credits/1K tokens | 2.5 credits/1K tokens | Highest capability models |
+
+Pass `tier` to have Personize select a curated model, or pass an explicit `model` string directly. 1 credit = $0.01.
+
+**Note:** Intelligence tiers (`basic`/`pro`/`pro_fast`/`ultra`) for **memorize** control the extraction pipeline. Generate tiers are separate and apply to `prompt()` only.
+
+**BYOK (bring your own OpenRouter key):** Coming soon. When active, per-token billing is replaced by a flat base fee + time-based fee — you pay your own LLM bill directly.
+
 ### Rate Limits
 
 Always call `client.me()` first to get actual limits — the response includes `plan.limits.maxApiCallsPerMinute` and `plan.limits.maxApiCallsPerMonth`. Each record uses ~4-6 API calls, so divide per-minute limit by 6 for estimated records/min throughput.
@@ -521,6 +554,7 @@ Always call `client.me()` first to get actual limits — the response includes `
 |---|---|
 | `reference/discover.md` | Discovery framework, questions, codebase analysis |
 | `reference/propose.md` | All use cases, user stories, surface areas, before/after examples |
+| `reference/industries/` | **Industry-specific blueprints** — 10 industries with schemas, governance, use cases by department, code examples, agent coordination patterns, and quick wins. Read `reference/industries/README.md` for the index, then read the specific industry file matching the developer's product. |
 | `reference/schema.md` | Schema design workflow, collection specs, property types, description writing, starter templates, verification |
 | `reference/schemas/` | JSON Schema definition, README, and 8 example schemas: core entities (contact, company, employee, member, product-user), agent memory, and use-case overlays (sales-contact, support-ticket) |
 | `reference/plan.md` | Data intelligence guide, 10-step loop, SDK methods, code examples, recipes, channels, scheduling, rate limits |

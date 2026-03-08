@@ -102,15 +102,16 @@ async function assembleDeepContext(email: string, trigger: string): Promise<stri
 
     // Layer 3: SEMANTIC RECALL — Specific facts relevant to this trigger
     // If the trigger is "new lead from Initech," recall what we know about Initech
-    const recalled = await client.memory.recall({
+    const recalled = await client.memory.smartRecall({
         query: trigger,
         email,
         limit: 10,
-        minScore: 0.3,
+        min_score: 0.3,
         include_property_values: true,
+        fast_mode: true,
     });
-    if (recalled.data && Array.isArray(recalled.data) && recalled.data.length > 0) {
-        sections.push('## Relevant Context for This Notification\n' + recalled.data.map((m: any) =>
+    if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
+        sections.push('## Relevant Context for This Notification\n' + recalled.data.results.map((m: any) =>
             `- ${m.text || m.content || JSON.stringify(m)}`
         ).join('\n'));
     }

@@ -31,7 +31,7 @@ interface PipelineConfig {
     observe: {
         entityType: string;
         pageSize: number;
-        conditions: Array<{ field: string; operator: string; value?: string }>;
+        conditions: Array<{ property: string; operator: string; value?: string }>;
     };
     recall: {
         smartGuidelinesMessage: string;
@@ -63,7 +63,7 @@ const config: PipelineConfig = {
         entityType: 'Contact',
         pageSize: 100,
         conditions: [
-            { field: 'email', operator: 'IS_SET' },
+            { property: 'email', operator: 'IS_SET' },
         ],
     },
     recall: {
@@ -131,7 +131,7 @@ async function runPipeline(cfg: PipelineConfig) {
         groups: [{
             id: 'g1', logic: 'AND' as const,
             conditions: cfg.observe.conditions.map(c => ({
-                field: c.field,
+                property: c.property,
                 operator: c.operator,
                 value: c.value,
             })),
@@ -180,14 +180,15 @@ async function runPipeline(cfg: PipelineConfig) {
                 contextParts.push('## Context\n' + digest.data.compiledContext);
             }
 
-            const recalled = await client.memory.recall({
+            const recalled = await client.memory.smartRecall({
                 query: cfg.recall.recallQuery,
                 email,
                 limit: 10,
-                minScore: 0.3,
+                min_score: 0.3,
+                fast_mode: true,
             });
-            if (recalled.data && Array.isArray(recalled.data) && recalled.data.length > 0) {
-                contextParts.push('## Recalled\n' + recalled.data.map((m: any) =>
+            if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
+                contextParts.push('## Recalled\n' + recalled.data.results.map((m: any) =>
                     `- ${m.text || m.content || JSON.stringify(m)}`
                 ).join('\n'));
             }

@@ -76,14 +76,14 @@ Claude Code reads `CLAUDE.md` at the project root. This is the highest-leverage 
 
 Before writing code, always check organizational governance:
 
-- **Coding standards**: `npx ts-node sdk/skills/governance-manager/recipes/ide-governance-bridge.ts fetch "coding standards for [language]"`
-- **Security**: `npx ts-node sdk/skills/governance-manager/recipes/ide-governance-bridge.ts fetch "security requirements"`
-- **API design**: `npx ts-node sdk/skills/governance-manager/recipes/ide-governance-bridge.ts fetch "API design patterns"`
+- **Coding standards**: `npx ts-node governance/recipes/ide-governance-bridge.ts fetch "coding standards for [language]"`
+- **Security**: `npx ts-node governance/recipes/ide-governance-bridge.ts fetch "security requirements"`
+- **API design**: `npx ts-node governance/recipes/ide-governance-bridge.ts fetch "API design patterns"`
 
 After fixing bugs or discovering patterns, push learnings:
 
 ```bash
-npx ts-node sdk/skills/governance-manager/recipes/ide-governance-bridge.ts learn \
+npx ts-node governance/recipes/ide-governance-bridge.ts learn \
   --variable "engineering-standards" \
   --section "## Known Issues" \
   --title "Describe the issue" \
@@ -136,7 +136,7 @@ When generating code, follow these organizational standards:
 
 For full guidelines, developers should run:
 ```bash
-npx ts-node sdk/skills/governance-manager/recipes/ide-governance-bridge.ts fetch "<topic>"
+npx ts-node governance/recipes/ide-governance-bridge.ts fetch "<topic>"
 ```
 ```
 
@@ -191,7 +191,7 @@ jobs:
         env:
           PERSONIZE_SECRET_KEY: ${{ secrets.PERSONIZE_SECRET_KEY }}
         run: |
-          npx ts-node sdk/skills/governance-manager/recipes/ide-governance-bridge.ts \
+          npx ts-node governance/recipes/ide-governance-bridge.ts \
             generate-claude-md --tags "engineering" --output ./GOVERNANCE-SNAPSHOT.md
 
       - name: Verify governance is current
@@ -232,7 +232,7 @@ jobs:
         env:
           PERSONIZE_SECRET_KEY: ${{ secrets.PERSONIZE_SECRET_KEY }}
         run: |
-          npx ts-node sdk/skills/governance-manager/recipes/auto-learning-loop.ts \
+          npx ts-node governance/recipes/auto-learning-loop.ts \
             scan-git --since "1 day ago"
 ```
 

@@ -230,8 +230,8 @@ async function dailyDigestJob() {
         groups: [{
             id: 'active', logic: 'AND',
             conditions: [
-                { field: 'email', operator: 'IS_SET' },
-                { field: 'digest_opt_in', operator: 'EQUALS', value: 'true' },
+                { property: 'email', operator: 'IS_SET' },
+                { property: 'digest_opt_in', operator: 'EQ', value: 'true' },
             ],
         }],
     });

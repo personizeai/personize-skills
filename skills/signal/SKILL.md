@@ -1,6 +1,6 @@
 ---
 name: signal
-description: "Set up @personize/signal — a smart notification engine that decides IF, WHAT, WHEN, and HOW to notify each person using Personize memory and governance. Guides you through connecting event sources, configuring delivery channels, setting up governance rules, and testing the decision engine. Use when building AI-powered notifications for a SaaS product."
+description: "Set up @personize/signal — a smart notification engine that decides IF, WHAT, WHEN, and HOW to notify each person using Personize memory and governance. Guides you through connecting event sources, configuring delivery channels, setting up governance rules, and testing the decision engine. Use this skill whenever the user wants to build smart notifications, AI-powered alerts, notification fatigue prevention, daily/weekly digests, personalized messaging, or intelligent notification routing. Also trigger when they mention @personize/signal, notification scoring, quiet hours, deduplication, channel routing (email vs Slack vs in-app vs SMS), or want notifications that know when to stay silent."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk >=0.4.0 and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F4E1", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
@@ -109,7 +109,7 @@ Generate the Signal initialization code based on the assessment.
 import { Personize } from '@personize/sdk';
 import { Signal, ConsoleChannel, ManualSource } from '@personize/signal';
 
-const client = new Personize({ secretKey: process.env.PERSONIZE_KEY! });
+const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 const manual = new ManualSource();
 
 const signal = new Signal({
@@ -133,7 +133,7 @@ import {
     InAppChannel,
 } from '@personize/signal';
 
-const client = new Personize({ secretKey: process.env.PERSONIZE_KEY! });
+const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 const manual = new ManualSource();
 
 const signal = new Signal({
@@ -291,7 +291,7 @@ Communication Frequency:
 
 ### How Governance Flows into Signal
 
-Signal's engine calls `smartContext()` in step 3 (context assembly). The AI sees these governance rules alongside the entity's full context and makes decisions accordingly. No code changes needed — update governance variables and Signal adapts.
+Signal's engine calls `smartGuidelines()` and `smartDigest()` in step 3 (context assembly). The AI sees these governance rules alongside the entity's full context and makes decisions accordingly. No code changes needed — update governance variables and Signal adapts.
 
 ---
 

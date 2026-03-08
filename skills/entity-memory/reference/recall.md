@@ -36,14 +36,6 @@ interface SmartRecallOptions {
     recordId?: string;                 // camelCase alias for record_id
     website_url?: string;              // Company website URL
     websiteUrl?: string;               // camelCase alias for website_url
-    phoneNumber?: string;              // Phone number (digits extracted)
-    phone_number?: string;             // snake_case alias
-    postalCode?: string;               // Postal/zip code
-    postal_code?: string;              // snake_case alias
-    deviceId?: string;                 // Device identifier
-    device_id?: string;                // snake_case alias
-    contentId?: string;                // Content item identifier
-    content_id?: string;               // snake_case alias
 
     type?: string;                     // Entity type filter (optional — inferred from identifier)
 
@@ -54,15 +46,11 @@ interface SmartRecallOptions {
     generate_answer?: boolean;         // AI generates a direct answer from results
     fast_mode?: boolean;               // Skip reflection + answer gen, ~500ms (default: false)
     min_score?: number;                // Server-side score filter (in fast_mode, defaults to 0.3)
-    enable_planning?: boolean;         // Query decomposition for multi-hop questions
+    minScore?: number;                 // camelCase alias for min_score
 
     // Collection scoping
     collectionIds?: string[];          // Scope to specific collection IDs
     collectionNames?: string[];        // Scope to collections by name (resolved server-side)
-
-    // Recency
-    prefer_recent?: boolean;           // Apply recency decay to scores
-    recency_half_life_days?: number;   // Half-life in days (default: 90)
 
     filters?: Record<string, unknown>; // Additional metadata filters
 }
@@ -85,8 +73,6 @@ interface RecallOptions {
     recordId?: string;                 // camelCase alias for record_id
     website_url?: string;              // Company website URL
     websiteUrl?: string;               // camelCase alias for website_url
-    collectionIds?: string[];          // Scope to specific collections
-    propertyIds?: string[];            // Return only specific properties
     filters?: Record<string, unknown>; // Additional filters
 }
 ```
@@ -413,13 +399,17 @@ interface ExportResponse {
 
 | Operator | Description | Example |
 |---|---|---|
-| `EQUALS` | Exact match | `{ field: 'plan_tier', operator: 'EQUALS', value: 'enterprise' }` |
-| `NOT_EQUALS` | Not equal | `{ field: 'status', operator: 'NOT_EQUALS', value: 'churned' }` |
-| `CONTAINS` | Substring match | `{ field: 'job_title', operator: 'CONTAINS', value: 'VP' }` |
-| `IS_SET` | Property exists and is not null | `{ field: 'email', operator: 'IS_SET' }` |
-| `IS_NOT_SET` | Property is null or missing | `{ field: 'phone', operator: 'IS_NOT_SET' }` |
-| `GREATER_THAN` | Numeric comparison | `{ field: 'login_count', operator: 'GREATER_THAN', value: 10 }` |
-| `LESS_THAN` | Numeric comparison | `{ field: 'days_since_login', operator: 'LESS_THAN', value: 30 }` |
+| `EQ` | Exact match | `{ property: 'plan_tier', operator: 'EQ', value: 'enterprise' }` |
+| `NEQ` | Not equal | `{ property: 'status', operator: 'NEQ', value: 'churned' }` |
+| `CONTAINS` | Substring match | `{ property: 'job_title', operator: 'CONTAINS', value: 'VP' }` |
+| `NOT_CONTAINS` | Substring exclusion | `{ property: 'notes', operator: 'NOT_CONTAINS', value: 'unsubscribed' }` |
+| `STARTS_WITH` | Prefix match | `{ property: 'email', operator: 'STARTS_WITH', value: 'admin' }` |
+| `IS_SET` | Property exists and is not null | `{ property: 'email', operator: 'IS_SET' }` |
+| `IS_NOT_SET` | Property is null or missing | `{ property: 'phone', operator: 'IS_NOT_SET' }` |
+| `GT` | Greater than (numeric) | `{ property: 'login_count', operator: 'GT', value: 10 }` |
+| `GTE` | Greater than or equal | `{ property: 'score', operator: 'GTE', value: 80 }` |
+| `LT` | Less than (numeric) | `{ property: 'days_since_login', operator: 'LT', value: 30 }` |
+| `LTE` | Less than or equal | `{ property: 'age', operator: 'LTE', value: 65 }` |
 
 ### Examples
 
@@ -432,8 +422,8 @@ const enterprise = await client.memory.search({
     groups: [{
         id: 'enterprise', logic: 'AND',
         conditions: [
-            { field: 'plan_tier', operator: 'EQUALS', value: 'enterprise' },
-            { field: 'email', operator: 'IS_SET' },
+            { property: 'plan_tier', operator: 'EQ', value: 'enterprise' },
+            { property: 'email', operator: 'IS_SET' },
         ],
     }],
 });
@@ -445,8 +435,8 @@ const vps = await client.memory.search({
     groups: [{
         id: 'active-vps', logic: 'AND',
         conditions: [
-            { field: 'job_title', operator: 'CONTAINS', value: 'VP' },
-            { field: 'status', operator: 'NOT_EQUALS', value: 'churned' },
+            { property: 'job_title', operator: 'CONTAINS', value: 'VP' },
+            { property: 'status', operator: 'NEQ', value: 'churned' },
         ],
     }],
 });
@@ -458,7 +448,7 @@ const count = await client.memory.search({
     groups: [{
         id: 'count', logic: 'AND',
         conditions: [
-            { field: 'plan_tier', operator: 'EQUALS', value: 'enterprise' },
+            { property: 'plan_tier', operator: 'EQ', value: 'enterprise' },
         ],
     }],
 });
@@ -497,12 +487,15 @@ Retrieves organizational guidelines, policies, and best practices relevant to a 
 ### Full Signature
 
 ```typescript
-interface SmartContextOptions {
+interface SmartGuidelinesOptions {
     message: string;           // Topic/query (required)
-    variableIds?: string[];    // Only search these variables
-    tags?: string[];           // Only search variables with these tags
-    excludeTags?: string[];    // Exclude variables with these tags
+    guidelineIds?: string[];   // Only search these guidelines by ID
+    guidelineNames?: string[]; // Resolve guidelines by name (case-insensitive)
+    tags?: string[];           // Only search guidelines with these tags
+    excludeTags?: string[];    // Exclude guidelines with these tags
     model?: string;            // Model for relevance scoring
+    mode?: 'fast' | 'full' | 'auto'; // Routing mode (default: 'auto')
+    minScore?: number;         // Min cosine similarity for fast mode (default: 0.4)
 }
 ```
 
@@ -533,7 +526,7 @@ Most generation pipelines need three layers of context. Combine them for optimal
 ```
 Layer 1: smartGuidelines()   → Rules (what should the AI do?)
 Layer 2: smartDigest()    → Entity (who is this about?)
-Layer 3: recall()         → Task-specific facts (what's relevant to THIS task?)
+Layer 3: smartRecall()    → Task-specific facts (what's relevant to THIS task?)
 ```
 
 ### Full Example
@@ -569,8 +562,8 @@ async function assembleContext(email: string, task: string): Promise<string> {
         limit: 10,
         minScore: 0.3,
     });
-    if (recalled.data && Array.isArray(recalled.data) && recalled.data.length > 0) {
-        sections.push('## Relevant Facts\n' + recalled.data.map((m: any) =>
+    if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
+        sections.push('## Relevant Facts\n' + recalled.data.results.map((m: any) =>
             `- ${m.text || m.content || JSON.stringify(m)}`
         ).join('\n'));
     }

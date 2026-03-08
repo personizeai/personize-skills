@@ -164,27 +164,27 @@ When creating collections, combine property naming (for auto-detection) with goo
 
 ```typescript
 await client.collections.create({
-  name: 'Sales Contacts',
+  collectionName: 'Sales Contacts',
   entityType: 'Contact',
   properties: [
     // Plain text — no special rendering needed
-    { name: 'job-title', type: 'text', description: 'Current role and title' },
-    { name: 'company-name', type: 'text', description: 'Company they work for' },
+    { propertyName: 'job-title', type: 'text', description: 'Current role and title' },
+    { propertyName: 'company-name', type: 'text', description: 'Company they work for' },
 
     // Long text — keyword "summary" triggers expandable block
-    { name: 'call-summary', type: 'text', description: 'Summary of latest sales call' },
+    { propertyName: 'call-summary', type: 'text', description: 'Summary of latest sales call' },
 
     // Long text — keyword "notes" triggers expandable block
-    { name: 'meeting-notes', type: 'text', description: 'Raw notes from meetings' },
+    { propertyName: 'meeting-notes', type: 'text', description: 'Raw notes from meetings' },
 
     // Task list — keyword "tasks" + JSON shape triggers task cards
-    { name: 'action-tasks', type: 'array', description: 'Action items with status and owner' },
+    { propertyName: 'action-tasks', type: 'array', description: 'Action items with status and owner' },
 
     // Link — keyword "url" triggers clickable link
-    { name: 'linkedin-url', type: 'text', description: 'LinkedIn profile URL' },
+    { propertyName: 'linkedin-url', type: 'text', description: 'LinkedIn profile URL' },
 
     // Options — rendered as badge
-    { name: 'deal-stage', type: 'options', options: 'prospect,qualified,negotiation,closed-won,closed-lost' },
+    { propertyName: 'deal-stage', type: 'options', options: 'prospect,qualified,negotiation,closed-won,closed-lost' },
   ],
 });
 ```

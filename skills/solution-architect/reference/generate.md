@@ -68,14 +68,15 @@ async function assembleGenerationContext(
     }
 
     // Previous outputs — what have we already sent?
-    const history = await client.memory.recall({
+    const history = await client.memory.smartRecall({
         query: `previous ${purpose} messages sent`,
         email,
         limit: 5,
-        minScore: 0.4,
+        min_score: 0.4,
+        fast_mode: true,
     });
-    if (history.data && Array.isArray(history.data) && history.data.length > 0) {
-        sections.push('## Previously Sent Content\n' + history.data.map((m: any) =>
+    if (history.data?.results && Array.isArray(history.data.results) && history.data.results.length > 0) {
+        sections.push('## Previously Sent Content\n' + history.data.results.map((m: any) =>
             `- ${m.text || m.content || JSON.stringify(m)}`
         ).join('\n'));
     }
