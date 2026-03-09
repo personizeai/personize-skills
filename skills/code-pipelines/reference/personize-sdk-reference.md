@@ -294,7 +294,7 @@ const ctx = await personize.ai.smartGuidelines({
 **This is the core pattern for GTM pipelines.** The AI agent has access to all built-in Personize tools by default (memory_recall_pro, memory_store_pro, ai_smart_guidelines, guideline_*, etc.) and can autonomously recall, research, and memorize during generation.
 
 ```typescript
-// Built-in Personize tools are available by default — no mcpTools needed.
+// Built-in Personize tools are available by default.
 const result = await personize.ai.prompt({
   prompt: "Research this lead and write a personalized outreach email.",
 
@@ -345,26 +345,24 @@ In multi-step mode, if a later step produces an output with the **same name** as
 
 Tool results are **always** available in `metadata.toolResults` in the response regardless of this setting.
 
-### prompt — with External MCP Tools (Optional)
+### prompt — with Attachments (Multimodal)
 
-If you've connected external MCP servers via the [Personize dashboard](https://app.personize.ai) (e.g. Tavily for web search, HubSpot for CRM access), you can pass them via `mcpTools` to extend the AI's capabilities beyond the built-in tools:
+Send images, PDFs, or documents for multimodal analysis alongside your prompt:
 
 ```typescript
 const result = await personize.ai.prompt({
-  prompt: "Research this lead on the web and write a personalized outreach email.",
-
-  // Optional: external MCP servers configured in the Personize dashboard.
-  // Built-in tools are always available regardless.
-  mcpTools: [
-    { mcpId: "tavily", enabledTools: ["search"] },
+  prompt: "Extract key data from this invoice and create a contact record.",
+  attachments: [
+    { name: "invoice.pdf", mimeType: "application/pdf", url: "https://..." },
   ],
-
-  outputs: [{ name: "email_subject" }, { name: "email_body" }],
-  memorize: { email: "lead@company.com", captureToolResults: true },
+  outputs: [{ name: "invoice_data" }, { name: "contact_info" }],
+  memorize: { email: "extracted@company.com", captureToolResults: true },
 });
 ```
 
-> **Note:** External MCP servers must be added via the Personize dashboard before they can be referenced here. The `mcpId` and available tool names come from your dashboard configuration.
+Supported types: `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/svg+xml`, `application/pdf`, `text/plain`, `text/csv`, `text/html`, `text/markdown`, `application/json`. Max 10 attachments, 20 MB each, 50 MB total. In multi-step `instructions[]`, attachments are sent with the first step only.
+
+> **MCP Tools:** External MCP servers connected via the [Personize dashboard](https://app.personize.ai) (Tavily, HubSpot, Zapier, etc.) are automatically available during prompt execution — no parameter needed.
 
 ### Multi-Step Instructions
 
@@ -385,7 +383,7 @@ const result = await personize.ai.prompt({
       maxSteps: 3,
     },
   ],
-  // No mcpTools needed — built-in tools (recall, memorize, smart_guidelines, etc.)
+  // Built-in tools (recall, memorize, smart_guidelines, etc.)
   // are available by default in every instruction step.
   memorize: { email: "lead@company.com", captureToolResults: true },
 });
@@ -504,7 +502,7 @@ const result = await personize.agents.run("cold-outreach-agent", {
 
 ### Built-in Tools (Available by Default)
 
-These tools are available automatically in `ai.prompt()` and `agents.run()` — **no `mcpTools` parameter needed**:
+These tools are available automatically in `ai.prompt()` and `agents.run()`:
 
 | Tool Name | What It Does |
 |---|---|
@@ -517,11 +515,9 @@ These tools are available automatically in `ai.prompt()` and `agents.run()` — 
 | `guideline_update` | Update an existing governance variable |
 | `guideline_delete` | Delete a governance variable |
 
-### External MCP Tools (Optional — via `mcpTools` parameter)
+### External MCP Tools (Auto-Enabled)
 
-You can extend the AI's capabilities by connecting external MCP servers in the [Personize dashboard](https://app.personize.ai). Once configured, reference them via the `mcpTools` parameter in `ai.prompt()` or `agents.run()`.
-
-The `mcpId` and available tool names come from your dashboard configuration. Common examples:
+External MCP servers connected via the [Personize dashboard](https://app.personize.ai) are automatically available during `ai.prompt()` and `agents.run()` — no parameter needed.
 
 | MCP Server | Use Case |
 |---|---|
@@ -529,19 +525,92 @@ The `mcpId` and available tool names come from your dashboard configuration. Com
 | Zapier | 6,000+ app integrations |
 | HubSpot | Direct CRM access from within AI generation |
 
+**When to use MCP tools vs. direct SDK calls:**
+- **MCP tools** (in `ai.prompt()` / `agents.run()`): Let the AI decide what to recall/check autonomously during content generation. Preferred for creative tasks.
+- **Direct SDK calls** (in task code): When you need deterministic, structured operations — batch sync, export, specific queries. Preferred for data operations.
+
+---
+
+## Multi-Entity Pattern
+
+A single pipeline step often involves multiple entities. The SDK API stays the same — you make **multiple calls with different identifiers** in the same step. This enables use cases where one interaction teaches multiple entities.
+
+### Multi-Entity Recall (before acting)
+
 ```typescript
-// Optional: pass external MCPs configured in your Personize dashboard.
-await personize.ai.prompt({
-  prompt: "Research this lead on the web and write an email.",
-  mcpTools: [
-    { mcpId: "your-mcp-id", enabledTools: ["tool-name"] },
-  ],
-});
+// Pull context from all relevant entities in parallel
+const [contactCtx, companyCtx, campaignCtx] = await Promise.all([
+  personize.memory.smartDigest({
+    email: "lead@company.com",
+    type: "Contact",
+    token_budget: 1500,
+  }),
+  personize.memory.smartDigest({
+    websiteUrl: "https://company.com",
+    type: "Company",
+    token_budget: 1000,
+  }),
+  personize.memory.smartDigest({
+    recordId: "campaign:q1-outbound",    // custom entity via record_id
+    token_budget: 800,
+  }),
+]);
+
+// Combine into context for generation
+const context = [
+  contactCtx.data?.compiledContext,
+  companyCtx.data?.compiledContext,
+  campaignCtx.data?.compiledContext,
+].filter(Boolean).join('\n\n---\n\n');
 ```
 
-**When to use built-in MCP tools vs. direct SDK calls:**
-- **Built-in MCP tools** (in `ai.prompt()` / `agents.run()`): Let the AI decide what to recall/check autonomously during content generation. Preferred for creative tasks.
-- **Direct SDK calls** (in task code): When you need deterministic, structured operations — batch sync, export, specific queries. Preferred for data operations.
+### Multi-Entity Memorize (after acting)
+
+```typescript
+// Each entity learns what's relevant to IT
+await Promise.allSettled([
+  // The contact
+  personize.memory.memorize({
+    email: "lead@company.com",
+    content: "[OUTREACH] Sent cold email #1. Subject: ...",
+    tags: ["outreach", "email-sent"],
+    enhanced: true,
+  }),
+  // The company
+  personize.memory.memorize({
+    website_url: "https://company.com",
+    content: "[ACCOUNT] First outreach to this company. Contact: lead@company.com.",
+    tags: ["account", "first-touch"],
+    enhanced: true,
+  }),
+  // The campaign (custom entity via record_id)
+  personize.memory.memorize({
+    record_id: "campaign:q1-outbound",
+    content: "[CAMPAIGN] Sent to lead@company.com. Template: VP intro.",
+    tags: ["campaign", "sent"],
+    enhanced: true,
+  }),
+]);
+```
+
+### Custom Entities via `record_id`
+
+Use `record_id` for any entity that isn't a contact or company — campaigns, tickets, modules, products, teams. You define the naming convention:
+
+| Entity | record_id Format | Example |
+|---|---|---|
+| Campaign | `campaign:<name>` | `campaign:q1-outbound` |
+| Ticket | `ticket:<id>` | `ticket:456` |
+| Module | `module:<name>` | `module:auth` |
+| Product | `product:<name>` | `product:self` |
+
+Recall custom entities with the same `recordId`:
+```typescript
+const campaign = await personize.memory.smartDigest({
+  recordId: "campaign:q1-outbound",
+  token_budget: 1000,
+});
+```
 
 ---
 
@@ -701,9 +770,9 @@ Runs a three-phase evaluation on a collection: (1) extract properties from sampl
 const evaluation = await personize.evaluate.memorizationAccuracy({
   collectionId: "col_abc",                // collection to evaluate against
   input: "John Smith is VP of Sales at Acme Corp. They use Salesforce and have 200 employees.",
-  extractionModel: "x-ai/grok-4.1-fast", // optional: model for extraction phase
-  analysisModel: "x-ai/grok-4.1-fast",   // optional: model for analysis phase
-  optimizerModel: "x-ai/grok-4.1-fast",  // optional: model for schema optimization
+  extractionModel: "your-model-id",       // optional: model for extraction phase
+  analysisModel: "your-model-id",         // optional: model for analysis phase
+  optimizerModel: "your-model-id",        // optional: model for schema optimization
   skipStorage: true,                      // true = don't persist values (dry run). Default: true
   includeFreeformMemories: false,         // include free-form memories in extraction
   crmKeys: {                              // optional: entity scope

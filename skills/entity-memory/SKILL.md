@@ -155,14 +155,14 @@ await client.memory.memorizeBatch({
 
 `memorize()` and `memorizeBatch()` accept a `tier` param that selects the LLM pipeline and credit rate. Defaults to `pro` — no breaking change for existing callers.
 
-| Tier | Rate | Models (primary → fallback) | Best For |
-|---|---|---|---|
-| `basic` | 1 credit/1K tokens | Qwen Turbo → DeepSeek V3.2 | High-volume, cost-first |
-| `pro` | 2.5 credits/1K tokens | Grok 4.1 Fast → Gemini 2.5 Flash | **Default** — best quality/cost balance |
-| `pro_fast` | 3.5 credits/1K tokens | Gemini 3 Flash → Gemini 2.5 Flash-Lite | Speed-critical (~8s latency) |
-| `ultra` | 7 credits/1K tokens | Grok 4.1 Fast (+ reasoning) → GLM-5 | Maximum extraction depth, 50 properties |
+| Tier | Rate | Best For |
+|---|---|---|
+| `basic` | 1 credit/1K tokens | High-volume, cost-first |
+| `pro` | 2.5 credits/1K tokens | **Default** — best quality/cost balance |
+| `pro_fast` | 3.5 credits/1K tokens | Speed-critical (~8s latency) |
+| `ultra` | 7 credits/1K tokens | Maximum extraction depth, 50 properties |
 
-Tiers also control `maxProperties` (15–50), `chunkMaxWords` (2000–4000), and `minPropertyScore` (0.2–0.4). Model fallback is automatic — if the primary model fails, OpenRouter routes to the fallback. 1 credit = $0.01.
+Tiers also control `maxProperties` (15–50), `chunkMaxWords` (2000–4000), and `minPropertyScore` (0.2–0.4). Model fallback is automatic — if the primary model fails, the system routes to the fallback. 1 credit = $0.01.
 
 ```typescript
 await client.memory.memorize({
@@ -179,6 +179,20 @@ await client.memory.memorizeBatch({
     tier: 'pro_fast',    // fast LLMs, lower latency
 });
 ```
+
+> **Note:** These are **memorize intelligence tiers** — they control the extraction pipeline. For content **generation** via `client.ai.prompt()`, see the separate generate tiers below.
+
+### Generate Tiers (`prompt`)
+
+`client.ai.prompt()` has its own tier system for content generation, separate from memorize tiers:
+
+| Tier | Input | Output | Best For |
+|---|---|---|---|
+| `basic` | 0.2 cr/1K tokens | 0.4 cr/1K tokens | High-volume, cost-first |
+| `pro` | 0.5 cr/1K tokens | 1.0 cr/1K tokens | **Default** — balanced |
+| `ultra` | 1.0 cr/1K tokens | 2.5 cr/1K tokens | Highest capability |
+
+Pass `tier` to select a curated model (default). Custom `model` and `provider` require BYOK (`openrouterApiKey`) — without it, the API returns 400.
 
 ---
 
@@ -379,7 +393,7 @@ async function assembleContext(email: string, task: string): Promise<string> {
 1. **MUST** set an explicit `token_budget` on every `smartDigest()` call -- because the default (1000) may truncate critical context for deep personalization or waste tokens for simple lookups.
 2. **SHOULD** set `minScore` on `smartRecall()` (0.3 for broad context, 0.5+ for precision) -- because omitting it returns low-relevance noise that dilutes the context window.
 3. **SHOULD** use `fast_mode: true` for context injection, real-time UIs, and batch processing -- because it cuts recall latency from ~10-20s to ~500ms; override for exploratory queries where reflection adds value.
-4. **SHOULD** assemble context from all three layers (`smartGuidelines` + `smartDigest` + `smartRecall`) before generating -- because single-source context produces governance-blind, entity-ignorant, or task-irrelevant output. Use `mode: 'fast'` for real-time agent flows (~200ms), `mode: 'full'` for first-call or complex planning tasks (~3s).
+4. **SHOULD** assemble context from all three layers (`smartGuidelines` + `smartDigest` + `smartRecall`) before generating -- because single-source context produces governance-blind, entity-ignorant, or task-irrelevant output. Use `mode: 'fast'` for real-time agent flows (~200ms), `mode: 'deep'` for first-call or complex planning tasks (~3s). (Note: `'full'` was renamed to `'deep'` in SDK types and API.)
 5. **MAY** set `include_property_values: true` on `smartRecall()` -- because it returns structured properties alongside semantic results, useful when the caller needs both.
 6. **MUST** paginate `export()` calls using `page` and `pageSize` -- because unbounded exports can time out or exceed memory limits on large datasets. Default pageSize is 50.
 7. **MAY** cache `smartDigest()` results within a single pipeline run when the same entity is referenced multiple times -- because redundant API calls waste tokens and add latency.

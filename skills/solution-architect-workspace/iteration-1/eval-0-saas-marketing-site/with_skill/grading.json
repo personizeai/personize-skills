@@ -1,0 +1,32 @@
+{
+  "eval_id": 0,
+  "eval_name": "saas-marketing-site",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "uses_all_three_layers",
+      "passed": true,
+      "evidence": "Every proposal (1-5) has a dedicated 'Why It Needs All Three Layers' section with bullet points for Governance, Memory, and Generation. All code examples use smartGuidelines, smartDigest/recall, and prompt with instructions[]. The opening table maps all three layers with a 'Without It' column."
+    },
+    {
+      "text": "generates_content_not_tags",
+      "passed": true,
+      "evidence": "The intro explicitly disclaims template-swapping: 'NOT proposing... swapping a banner based on industry segment... those are template logic any CRM plus a few if/else statements can handle.' All five proposals center on AI writing original copy -- e.g., Proposal 1 generates unique value proposition paragraphs, Proposal 5 writes emails from scratch 'not a drip sequence template with merge fields but a composed message.'"
+    },
+    {
+      "text": "passes_differentiation_test",
+      "passed": true,
+      "evidence": "Each proposal requires multi-step governed generation with cross-source memory. For example, Proposal 1 combines CRM data + page view history + signup goals under brand governance to generate unique page copy -- not achievable by a CRM + basic LLM call which lacks the governance layer and unified memory. Proposal 5 synthesizes page view sequences into narrative emails governed by a data-reference policy controlling what behavior is OK to mention."
+    },
+    {
+      "text": "includes_governance_role",
+      "passed": true,
+      "evidence": "Governance has a dedicated table row explaining its purpose and what happens without it. A full 'Governance You Should Set Up First' section defines 5 specific variables (brand-voice, messaging-playbook, competitor-policy, data-reference-policy, cta-rules). Every proposal includes governance as essential -- e.g., Proposal 5 uses governance to determine 'What behavior is OK to reference explicitly? What feels intrusive?'"
+    },
+    {
+      "text": "shows_unified_memory_value",
+      "passed": true,
+      "evidence": "The three-layer table explicitly states: 'Without It: AI sees only one data source. It knows the visitor's company name but not that they viewed 4 solution pages about API integrations and attended your webinar last week.' Each proposal combines multiple sources -- e.g., Proposal 1 merges HubSpot CRM data + page view tracking + signup data. The 'Data You Need to Memorize' table shows 5 distinct sources feeding unified memory."
+    }
+  ]
+}

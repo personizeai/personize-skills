@@ -27,7 +27,7 @@ Personize gives the developer three capabilities, all accessible via REST API, S
 | Capability | What It Does | Core SDK Methods |
 |---|---|---|
 | **Unified Customer Memory** | Ingests structured and unstructured data from any tool via `memorizeBatch()`. AI extracts properties into per-entity profiles. Write-heavy by design — ingest everything, recall what matters. | `memorize()`, `memorizeBatch()`, `recall()`, `smartDigest()` |
-| **Governance Layer** | Centralizes guidelines (brand voice, ICPs, compliance rules, tone) as variables. Every agent fetches governance before generating — one source of truth instead of per-agent prompts. | `smartGuidelines()`, `guidelines.list/create/update()` |
+| **Governance Layer** | Centralizes guidelines (brand voice, ICPs, compliance rules, tone) as variables. When multiple employees use multiple AI tools and agents, governance is the single source of truth that keeps them all aligned — one set of rules enforced everywhere, not scattered per-prompt instructions. | `smartGuidelines()`, `guidelines.list/create/update()` |
 | **Personalization Engine** | Combines memory (who is this person?) + governance (what are our rules?) to generate personalized output via multi-step `instructions[]`. | `prompt()` with `instructions[]`, `evaluate: true` |
 
 **Personalization surfaces:**
@@ -102,25 +102,35 @@ Understand the developer's product before proposing anything. Ask questions conv
 
 ## Action: PROPOSE
 
-After discovery, present a tailored proposal organized by **where personalization shows up**. Don't just list features — paint the picture of what their product becomes with Personize.
+After discovery, present personalization opportunities that showcase what's **only possible with all three Personize layers working together**.
+
+**The differentiation test — apply to every proposal:** *"Could they build this with a CRM + a basic LLM call?"* If yes, rethink it. Swapping a CTA label based on user role is template logic any tool can do. Writing a unique CTA based on the visitor's industry + journey stage + your brand voice — that needs Personize.
+
+**Every proposal must use all three layers:**
+
+| Layer | What It Provides | Without It |
+|---|---|---|
+| **Governance** (`smartGuidelines`) | Org rules, brand voice, ICPs, compliance — shared across ALL agents, employees, and tools | Every agent, employee, and AI tool invents its own voice and rules. 5 people using 3 tools = 15 different "brands." |
+| **Unified Memory** (`smartDigest` + `recall`) | Cross-source context from ALL tools combined | AI sees one data source, misses the full picture |
+| **Content Generation** (`prompt` with `instructions[]`) | Multi-step AI that WRITES original content | You're doing conditional rendering with extra steps |
+
+**The key distinction:** Proposals must center on AI **generating** original content (paragraphs, emails, page copy, guides, insights) — not on looking up data and displaying it differently. Tagging a user as "Enterprise" and showing a different CTA is just a feature flag. Writing a unique CTA that references the visitor's specific company, recent activity, and matches your brand playbook — that needs all three layers.
 
 **5 surface areas** (only propose what's relevant):
 
-| Surface Area | Key Use Cases |
+| Surface | Three-Layer Proposal Examples |
 |---|---|
-| **Software / Web App** | Personalized dashboards, smart onboarding, contextual feature tips, AI-generated insights, smart defaults, personalized empty states |
-| **Marketing Campaigns** | Hyper-personalized outreach, intelligent nurture sequences, event-triggered campaigns, re-engagement, ABM, personalized landing pages |
-| **Mobile App** | Smart push notifications, personalized home screen, contextual in-app messages, smart digest notifications |
-| **Notifications** | Smart alerts via `smartDigest()`, escalation notifications, product usage nudges, health check-ins, meeting prep briefs, internal team alerts |
-| **Customer Success** | AI-powered ticket routing, proactive churn prevention, QBR prep, personalized knowledge base |
+| **Software / Web App** | AI-generated onboarding guides written per user, dashboard insight narratives, governance-controlled page copy |
+| **Marketing Campaigns** | AI-written emails where every sentence uses unified context, governance-compliant landing page copy generated per visitor |
+| **Notifications** | AI-synthesized alert narratives from multiple signals, generated digest briefings, governance-controlled messaging |
+| **Customer Success** | AI-written health reports, generated QBR narratives, governance-compliant check-in messages |
+| **Mobile App** | AI-composed push copy, generated home screen narratives, contextual in-app guidance |
 
-**User stories by persona:** Developer, Product Manager, Sales, Marketing, Customer Success — use stories that match who you're talking to.
+**User stories by persona:** Developer, Product Manager, Sales, Marketing, Customer Success — match stories to who you're talking to. Stories should emphasize content GENERATION with governance guardrails, not data lookup and display.
 
-**The magic formula:** `smartGuidelines` (rules) + `smartDigest` (who) + `recall` (what) = deeply personalized AI output. Use `mode: 'fast'` for real-time agents (~200ms), `mode: 'full'` for deep analysis (~3s).
-
-> **Full guide:** Read `reference/propose.md` for all use cases with user stories, before/after examples, technical patterns, and code snippets for each surface area.
+> **Full guide:** Read `reference/propose.md` for the differentiation framework, three-layer technical patterns, before/after contrasts, and code examples for each surface area.
 >
-> **Industry-specific proposals:** Read the matching blueprint from `reference/industries/` for 10-15 production-grade use cases per department (Sales, Marketing, CS, Product, Ops) with specific triggers, Personize capabilities used, governance requirements, and agent coordination patterns.
+> **Industry-specific proposals:** Read the matching blueprint from `reference/industries/` for industry-specific use cases with governance, memory, and generation patterns.
 
 ---
 
@@ -455,6 +465,7 @@ Use this to verify a Personize integration is complete. Each section builds on t
 - [ ] Structured `outputs: [{ name: "..." }]` for machine-readable results
 - [ ] `memorize: { email, captureToolResults: true }` saves output back to memory
 - [ ] `evaluate: true` for quality scoring on production runs
+- [ ] `attachments` for multimodal inputs (images, PDFs, documents) when applicable
 - [ ] External MCP tools connected via dashboard if needed
 
 **7. Agents** — Reusable prompt actions:
@@ -474,6 +485,35 @@ Use this to verify a Personize integration is complete. Each section builds on t
 - [ ] Rate limits read from `client.me()`, not hardcoded
 
 > **Full checklist with examples and verify commands:** Read `reference/integration-checklist.md`.
+
+---
+
+## Advanced: Multi-Organization Deployments
+
+> **DO NOT propose this pattern proactively.** Most users have a single organization and should stay that way — especially if they are new to Personize, still in discovery, or have not yet completed a working integration. Only discuss multi-org when the user explicitly raises it or describes a concrete scenario that requires it (e.g., agency managing multiple client brands, holding company with isolated business units, platform embedding Personize per-customer).
+
+### When Multi-Org vs. Single Org
+
+| Scenario | Recommendation | Why |
+|---|---|---|
+| One company, multiple departments | **Single org** — use entity separation (collections, tags) | Shared governance, shared memory, simpler to manage |
+| One company, multiple products | **Single org** — use collections per product | Cross-product context is valuable, one governance layer |
+| Agency managing 5+ client brands | **Multi-org** — one org per client | Each client needs isolated memory, separate governance (brand voice, compliance), separate API keys |
+| Platform embedding Personize per-customer | **Multi-org** — one org per customer | Data isolation is mandatory; customers must not see each other's data |
+| Holding company, fully independent business units | **Multi-org** — one org per unit | Different governance, different compliance requirements, no shared context needed |
+
+### Key Considerations
+
+- **Governance is per-org.** Each org has its own guidelines. If client A's brand voice is casual and client B's is formal, they need separate orgs — not a single org with conditional logic.
+- **Memory is per-org.** Data does not cross org boundaries. This is a feature (isolation) not a limitation.
+- **API keys are per-org.** Each org has its own `sk_live_...` key. Manage these as separate credentials.
+- **No cross-org queries.** You cannot `recall()` across orgs in a single call. If you need cross-org rollups, build them at the application layer.
+- **Shared templates, separate execution.** You can reuse the same pipeline code (TypeScript, n8n workflows) across orgs — just swap the API key per execution context.
+
+### What NOT to Do
+
+- Do not create multiple orgs "just in case" — start with one, split only when you hit a concrete isolation requirement.
+- Do not try to simulate multi-org within a single org using tags or naming conventions — if you need true isolation, use separate orgs.
 
 ---
 
@@ -526,7 +566,7 @@ await client.ai.prompt({
 });
 ```
 
-Default model: `moonshotai/kimi-k2.5`. Supported: any model available on OpenRouter (Anthropic, Google, xAI, OpenAI, Mistral, etc.).
+Default model is selected by the `pro` tier. Supported: any model available on OpenRouter (Anthropic, Google, xAI, OpenAI, Mistral, etc.).
 
 **Generate tiers** (billed on actual input + output tokens used):
 
@@ -540,7 +580,27 @@ Pass `tier` to have Personize select a curated model, or pass an explicit `model
 
 **Note:** Intelligence tiers (`basic`/`pro`/`pro_fast`/`ultra`) for **memorize** control the extraction pipeline. Generate tiers are separate and apply to `prompt()` only.
 
-**BYOK (bring your own OpenRouter key):** Coming soon. When active, per-token billing is replaced by a flat base fee + time-based fee — you pay your own LLM bill directly.
+**Direct providers:** Pass `provider` to bypass OpenRouter and route directly to a provider's API: `openai`, `anthropic`, `google`, `xai`, `deepseek`, `openrouter` (default).
+
+```typescript
+// Without BYOK: use tier (model auto-selected)
+await client.ai.prompt({
+    context,
+    instructions: [...],
+    tier: 'pro',  // basic, pro (default), ultra
+});
+
+// With BYOK: must provide model + provider + openrouterApiKey
+await client.ai.prompt({
+    context,
+    instructions: [...],
+    openrouterApiKey: 'sk-or-v1-...',
+    model: 'claude-sonnet-4-6',
+    provider: 'anthropic',
+});
+```
+
+**BYOK (bring your own key):** On Pro/Enterprise plans, pass `openrouterApiKey` with `model` and `provider` to use your own key. Without BYOK, `model`/`provider` are rejected (400) — use `tier` instead. Billing switches to time-based: 10 credits base + 10 credits per extra minute.
 
 ### Rate Limits
 

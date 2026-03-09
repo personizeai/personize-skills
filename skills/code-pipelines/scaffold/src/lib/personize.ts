@@ -19,24 +19,24 @@ export const personize = new Personize({
  * Built-in tools (recall, memorize, smart_guidelines, guidelines, etc.)
  * are available automatically — no configuration needed.
  *
- * If you've connected external MCP servers (e.g. Tavily, Zapier, HubSpot)
- * via the Personize dashboard, you can optionally pass them via `mcpTools`.
+ * External MCP servers connected via the Personize dashboard (Tavily, HubSpot, etc.)
+ * are automatically available during prompt execution.
  */
 export async function generateWithTools(opts: {
   prompt: string;
   email?: string;
   outputs?: Array<{ name: string }>;
-  model?: string;
-  mcpTools?: Array<{ mcpId: string; enabledTools: string[] }>;
+  tier?: 'basic' | 'pro' | 'ultra';
+  attachments?: Array<{ name?: string; mimeType: string; data?: string; url?: string }>;
 }) {
   return personize.ai.prompt({
     prompt: opts.prompt,
-    ...(opts.mcpTools ? { mcpTools: opts.mcpTools } : {}),
     outputs: opts.outputs,
     memorize: opts.email
       ? { email: opts.email, captureToolResults: true }
       : undefined,
-    model: opts.model,
+    tier: opts.tier,
+    attachments: opts.attachments,
   });
 }
 

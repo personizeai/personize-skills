@@ -74,11 +74,14 @@ Personize SDK is the **memory + governance layer**. You can use it with:
 ### Option A: Personize AI with Built-in Tools
 ```typescript
 // Built-in tools (recall, memorize, smart_guidelines, guidelines, etc.)
-// are available by default — NO mcpTools parameter needed.
+// are available by default.
 const result = await personize.ai.prompt({
   prompt: `Research ${email} and write a personalized cold email.`,
   outputs: [{ name: "email_subject" }, { name: "email_body" }],
   memorize: { email, captureToolResults: true },
+  // tier: 'basic' | 'pro' (default) | 'ultra' — selects curated model + credit rate
+  // openrouterApiKey: '...' — BYOK (Pro/Enterprise): 10 cr base + 10 cr/extra min
+  // model + provider: requires BYOK (openrouterApiKey). Without BYOK, use tier.
 });
 
 // result.data.text — cleaned response (output markers stripped)
@@ -91,7 +94,20 @@ const result = await personize.ai.prompt({
 
 > **`captureToolResults: true`**: Memorizes tool return values (e.g. web search results, enrichment data) alongside extracted outputs. Does NOT change the response body — only affects what gets memorized. Meta tools (`smart_guidelines`, `recall_pro`, etc.) are excluded from capture.
 
-> **Optional:** If you've connected external MCP servers (Tavily, HubSpot, Zapier, etc.) via the [Personize dashboard](https://app.personize.ai), you can pass them via `mcpTools` to give the AI additional capabilities. See `reference/personize-sdk-reference.md` for details.
+> **MCP Tools:** External MCP servers (Tavily, HubSpot, Zapier, etc.) connected via the [Personize dashboard](https://app.personize.ai) are automatically available to the AI during prompt execution.
+
+> **Attachments:** Send images, PDFs, or documents for multimodal analysis. Provide base64 `data` or a `url`:
+> ```typescript
+> const result = await personize.ai.prompt({
+>   prompt: "Extract key data from this invoice and create a contact record.",
+>   attachments: [
+>     { name: "invoice.pdf", mimeType: "application/pdf", url: "https://..." },
+>   ],
+>   outputs: [{ name: "invoice_data" }, { name: "contact_info" }],
+>   memorize: { email: extractedEmail, captureToolResults: true },
+> });
+> ```
+> Supported: `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `application/pdf`, `text/plain`, `text/csv`, `text/html`, `text/markdown`, `application/json`. Max 10 attachments, 20 MB each, 50 MB total. In multi-step `instructions[]`, attachments are sent with the first step only.
 
 ### Option B: YOUR LLM + Personize Memory (Bring Your Own LLM)
 ```typescript
@@ -401,3 +417,15 @@ The `scaffold/lib/` directory contains reusable helpers:
 | Email reply handler (1 reply) | ~$0.001 | ~$0.01 | 0 | 0 | ~$0.01 |
 
 Trigger.dev: $0.0000169/sec (Micro machine). Personize: per plan. Apollo: $0.20/credit overage. Tavily: $0.01/search.
+
+### Generate Tiers & Direct Providers
+
+`ai.prompt()` supports tiered model selection and direct provider routing:
+
+| Tier | Input | Output |
+|---|---|---|
+| `basic` | 0.2 cr/1K | 0.4 cr/1K |
+| `pro` | 0.5 cr/1K | 1.0 cr/1K |
+| `ultra` | 1.0 cr/1K | 2.5 cr/1K |
+
+1 credit = $0.01. Pass `tier` for curated model selection. Custom `model` + `provider` require BYOK (`openrouterApiKey`) — without it, the API returns 400. BYOK billing: 10 credits base + 10/extra minute (Pro/Enterprise plans).

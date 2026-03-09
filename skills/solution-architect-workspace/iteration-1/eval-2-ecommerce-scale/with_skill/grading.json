@@ -1,0 +1,32 @@
+{
+  "eval_id": 2,
+  "eval_name": "ecommerce-scale",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "uses_all_three_layers",
+      "passed": true,
+      "evidence": "Every proposal includes a three-row table explicitly mapping Governance (smartGuidelines), Unified Memory (smartDigest + recall), and Content Generation (prompt with instructions[]) with specific contributions and 'Without It' consequences. All 5 use cases consistently use all three layers in both explanation and code."
+    },
+    {
+      "text": "generates_content_not_tags",
+      "passed": true,
+      "evidence": "Every proposal shows AI writing full prose: cart recovery emails with styling advice, post-purchase cross-sell narratives ('Your new linen pants just shipped -- nice pick...'), loyalty stories, internal alert narratives, and replenishment reminders. Before/After examples contrast template swaps with AI-written content. Code uses prompt with instructions[] to generate SUBJECT: and BODY_HTML:."
+    },
+    {
+      "text": "passes_differentiation_test",
+      "passed": true,
+      "evidence": "Proposals 1, 2, and 4 include explicit 'Differentiation test' sections. Proposal 1: 'Klaviyo knows the cart and basic purchase history, but it doesn't synthesize browsing behavior + loyalty points + support interactions + past recovery attempts + your discount policy into one message.' Proposal 2: 'Shopify's recommended for you uses collaborative filtering... That is a recommendation engine, not content generation.' Proposal 4: 'Neither connects those signals to a support complaint and expiring loyalty points, then recommends a specific outreach strategy.'"
+    },
+    {
+      "text": "cross_source_synthesis",
+      "passed": true,
+      "evidence": "Proposal 4 (Customer Health Alerts) explicitly synthesizes all four sources: 'Declining purchase frequency from Shopify + email unengagement from Klaviyo + recent support ticket + loyalty points expiring -- synthesized across ALL four sources.' The 'What to Memorize' table maps Shopify, browsing analytics, Klaviyo, and loyalty program with specific extraction details. Proposal 1 references 'pulling from four systems.' Each proposal's Unified Memory row shows multi-source context."
+    },
+    {
+      "text": "includes_governance_role",
+      "passed": true,
+      "evidence": "Dedicated 'Governance You Should Set Up First' section defines 5 governance variables: brand-voice, discount-policy, personalization-boundaries, urgency-ethics, return-communication. Every proposal's table includes a Governance row with specific rules (e.g., 'max 15% for first-timers, no stacking', 'never say we saw you browsing', 'no fake scarcity'). Code calls smartGuidelines in every use case."
+    }
+  ]
+}

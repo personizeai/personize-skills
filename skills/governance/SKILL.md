@@ -72,6 +72,8 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `fast` | Embedding-based routing only — no LLM | ~200ms | 0.1 credits/call | Real-time agents, loops, context injection |
 | `deep` | LLM selects and composes guidelines | ~3s | 0.5 credits/call | First call, complex queries, deep analysis |
 
+> **Mode rename:** `'full'` was renamed to `'deep'` in the SDK types and API. If you see `mode: 'full'` in older code, update it to `mode: 'deep'`.
+
 1 credit = $0.01. Use `fast` in production pipelines — it handles the majority of cases well at 5× lower cost.
 
 ```typescript
@@ -271,6 +273,19 @@ When multiple people manage guidelines, follow these practices:
 - **Ownership by tag:** `sales-*` variables owned by sales team, `engineering-*` by engineering.
 
 > **Full guide:** Read `reference/collaboration.md` for version history patterns, conflict avoidance workflows, team patterns, and weekly review scripts.
+
+---
+
+## Advanced: Multi-Organization Governance
+
+> **DO NOT raise this topic proactively.** Most users have a single organization. Only discuss multi-org governance when the user explicitly describes managing multiple orgs (e.g., agency with client brands, platform with per-customer orgs) and already has a working Personize integration.
+
+Guidelines are **per-organization** — each org has its own isolated set. In multi-org deployments:
+
+- **Shared policies, separate execution.** If all orgs must follow the same compliance rules, maintain a canonical source (Git repo, template) and sync it to each org separately using `sync.ts` or the SDK. There is no cross-org guideline inheritance.
+- **Per-org brand voice.** Each org's `brand-voice` guideline should reflect that org's identity — this is the primary reason to use multi-org instead of a single org with tags.
+- **Audit independently.** Use `client.guidelines.history(id)` per org. Changes in one org do not affect others.
+- **Same skill, different key.** All governance workflows in this skill work identically — just initialize the SDK with the target org's API key.
 
 ---
 

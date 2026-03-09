@@ -1,0 +1,116 @@
+{
+  "skill_name": "solution-architect",
+  "iteration": 1,
+  "timestamp": "2026-03-08T00:00:00Z",
+  "configurations": [
+    {
+      "name": "with_skill",
+      "evals": [
+        {
+          "eval_id": 0,
+          "eval_name": "saas-marketing-site",
+          "assertions_passed": 5,
+          "assertions_total": 5,
+          "pass_rate": 1.0,
+          "tokens": 47028,
+          "duration_seconds": 179.8
+        },
+        {
+          "eval_id": 1,
+          "eval_name": "b2b-project-mgmt",
+          "assertions_passed": 5,
+          "assertions_total": 5,
+          "pass_rate": 1.0,
+          "tokens": 44786,
+          "duration_seconds": 150.3
+        },
+        {
+          "eval_id": 2,
+          "eval_name": "ecommerce-scale",
+          "assertions_passed": 5,
+          "assertions_total": 5,
+          "pass_rate": 1.0,
+          "tokens": 41585,
+          "duration_seconds": 153.4
+        },
+        {
+          "eval_id": 3,
+          "eval_name": "accounting-consulting",
+          "assertions_passed": 5,
+          "assertions_total": 5,
+          "pass_rate": 1.0,
+          "tokens": 41972,
+          "duration_seconds": 158.1
+        }
+      ],
+      "summary": {
+        "total_assertions_passed": 20,
+        "total_assertions": 20,
+        "pass_rate": 1.0,
+        "mean_tokens": 43843,
+        "mean_duration_seconds": 160.4
+      }
+    },
+    {
+      "name": "without_skill",
+      "evals": [
+        {
+          "eval_id": 0,
+          "eval_name": "saas-marketing-site",
+          "assertions_passed": 0,
+          "assertions_total": 5,
+          "pass_rate": 0.0,
+          "tokens": 45127,
+          "duration_seconds": 145.4
+        },
+        {
+          "eval_id": 1,
+          "eval_name": "b2b-project-mgmt",
+          "assertions_passed": 1,
+          "assertions_total": 5,
+          "pass_rate": 0.2,
+          "tokens": 19664,
+          "duration_seconds": 150.7
+        },
+        {
+          "eval_id": 2,
+          "eval_name": "ecommerce-scale",
+          "assertions_passed": 2,
+          "assertions_total": 5,
+          "pass_rate": 0.4,
+          "tokens": 47310,
+          "duration_seconds": 182.0
+        },
+        {
+          "eval_id": 3,
+          "eval_name": "accounting-consulting",
+          "assertions_passed": 5,
+          "assertions_total": 5,
+          "pass_rate": 1.0,
+          "tokens": 35315,
+          "duration_seconds": 228.8
+        }
+      ],
+      "summary": {
+        "total_assertions_passed": 8,
+        "total_assertions": 20,
+        "pass_rate": 0.4,
+        "mean_tokens": 36854,
+        "mean_duration_seconds": 176.7
+      }
+    }
+  ],
+  "delta": {
+    "pass_rate_improvement": 0.6,
+    "pass_rate_with_skill": 1.0,
+    "pass_rate_without_skill": 0.4
+  },
+  "analyst_observations": [
+    "With-skill achieves 100% pass rate across all 4 evals vs 40% baseline — the three-layer differentiation framework is working.",
+    "Eval 3 (accounting consulting) is non-discriminating: both configurations passed 5/5. The prompt's specificity (professional services, compliance, client management) may naturally elicit governance-heavy responses even without the skill.",
+    "The biggest skill impact is on governance integration: without the skill, governance is consistently an afterthought (separate section, used in 2/7 proposals). With the skill, governance is woven into every proposal.",
+    "The 'generates_content_not_tags' assertion discriminates well: without the skill, responses default to scoring/classification JSON outputs and template swaps rather than AI-written narratives.",
+    "Token usage is comparable (~44K with vs ~37K without), so the skill's quality improvement doesn't come at a significant cost increase.",
+    "The differentiation test is the skill's strongest contribution: with-skill responses explicitly argue why each proposal requires Personize. Without-skill responses never make this argument."
+  ]
+}

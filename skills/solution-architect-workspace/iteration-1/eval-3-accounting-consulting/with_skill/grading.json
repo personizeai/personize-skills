@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "eval_name": "accounting-consulting",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "uses_all_three_layers",
+      "passed": true,
+      "evidence": "Every proposal explicitly uses all three layers. The response opens with a framework table mapping Governance (smartGuidelines), Unified Memory (smartDigest + recall), and Content Generation (prompt with instructions). Each of the four proposals (Sales Outreach, Marketing, Client Check-Ins 3A, Regulatory Alerts 3B) includes a 'Why it needs all three layers' breakdown showing governance, memory, and generation. Code examples demonstrate all three API calls together."
+    },
+    {
+      "text": "generates_content_not_tags",
+      "passed": true,
+      "evidence": "Every proposal centers on AI writing original content: multi-email prospecting sequences written from scratch, personalized cover messages for thought leadership publications, check-in emails referencing engagement status and deliverables, and per-client regulatory impact analyses. Example outputs show full paragraphs of original content (e.g., the ASC 842 lease accounting email, the R&D tax credit cover message). No proposals involve CRM tagging, scoring, or field updates."
+    },
+    {
+      "text": "passes_differentiation_test",
+      "passed": true,
+      "evidence": "Each proposal includes an explicit 'Differentiation test' paragraph. Sales Outreach: 'HubSpot has the contact fields, but it doesn't have the combined context from engagement history, billing patterns, regulatory exposure...A single LLM call can't enforce your professional standards across a multi-email sequence.' Marketing: 'HubSpot can segment by industry and send a template. It cannot write a paragraph that connects a specific publication's content to a specific client's tax situation.' Client Management: 'No template could produce this' because it 'synthesizes context from multiple sources.' The opening also states: 'If a proposal only needs one or two [layers], it's just template logic and you don't need Personize for it.'"
+    },
+    {
+      "text": "covers_all_three_areas",
+      "passed": true,
+      "evidence": "Section 1 covers Sales Outreach (AI-Written Prospecting Sequences), Section 2 covers Marketing (Thought Leadership Distribution), Section 3 covers Client Management split into 3A (Client Check-Ins) and 3B (Regulatory Change Alerts). The summary table maps all four proposals across the three requested areas."
+    },
+    {
+      "text": "includes_governance_role",
+      "passed": true,
+      "evidence": "Dedicated 'Governance Setup (Do This First)' section with five governance variables: professional-standards (AICPA standards, independence, confidentiality), client-communication (lead with value, billing transparency), thought-leadership (disclaimers, no guaranteeing outcomes), bd-playbook (approved messaging by service line), confidentiality (cross-client protection, NDAs). Includes a full code example creating governance guidelines with seven standards including 'MAINTAIN INDEPENDENCE -- never compromise audit independence in cross-selling' and 'DISCLAIMER ON ADVICE -- this does not constitute specific tax/accounting/legal advice.' Each proposal's governance section references profession-specific standards like independence requirements and confidentiality obligations."
+    }
+  ]
+}

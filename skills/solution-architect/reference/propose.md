@@ -1,263 +1,376 @@
 # Reference: PROPOSE Action
 
-All personalization use cases, user stories, before/after examples, and technical patterns organized by surface area.
+How to present personalization proposals that showcase Personize's unique value — not generic personalization any CRM can do.
+
+---
+
+## The Differentiation Test
+
+Before including any proposal, run this test:
+
+**"Could they build this with [any CRM/analytics tool] + a single LLM call?"**
+
+If yes → it's not a Personize proposal. Remove it or rethink it.
+
+**What fails the test (weak proposals):**
+- "Show a greeting based on user's role" → CRM lookup + if/else
+- "Recommend content based on interests" → any recommendation engine
+- "Swap CTA based on user segment" → feature flag tool
+- "Tag users by behavior" → analytics platform
+
+**What passes the test (strong proposals):**
+- AI-WRITES a unique onboarding guide combining data from their CRM, support history, and product usage, in the org's brand voice, following compliance rules
+- AI-GENERATES a landing page headline + subheadline specific to this visitor's industry and pain points, governed by messaging guidelines
+- AI-COMPOSES a notification that synthesizes signals from 3 sources into a coherent narrative, respecting the org's tone and escalation policies
+
+**The difference:** Weak proposals look up data and branch. Strong proposals GENERATE original content using all three layers.
+
+---
+
+## The Three-Layer Skeleton
+
+Every proposal must use all three layers. If a proposal only needs one or two, it's not showcasing Personize's unique value.
+
+### Layer 1: Governance (`smartGuidelines`)
+
+Fetch the org's rules before generating ANYTHING:
+- Brand voice and tone
+- ICP definitions (who matters, how to talk to them)
+- Compliance rules (what you can/can't say)
+- Messaging playbooks (angles, objection handling, approved claims)
+
+**Why this layer matters:** Real companies have multiple employees using multiple AI tools — a sales rep using an AI email writer, a marketer using an AI content tool, a CS agent using an AI chatbot, custom pipelines running overnight. Without governance, each of these invents its own voice, its own rules, its own version of "how we talk to customers." Five people using three tools = fifteen different "brands." Governance is the ONLY thing that ensures every AI-generated touchpoint — regardless of which person, tool, or agent created it — follows the same brand voice, the same compliance rules, the same messaging playbook. This is impossible to replicate with per-prompt instructions scattered across tools.
+
+### Layer 2: Unified Memory (`smartDigest` + `recall`)
+
+Assemble context from ALL sources into one window:
+- CRM data (role, company, deal stage)
+- Product analytics (feature usage, engagement patterns)
+- Support history (tickets, sentiment, resolution)
+- Enrichment data (company signals, news, funding)
+- Past AI interactions (what was sent before, what worked)
+
+**Why this layer matters:** Any single source gives a partial picture. A CRM knows the deal stage but not that the user filed 3 support tickets last week. Product analytics knows usage patterns but not that the company just raised funding. Unified memory means the AI sees EVERYTHING when it writes — context that no single tool could provide.
+
+### Layer 3: Content Generation (`prompt` with `instructions[]`)
+
+The multi-step reasoning pipeline that GENERATES original content:
+- Step 1: Analyze (who is this person, what do we know from all sources)
+- Step 2: Apply governance (what rules constrain our output)
+- Step 3: Generate (write the actual content — paragraphs, not template fills)
+- Step 4: Self-evaluate (does it meet our standards)
+
+**Why this layer matters:** This isn't "fill in template variables." The AI WRITES paragraphs, emails, headlines, guides, narratives — original content that no template could produce because it's unique to this specific person + these specific rules + this specific moment.
+
+### The Combined Technical Pattern
+
+Every strong proposal follows this skeleton:
+
+```typescript
+// Layer 1: Governance — fetch org rules first
+const governance = await client.ai.smartGuidelines({
+    message: 'brand voice, messaging guidelines, and compliance rules for [specific context]',
+    mode: 'deep',
+});
+
+// Layer 2: Unified Memory — assemble cross-source context
+const [digest, relevant] = await Promise.all([
+    client.memory.smartDigest({ email, type: 'Contact', token_budget: 2500 }),
+    client.memory.recall({ query: '[situation-specific query]', email }),
+]);
+
+// Combine all three layers into one context window
+const context = [
+    governance.data?.compiledContext,
+    digest.data?.compiledContext,
+    relevant.data,
+].filter(Boolean).join('\n\n---\n\n');
+
+// Layer 3: Multi-step generation
+const result = await client.ai.prompt({
+    context,
+    instructions: [
+        { prompt: 'Analyze: Who is this person? What do we know from all sources? What matters most right now?', maxSteps: 3 },
+        { prompt: 'Apply rules: What governance constraints apply? Brand voice? Compliance? Messaging guidelines?', maxSteps: 2 },
+        { prompt: 'Generate: [THE ACTUAL CONTENT]. Follow all governance rules. Reference specific facts from memory.', maxSteps: 5 },
+    ],
+    evaluate: true,
+    evaluationCriteria: 'Content must: reference 2+ specific facts from memory, follow brand voice from governance, be original (not templated).',
+});
+```
 
 ---
 
 ## How to Present a Proposal
 
-1. **Only include surface areas relevant to their product** — Don't propose mobile if they don't have an app
-2. **Lead with the most impactful use case** — The one that solves their biggest pain
-3. **Use user stories matching their persona** — Developer stories for engineers, PM stories for product people
-4. **Show before/after examples** — The contrast sells the value
-5. **Include the technical pattern** — Developers want to see how it works, not just what it does
+1. **Lead with the experience** — What does the end user/visitor/customer actually SEE? Paint the picture.
+2. **Show why it needs all three layers** — Briefly note what each layer contributes to THIS proposal.
+3. **Contrast with the "without Personize" baseline** — Show what they'd get with basic tools (the CRM + single LLM call version).
+4. **Include the technical skeleton** — Adapt the three-layer pattern to this specific use case.
+5. **Only propose what's relevant** — Don't propose mobile if they don't have an app.
 
 ---
 
 ## Surface Area 1: Software / Web Application
 
-**The opportunity:** Every screen, dashboard, and interaction can be uniquely tailored based on everything you know about the user.
+### What basic personalization looks like (no Personize needed):
+- "Hi {first_name}" greeting
+- Segment-based feature flags (show/hide based on plan tier)
+- Template-based onboarding (pick path A, B, or C based on role)
+- Recommendation engines (collaborative filtering)
 
-### Use Cases
+These are all "look up a field, branch on it." They don't need unified memory, governance, or content generation.
 
-| Use Case | What Happens | User Story |
-|---|---|---|
-| **Personalized Dashboard** | AI generates greeting, insights, recommended actions, tips — unique per user | *"As a user, when I log in I see insights about MY data and next steps that matter to ME, not a generic dashboard."* |
-| **Smart Onboarding** | AI adapts onboarding flow based on user's role, company size, goals | *"As a new user, the onboarding wizard skips steps I don't need and highlights features relevant to my use case."* |
-| **Contextual Feature Tips** | AI surfaces undiscovered features based on usage patterns | *"As a user who exports CSV daily, I see a tip: 'Did you know you can schedule automated exports?'"* |
-| **Personalized Search Results** | AI re-ranks results based on user's history and preferences | *"As a user, search results prioritize content relevant to my role and past behavior."* |
-| **Dynamic Help Content** | Help articles adapt to the user's technical level and feature usage | *"As a non-technical user, I see simplified explanations. As a developer, I see API examples."* |
-| **Smart Defaults** | Forms and settings pre-fill based on user patterns and preferences | *"As a returning user, the report builder remembers my preferred date range, metrics, and format."* |
-| **AI-Generated Insights** | Natural language summaries of the user's data, trends, anomalies | *"As a manager, I see 'Your team resolved 23% more tickets this week — Sarah handled the most complex ones.'"* |
-| **Personalized Empty States** | When a section is empty, show relevant suggestions instead of generic prompts | *"As a new user with no contacts, I see 'Import from HubSpot' because the AI knows I mentioned HubSpot during signup."* |
+### Three-Layer Proposals
 
-### Technical Pattern
+#### AI-Generated Onboarding Guide
 
-Define UI variable slots, let AI fill them per user via `smartDigest()` + `ai.prompt()`. Your app handles layout — AI handles content.
+**The experience:** After signup, the new user sees a multi-paragraph setup guide WRITTEN specifically for their situation — their industry, their tech stack, their likely goals — in the org's voice, following the product's onboarding best practices.
+
+**Why it needs all three layers:**
+- **Governance:** Onboarding guidelines, product messaging rules, what to emphasize per ICP segment
+- **Memory:** What we know from signup form + CRM enrichment + any prior interactions (visited pricing page, attended webinar, talked to sales)
+- **Generation:** AI WRITES the guide — not "pick template A/B/C" but actual paragraphs unique to this person
+
+**Before (basic):** "Welcome! Choose your use case: [ ] Marketing [ ] Sales [ ] Engineering"
+
+**After (three-layer):** "Welcome, Sarah. Since your team at Acme Corp is scaling outbound — and based on what we discussed in last week's demo — here's your personalized setup: **Step 1:** Connect your HubSpot instance (we saw you're already using it). **Step 2:** Import your target accounts — we recommend starting with the 50 companies in your Q2 pipeline. **Step 3:** Set up your first governance variable for brand voice — here's a starter based on your website's tone..."
 
 ```typescript
-// Define what the AI should generate for each page
-const DASHBOARD_VARIABLES = [
-    { key: 'greeting',           description: 'Personalized greeting referencing recent activity', maxLength: 150 },
-    { key: 'recommended_actions', description: 'JSON array of 3 next actions based on usage', type: 'json' },
-    { key: 'insight_of_the_day', description: 'One data-driven insight about their metrics', maxLength: 200 },
-    { key: 'onboarding_tip',    description: 'Next setup step (empty if fully onboarded)', maxLength: 150 },
-];
-
-// Generate all variables in one prompt call
-const digest = await client.memory.smartDigest({ email, type: 'Contact', token_budget: 2500 });
-
 const result = await client.ai.prompt({
-    context: digest.data?.compiledContext,
-    instructions: [{
-        prompt: `Generate personalized UI variables as JSON: ${JSON.stringify(DASHBOARD_VARIABLES.map(v => v.key))}`,
-        maxSteps: 5,
-    }],
+    context,  // governance + memory assembled as above
+    instructions: [
+        { prompt: 'Analyze what we know about this new user: role, company, data sources, likely goals. List 3 facts we can reference.', maxSteps: 3 },
+        { prompt: 'Check onboarding guidelines: what should we emphasize for their ICP segment? What setup steps matter most for their situation?', maxSteps: 2 },
+        { prompt: 'Write a personalized onboarding guide (3-4 paragraphs). Reference specific facts. Use brand voice. Include 3-5 concrete next steps tailored to their situation.', maxSteps: 5 },
+    ],
+    evaluate: true,
 });
-
-// Your web app/CMS injects the values:
-//   <h1>{{greeting}}</h1>
-//   <p class="insight">{{insight_of_the_day}}</p>
 ```
 
-> See `recipes/web-personalization.ts` for the full implementation with caching and framework integration examples.
+#### AI-Written Dashboard Insights
+
+**The experience:** When a user opens their dashboard, they see a natural-language narrative about their data — trends, anomalies, recommendations — written in the org's voice, referencing their specific metrics AND context from other sources.
+
+**Why it needs all three layers:**
+- **Governance:** How to frame insights (positive tone? data-driven? casual?), what metrics matter per role
+- **Memory:** The user's recent activity, historical trends, support interactions, feature usage — from multiple sources combined
+- **Generation:** AI WRITES insight paragraphs that connect dots across sources, not just "metric X went up 15%"
+
+**Before (basic):** "Revenue: $45K (+12% MoM) | Deals: 23 open | Tasks: 5 overdue"
+
+**After (three-layer):** "Strong month, Sarah — your team closed $45K, up 12% from last month. The Acme Corp deal you flagged is progressing: they downloaded the API docs yesterday. Heads up: 3 support tickets came in from your Enterprise segment this week, mostly around SSO setup — might be worth a proactive FAQ update before the webinar next Tuesday."
+
+#### AI-Generated Page Content
+
+**The experience:** Solution pages, feature pages, or landing pages where the copy is GENERATED per visitor — headline, value prop, use cases, proof points — tailored to their industry, role, and journey stage.
+
+**Why it needs all three layers:**
+- **Governance:** Brand messaging, approved claims, tone per audience, compliance rules
+- **Memory:** Visitor's industry, role, company size, previous page views, how they found you, past interactions
+- **Generation:** AI WRITES the page copy — different angles for different visitors, not segment-based templates
+
+**Before (basic):** One static headline for all visitors: "The All-in-One Platform for Growth"
+
+**After (three-layer):** Healthcare visitor sees: "HIPAA-Compliant Patient Communication at Scale — How healthcare teams use [product] to personalize outreach while maintaining compliance." // SaaS engineer sees: "Ship Personalization in Days, Not Quarters — A TypeScript SDK that gives your app unified customer context and AI-generated content with zero ML infrastructure."
+
+```typescript
+const result = await client.ai.prompt({
+    context,
+    instructions: [
+        { prompt: 'Identify the visitor: industry, role, company size, journey stage, what page they are on. What facts do we have?', maxSteps: 2 },
+        { prompt: 'Check messaging guidelines: What claims can we make? What tone for this audience? What proof points for their industry?', maxSteps: 2 },
+        { prompt: 'Generate page variables as JSON: { headline, subheadline, valueProp, useCaseExample, ctaText, ctaSubtext }. Every field must be tailored to this specific visitor using governance rules and memory context.', maxSteps: 5 },
+    ],
+});
+```
+
+> See `recipes/web-personalization.ts` for the full implementation with caching and framework integration.
 
 ---
 
 ## Surface Area 2: Marketing Campaigns
 
-**The opportunity:** Every campaign becomes a segment of one. AI writes unique copy for each recipient based on everything you know about them.
+### What basic personalization looks like (no Personize needed):
+- Mail merge: "Hi {first_name}, noticed your company {company_name}..."
+- Segment-based templates (send Template A to segment X)
+- Drip sequences with fixed timing
 
-### Use Cases
+These all select from pre-written templates and fill in merge fields. The copy is written once by a human.
 
-| Use Case | What Happens | User Story |
-|---|---|---|
-| **Hyper-Personalized Cold Outreach** | AI writes unique emails per prospect — different angle, different pain point, different CTA | *"As a sales rep, each prospect gets an email that references their specific company, role, and likely pain points — not mail merge."* |
-| **Intelligent Nurture Sequences** | AI adapts the next email based on what the prospect did (opened, clicked, replied, ignored) | *"As a marketer, my nurture sequence evolves — if they clicked the pricing page, the next email addresses ROI."* |
-| **Event-Triggered Campaigns** | AI generates messages when specific events happen (signup, upgrade, churn signal) | *"As a product manager, when a user hits a usage milestone, they get a personalized congratulations + next-level feature tip."* |
-| **Re-engagement Campaigns** | AI crafts win-back messages based on why the user went quiet | *"As a marketer, dormant users get messages that reference what they used to love about the product."* |
-| **Account-Based Marketing** | AI generates account-specific content for multi-stakeholder deals | *"As an ABM manager, each stakeholder at the target account gets messaging tailored to their role and concerns."* |
-| **Personalized Landing Pages** | AI generates headline, subheadline, testimonial, CTA per visitor segment | *"As a visitor from a healthcare company, I see healthcare-specific copy and a healthcare case study."* |
+### Three-Layer Proposals
 
-### Technical Pattern
+#### AI-Written Outreach (Every Sentence Unique)
 
-The 10-step agentic loop: Observe new prospects → Recall their context → Reason about the best angle → Generate unique content → Deliver via email/ads/landing page.
+**The experience:** Each prospect gets an email where every sentence references their specific situation — their company's recent news, their role's likely pain points, their previous interactions — written in the org's approved voice with compliance guardrails.
+
+**Why it needs all three layers:**
+- **Governance:** Sales playbook, approved messaging angles, compliance rules (CAN-SPAM, industry-specific), brand voice
+- **Memory:** CRM data + enrichment (funding, news) + product usage + past interactions + support history — all combined into one context window
+- **Generation:** AI WRITES each email from scratch — not filling in [company_name] blanks but composing unique paragraphs
+
+**Before (basic):** "Hi {first_name}, I noticed {company} is growing fast. We help companies like yours with {product_category}. Want to chat?"
+
+**After (three-layer):** "Hi Sarah — saw that Acme just expanded the engineering team (congrats on the Series B). With 40+ devs now, you're probably hitting the point where tribal knowledge about customers gets lost across teams. That's exactly what unified memory solves — one place where every customer interaction (support, sales, product usage) is accessible to any team member or AI agent. Would it be worth 15 minutes to show you how [similar company in their space] set this up?"
 
 ```typescript
 const sequence = await client.ai.prompt({
-    context: assembledContext,
+    context,  // governance playbook + unified memory context
     instructions: [
-        { prompt: 'Analyze the contact and identify the strongest angle for outreach.', maxSteps: 3 },
-        { prompt: 'Write Email 1 (introduction): specific observation + value prop + soft CTA.', maxSteps: 5 },
-        { prompt: 'Write Email 2 (value-add, 3 days later): insight + their situation + stronger CTA.', maxSteps: 5 },
-        { prompt: 'Write Email 3 (breakup, 5 days later): brief + final reason + yes/no CTA.', maxSteps: 3 },
+        { prompt: 'Analyze: What do we know about this prospect from ALL sources? What specific facts can we reference? What is their most likely pain point?', maxSteps: 3 },
+        { prompt: 'Check sales playbook and compliance rules: What messaging angles are approved? What claims can we make? What must we avoid?', maxSteps: 2 },
+        { prompt: 'Write Email 1 (introduction): Lead with a specific observation about their situation. Connect to value prop. End with soft CTA. Under 150 words. Follow brand voice.', maxSteps: 5 },
+        { prompt: 'Write Email 2 (value-add, 3 days later): Share an insight relevant to THEIR situation. Reference a customer in their space. Stronger CTA.', maxSteps: 5 },
+        { prompt: 'Write Email 3 (breakup, 5 days later): Brief, respectful. One final compelling reason specific to them. Clear yes/no CTA.', maxSteps: 3 },
     ],
     evaluate: true,
-    evaluationCriteria: 'Each email: under 150 words, references a specific fact, distinct angle, clear CTA.',
+    evaluationCriteria: 'Each email: under 150 words, references a specific fact about the prospect, follows approved messaging, distinct angle from previous emails.',
 });
 ```
 
-> See `recipes/cold-outreach-sequence.ts` for the full 3-email sequence with timing and state tracking.
+> See `recipes/cold-outreach-sequence.ts` for the full implementation with timing and state tracking.
+
+#### AI-Generated Landing Pages Per Visitor
+
+**The experience:** When a prospect clicks through from an email or ad, the landing page copy is GENERATED for them — headline, body, testimonial selection, CTA — based on everything known about them + the org's messaging rules.
+
+**Why it needs all three layers:**
+- **Governance:** Approved claims and disclaimers, messaging per industry/role, tone guidelines
+- **Memory:** What brought them here (which email/ad), their company/role, past visits, deal stage
+- **Generation:** Landing page copy written per visitor, not per segment
+
+**Before (basic):** Everyone sees the same landing page with static copy.
+
+**After (three-layer):** A prospect who clicked from Email 2 about "scaling outbound" sees a landing page with headline "Scale Outbound Without Scaling Headcount" and a case study from their industry, with a CTA that references their specific situation. A different prospect who clicked from a webinar follow-up sees entirely different copy matching that context.
 
 ---
 
-## Surface Area 3: Mobile App
+## Surface Area 3: Notifications (Email, Slack, SMS, In-App, Webhook)
 
-**The opportunity:** Mobile is intimate — push notifications, in-app messages, and UI personalization must feel helpful, not spammy. AI decides **what**, **when**, and **whether** to notify.
+### What basic personalization looks like (no Personize needed):
+- "You have 3 new leads this week"
+- Alert templates with inserted metric values
+- Fixed notification rules (if X > threshold, notify Y)
 
-### Use Cases
+These are template alerts with data fills — they don't synthesize context or write narratives.
 
-| Use Case | What Happens | User Story |
-|---|---|---|
-| **Smart Push Notifications** | AI decides whether to send, what to say, and when — based on user context | *"As a user, I only get push notifications that are relevant to me, at times when I'm usually active."* |
-| **Personalized Home Screen** | AI reorders content, surfaces relevant items, adjusts layout per user | *"As a frequent user of analytics, the home screen prioritizes my dashboards over the social feed."* |
-| **Contextual In-App Messages** | AI triggers messages at the right moment based on behavior | *"As a user who just completed my first project, I see a celebration + suggestion for what to try next."* |
-| **Smart Digest Notifications** | Instead of 10 separate alerts, AI compiles one meaningful daily digest | *"As a busy user, I get one morning notification summarizing everything important, not 10 pings throughout the day."* |
-| **Location-Aware Personalization** | AI adjusts content based on locale, timezone, local events | *"As a user in Tokyo, I see content relevant to my timezone and local market."* |
+### Three-Layer Proposals
 
-### Technical Pattern
+#### AI-Synthesized Alert Narratives
 
-Your mobile app calls a personalization API endpoint that runs `smartDigest()` + `ai.prompt()` and returns JSON for the app to render.
+**The experience:** Instead of "Customer X did Y," the notification tells a STORY — synthesizing signals from multiple sources into an actionable narrative with specific recommendations.
+
+**Why it needs all three layers:**
+- **Governance:** Notification policies (what warrants an alert, appropriate tone, escalation rules)
+- **Memory:** Signals from CRM + product analytics + support + enrichment — synthesized across sources
+- **Generation:** AI WRITES a narrative connecting dots that no single alert could, with a recommended action
+
+**Before (basic):** "Alert: Acme Corp usage declined 25% this month."
+
+**After (three-layer):** "Acme Corp health declining — usage down 25%, and Sarah Chen (your main contact) hasn't logged in since March 1. Context: they filed 2 unresolved tickets about API rate limits, their renewal is in 45 days, and their VP Eng just posted about evaluating alternatives on LinkedIn. Recommended action: schedule a check-in focused on the API issues — they're likely blocked, not disengaged."
 
 ```typescript
-// API endpoint: GET /api/personalize/:userId
-const digest = await client.memory.smartDigest({ email: user.email, type: 'Contact', token_budget: 2000 });
-
 const result = await client.ai.prompt({
-    context: digest.data?.compiledContext,
-    instructions: [{
-        prompt: 'Generate personalized mobile home screen content as JSON: { greeting, topAction, insightCard, notificationSummary }',
-        maxSteps: 3,
-    }],
-});
-
-// Return JSON to mobile app
-res.json(JSON.parse(result.data));
-```
-
----
-
-## Surface Area 4: Notifications (Email, Slack, SMS, In-App, Webhook)
-
-**The opportunity:** The difference between a notification users ignore and one they act on is personalization.
-
-### Before/After
-
-- **Generic:** "You have 3 new leads this week"
-- **Personized:** "Jane — 3 new leads landed, including one from Initech (the company you mentioned wanting to expand into). Sarah Chen, their VP Eng, downloaded your API docs — might be worth a warm intro since you both spoke at CloudConf."
-
-### Use Cases
-
-| Use Case | What Happens | User Story |
-|---|---|---|
-| **Smart Alerts** | AI generates uniquely personalized alerts for each recipient via `smartDigest()` | *"As a sales manager, my daily briefing references specific deals, specific reps, and specific actions — not generic KPIs."* |
-| **Escalation Notifications** | AI detects at-risk situations and crafts escalation messages with full context | *"As a CS manager, I get a Slack alert: 'Acme Corp health declining — 3 unanswered tickets, login frequency down 40%, renewal in 30 days.'"* |
-| **Product Usage Nudges** | AI spots underutilized features and sends relevant tips | *"As a user who exports data manually, I get an email: 'You exported 12 reports last month. Did you know you can schedule them?'"* |
-| **Customer Health Check-Ins** | AI assesses health and generates the right message — value-reinforcement if healthy, concern if declining | *"As a customer, I get a check-in that references my actual usage and wins, not a generic 'how's it going?'"* |
-| **Meeting Prep Briefs** | AI compiles everything known about a contact into a one-page brief before meetings | *"As a sales rep, before every call I get a brief with talking points, landmines to avoid, and the prospect's recent activity."* |
-| **Internal Team Alerts** | AI notifies the right team member about the right customer event | *"As a support lead, when a VIP customer submits a ticket, I get a Slack alert with their full context and history."* |
-
-### Getting Results Out
-
-**Webhook Destinations** are the primary way to receive results from Personize. Set up a destination in the dashboard (**Integrations > Destinations**) and Personize pushes event payloads to your endpoint automatically — execution results, memorization completions, and more. See `channels/webhook.md` for the full guide including signature verification.
-
-From your webhook receiver, you can route results to any downstream system:
-
-| Downstream | How |
-|---|---|
-| **Email** (SendGrid, SES, Resend) | Your webhook handler sends the email — see `channels/sendgrid.md` |
-| **Slack** | Your webhook handler posts to Slack — see `channels/slack.md` |
-| **In-App Notifications** | Your webhook handler calls your notification API |
-| **CRM Writeback** | Your webhook handler updates HubSpot, Salesforce, etc. |
-| **Zapier / Make / n8n** | Point the destination URL directly at the automation platform's webhook URL |
-
-### Technical Pattern
-
-```typescript
-// Layer 1: Rules — what kind of notifications to send
-const vars = await client.ai.smartGuidelines({ message: 'notification guidelines' });
-
-// Layer 2: Deep context — EVERYTHING about this person
-const digest = await client.memory.smartDigest({
-    email: 'jane@acme.com', type: 'Contact',
-    token_budget: 3000, include_properties: true, include_memories: true,
-});
-
-// Layer 3: Trigger-specific recall
-const recalled = await client.memory.recall({ query: triggerEvent, email: 'jane@acme.com' });
-
-// Generate uniquely personalized notification
-const notification = await client.ai.prompt({
-    context: [vars.data?.compiledContext, digest.data?.compiledContext, recalled.data].join('\n\n'),
+    context,  // governance notification rules + unified memory from all sources
     instructions: [
-        { prompt: 'Why does this trigger matter to THIS specific person?', maxSteps: 3 },
-        { prompt: 'Decide channel (email/slack/sms/in-app) and priority (immediate/standard/digest).', maxSteps: 2 },
-        { prompt: 'Write the notification. Reference 2+ specific facts.', maxSteps: 5 },
+        { prompt: 'Synthesize: What signals do we have from ALL sources about this account? What story do they tell together that no single source reveals?', maxSteps: 3 },
+        { prompt: 'Check notification rules: Does this warrant an alert? What tone? What channel? What priority level?', maxSteps: 2 },
+        { prompt: 'Write the alert as a narrative: situation → context from multiple sources → specific recommended action. Max 150 words. Follow notification tone guidelines.', maxSteps: 5 },
     ],
 });
 ```
 
 > See `recipes/smart-notification.ts` for the full implementation.
 
+#### AI-Composed Smart Digests
+
+**The experience:** Instead of 10 separate notifications, the user gets ONE AI-written digest that synthesizes everything important into a coherent morning briefing — prioritized, contextualized, actionable.
+
+**Why it needs all three layers:**
+- **Governance:** What matters to this role/persona, prioritization rules, digest format and tone
+- **Memory:** All events, signals, and context from the past day/week across ALL sources
+- **Generation:** AI WRITES a briefing that connects events and prioritizes — not a bullet list of raw events
+
+**Before (basic):** "• 3 new leads • 2 support tickets • 1 deal closed • Meeting at 2pm"
+
+**After (three-layer):** "Good morning, Sarah. Three things that matter today: (1) The Acme Corp deal just moved to negotiation — they asked about SSO, which aligns with the enterprise security concerns we've seen from their vertical. Worth preparing the security whitepaper. (2) Two support tickets from your accounts — both about the same API endpoint, suggesting a pattern worth flagging to engineering. (3) A new inbound lead from a healthcare company — similar profile to the MedTech deal you closed last quarter; the same approach might work here."
+
 ---
 
-## Surface Area 5: Customer Success & Support
+## Surface Area 4: Customer Success & Support
 
-**The opportunity:** Every customer interaction is informed by everything the AI knows about that customer.
+### What basic personalization looks like (no Personize needed):
+- Customer health scores based on usage metrics
+- Template-based check-in emails ("Hi {name}, just checking in!")
+- Manual QBR prep by pulling CRM data
 
-### Use Cases
+### Three-Layer Proposals
 
-| Use Case | What Happens | User Story |
-|---|---|---|
-| **AI-Powered Ticket Routing** | AI reads the ticket, recalls the customer's history, and routes to the best agent with full context | *"As a support agent, when I pick up a ticket, I already see the customer's history, plan, and related past issues."* |
-| **Proactive Churn Prevention** | AI monitors health signals and triggers outreach before the customer churns | *"As a CS manager, I'm alerted 30 days before renewal when a customer's engagement drops."* |
-| **QBR Prep** | AI generates quarterly business review materials with the customer's metrics, wins, and recommendations | *"As an account manager, my QBR deck is auto-generated with the customer's actual usage data and ROI metrics."* |
-| **Personalized Knowledge Base** | AI recommends help articles based on the user's product usage and technical level | *"As a user searching for help, I see articles that match my skill level and the features I actually use."* |
+#### AI-Written Health Check-Ins
 
-### Technical Pattern
+**The experience:** Each customer gets a check-in message WRITTEN for their specific situation — referencing their actual wins, recent usage patterns, any open issues, and next steps — in a tone appropriate for their relationship stage and your CS playbook.
 
-```typescript
-// Customer health check-in
-const checkin = await client.ai.prompt({
-    context: assembledContext,
-    instructions: [
-        { prompt: 'Assess customer health: engagement, sentiment, renewal dates, unresolved issues.', maxSteps: 3 },
-        { prompt: 'If declining: write personalized check-in. If healthy: write value-reinforcement with their wins.', maxSteps: 5 },
-        { prompt: 'Decide urgency and channel. Email for formal, Slack for internal alert, SMS for urgent.', maxSteps: 2 },
-    ],
-});
-```
+**Why it needs all three layers:**
+- **Governance:** CS playbook (what to say when healthy vs at-risk), tone rules, escalation criteria, what metrics to reference
+- **Memory:** Product usage + support tickets + billing + past interactions + enrichment — combined from all sources
+- **Generation:** AI WRITES the check-in — not a template with merge fields but a message that connects dots
 
-> See `recipes/health-check-message.ts` and `recipes/product-usage-alert.ts` for full implementations.
+**Before (basic):** "Hi Sarah, just checking in! How are things going with the platform? Let me know if you need anything."
+
+**After (three-layer):** "Hi Sarah — your team's had a solid quarter: API calls up 40%, and the onboarding pipeline you built is processing 200+ contacts/day. Quick note: we noticed the batch endpoint is timing out on some of your larger imports (>5K records). Our engineering team shipped a fix for this last week in v2.3.1, which should resolve it. Also, your renewal is coming up in 60 days — based on your usage growth, it might be worth looking at the Pro tier for higher rate limits. Happy to walk through the numbers."
+
+#### AI-Generated QBR Materials
+
+**The experience:** Quarterly business review materials with GENERATED narratives — not just charts, but written analysis of what went well, what's at risk, and AI-recommended next steps — all governed by the CS team's presentation standards.
+
+**Why it needs all three layers:**
+- **Governance:** QBR structure, presentation standards, what metrics to highlight, how to frame risks
+- **Memory:** 3 months of product usage + support interactions + billing data + stakeholder contacts + previous QBR outcomes
+- **Generation:** AI WRITES analysis paragraphs, executive summary, and recommendations — not template slides
+
+---
+
+## Surface Area 5: Mobile App
+
+### Three-Layer Proposals
+
+#### AI-Composed Push Notifications
+
+**The experience:** Push notification text WRITTEN by AI — not selected from templates — based on the trigger event, cross-source user context, and notification governance rules. The AI decides whether to send, what to say, and how to say it.
+
+**Why it needs all three layers:**
+- **Governance:** Notification frequency limits, quiet hours, tone for push (concise, actionable), what warrants a push vs in-app
+- **Memory:** User's activity patterns, preferences, engagement history, what was sent before
+- **Generation:** AI WRITES the push text, not selects from a list
+
+#### AI-Generated Home Screen Content
+
+**The experience:** A home screen with an AI-written greeting, insight narrative, and recommended action — all generated per user session using cross-source context and brand voice.
 
 ---
 
 ## User Stories by Persona
 
-Use stories that match who you're talking to.
+Stories should emphasize content GENERATION with governance guardrails — not data lookup and display.
 
 ### For the Developer / Engineering Team
-- *"As a developer, I can add personalization to any page by calling one API endpoint — no ML pipeline to build."*
-- *"As a developer, I pipe product events into Personize and get AI-powered user context back — no training data required."*
-- *"As a developer, I define UI variable slots and the AI fills them per user. My templates stay clean."*
-- *"As a developer, governance variables ensure the AI follows our brand voice and policies without per-prompt instructions."*
+- *"As a developer, I call three SDK methods and get AI-generated content that references customer data from 5 different sources — no data pipeline to build, no per-prompt instructions to maintain."*
+- *"As a developer, governance means I don't craft tone and compliance rules in every prompt — the org's rules are fetched automatically and applied to all generated content."*
+- *"As a developer, the `instructions[]` pipeline handles multi-step reasoning (analyze → apply rules → generate → evaluate) — I don't chain LLM calls manually."*
 
 ### For the Product Manager
-- *"As a PM, I can see which features are underutilized per user segment and trigger targeted adoption campaigns."*
-- *"As a PM, onboarding adapts automatically — power users skip basics, new users get guided tours."*
-- *"As a PM, every user's dashboard tells a story about their data, not just shows charts."*
+- *"As a PM, every page on our site speaks to each visitor's specific situation — not because we built 20 templates, but because AI generates the copy using our brand guidelines and everything we know about the visitor."*
+- *"As a PM, onboarding guides are WRITTEN for each user — they reference the user's actual tools, team size, and goals. Not a template menu."*
+- *"As a PM, governance rules ensure every AI-generated touchpoint follows our brand voice and messaging — consistent across web, email, notifications, and in-app, without per-feature prompt engineering."*
 
 ### For the Sales Team
-- *"As a sales rep, I never send a generic email. Every outreach references the prospect's specific situation."*
-- *"As a sales rep, I get a one-page brief before every call with talking points and landmines."*
-- *"As a sales manager, I get daily AI-generated pipeline insights that reference specific deals and reps."*
+- *"As a sales rep, my outreach emails are written by AI that knows everything — CRM data, product usage, support history, company news, past emails — not just name and company from a mail merge."*
+- *"As a sales rep, governance ensures my AI follows our sales playbook and compliance rules automatically — I can trust it to generate quality output."*
 
 ### For Marketing
-- *"As a marketer, every campaign email is unique per recipient — different angle, pain point, and CTA."*
-- *"As a marketer, my nurture sequences adapt based on what prospects actually do, not just time delays."*
-- *"As a marketer, landing pages show copy that matches the visitor's industry and role."*
+- *"As a marketer, landing page copy is generated per visitor — not per segment. A healthcare VP sees different copy than a SaaS engineer, and both see different copy from what they'd see next month as they progress through the funnel."*
+- *"As a marketer, brand voice governance means every AI-generated touchpoint sounds like us — consistent across email, web, notifications, and in-app. One set of rules, enforced everywhere."*
 
 ### For Customer Success
-- *"As a CS manager, I know which customers are at risk before they tell me."*
-- *"As a CS manager, my check-in messages reference the customer's actual wins and usage, not a template."*
-- *"As a CS manager, QBR materials are auto-generated with real metrics and AI-recommended next steps."*
+- *"As a CS manager, health check-ins reference actual product usage AND support tickets AND billing data — the AI synthesizes everything into a narrative, not just one metric in a template."*
+- *"As a CS manager, QBR materials include AI-written analysis with recommendations — governed by our CS team's presentation standards. Not just auto-generated charts."*

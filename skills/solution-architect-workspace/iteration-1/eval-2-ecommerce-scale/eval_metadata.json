@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "eval_name": "ecommerce-scale",
+  "prompt": "We're an e-commerce company doing about 100K purchases per month on Shopify. We have customer purchase history, browsing behavior analytics, Klaviyo email marketing, and a loyalty program. We want to move beyond basic 'recommended for you' product carousels. How can Personize help us create truly personalized shopping experiences?",
+  "assertions": [
+    {"name": "uses_all_three_layers", "description": "Every proposal explicitly uses governance, unified memory, AND content generation"},
+    {"name": "generates_content_not_tags", "description": "Proposals go beyond recommendation engines — AI WRITES content, not just selects products"},
+    {"name": "passes_differentiation_test", "description": "Proposals could NOT be done with Klaviyo segments + a basic LLM call"},
+    {"name": "cross_source_synthesis", "description": "Shows how combining Shopify purchases + browsing + Klaviyo + loyalty creates unique context"},
+    {"name": "includes_governance_role", "description": "Governance controls brand voice, promotional rules, compliance (e.g. discount policies)"}
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "eval_name": "b2b-project-mgmt",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "uses_all_three_layers",
+      "passed": false,
+      "evidence": "Governance is not consistently present across proposals. While smartGuidelines is mentioned once in Section 4 as an afterthought ('Set up smartGuidelines to enforce consistency'), most of the 7 individual opportunity proposals use only smartDigest (memory) and prompt (generation). Opportunities 1, 2, 3, 4, 5, 6, and 7 all follow a pattern of smartDigest + prompt without incorporating governance into the generation flow. Governance is relegated to a separate section rather than being woven into each proposal. The code samples for individual opportunities do not call smartGuidelines."
+    },
+    {
+      "text": "generates_content_not_tags",
+      "passed": false,
+      "evidence": "Several proposals center on classification, scoring, and tagging rather than writing original content. Opportunity 1 asks AI to 'Return a JSON object with: riskLevel, riskScore (0-100), topRiskFactors (array)' -- this is classification/scoring, not content generation. Opportunity 7 outputs 'dimensions: {...}, composite: number, alerts: [...], trend' -- purely a scoring system. Opportunity 5 outputs 'opportunity type (upsell/cross-sell/seat expansion), confidence (0-100)' -- classification. While some proposals include elements of content (e.g., 'suggestedOutreach' in Opportunity 1, dashboard messages in Opportunity 6), the primary output of most proposals is structured data, scores, and tags rather than AI-written narratives."
+    },
+    {
+      "text": "passes_differentiation_test",
+      "passed": false,
+      "evidence": "Most proposals could be replicated with a standard LLM + data queries without Personize. Opportunity 1 (churn risk scoring) is achievable with any LLM reading a SQL query result + a system prompt with scoring criteria. Opportunity 4 (support enrichment) is a standard RAG pattern -- pull context, send to LLM. Opportunity 6 (personalized dashboard) is a basic LLM prompt with user data injected. Opportunity 7 (health scoring) is a weighted scoring formula that could be a SQL query. The response does not articulate what specifically requires Personize vs. a basic pipeline of SQL queries + LLM calls. The use of smartDigest is convenient but not fundamentally different from querying multiple databases and concatenating results."
+    },
+    {
+      "text": "cross_source_synthesis",
+      "passed": true,
+      "evidence": "The response clearly maps all three data sources in Section 1.1 and shows how they feed into a unified entity keyed by team_id. Section 1.2 provides concrete ingestion code for PostgreSQL (nightly batch), Stripe (webhook), and Intercom (webhook). The opportunities reference combined signals -- e.g., Opportunity 1 mentions 'declining DAU + support tickets with negative sentiment + payment failures' as cross-source churn signals. Opportunity 5 combines 'hitting plan limits (activity) + billing history (Stripe) + tickets requesting features on higher tiers (Intercom).' The data integration architecture section is thorough."
+    },
+    {
+      "text": "includes_governance_role",
+      "passed": false,
+      "evidence": "Governance is treated as a bolted-on afterthought rather than essential. Section 4 mentions smartGuidelines with example rules ('Never mention competitor names', 'Escalate any team with MRR > $5,000') but these are listed as comments in code, not integrated into any of the 7 opportunity implementations. None of the opportunity code samples call smartGuidelines or incorporate governance rules into their prompt flows. There is no CS playbook, no messaging tone governance, no escalation rules embedded in the actual proposals. The governance section is 12 lines out of a 621-line response."
+    }
+  ]
+}

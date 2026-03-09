@@ -1,0 +1,32 @@
+{
+  "eval_id": 1,
+  "eval_name": "b2b-project-mgmt",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "uses_all_three_layers",
+      "passed": true,
+      "evidence": "Every one of the 5 proposals includes a table with rows for Governance (smartGuidelines), Unified Memory (smartDigest + recall), and Content Generation (prompt with instructions[]), explicitly showing what each layer contributes and what happens without it. Code samples for each proposal also demonstrate all three layers."
+    },
+    {
+      "text": "generates_content_not_tags",
+      "passed": true,
+      "evidence": "All proposals center on AI writing original content: Opportunity 1 generates a personalized churn intervention message referencing specific tickets and fixes; Opportunity 2 writes a multi-paragraph feature adoption guide using the team's actual project names; Opportunity 3 writes narrative account briefings for CSMs; Opportunity 4 writes full onboarding playbooks; Opportunity 5 writes personalized upgrade proposals with ROI calculations. The response explicitly states it filtered out anything achievable with tagging/segmenting: 'could you build this with a CRM and a basic LLM call? If yes, I cut it.'"
+    },
+    {
+      "text": "passes_differentiation_test",
+      "passed": true,
+      "evidence": "Each proposal includes a 'Without Personize' or 'Without it' column in the table showing why basic tools fail. For example, Opportunity 1 contrasts the synthesized narrative with 'You get Hi {name}, your usage dropped {percent}%. Let us know if you need help! -- a template fill, not a narrative.' The opening explicitly states a differentiation test was applied. Multi-step instructions with evaluation criteria further demonstrate capabilities beyond basic LLM calls."
+    },
+    {
+      "text": "cross_source_synthesis",
+      "passed": true,
+      "evidence": "Every proposal explicitly shows how combining all three sources creates unique insight. Opportunity 1: connects usage decline (PostgreSQL) + open tickets about Gantt charts (Intercom) + renewal in 30 days (Stripe). Opportunity 3: 'billing admin opened a ticket about pricing' + 'renewal in 37 days' + 'champion is most active user' from activity data. Opportunity 5: usage hitting plan limits (PostgreSQL) + current plan cost (Stripe) + tickets asking about limitations (Intercom). Each table row shows what the unified memory layer contributes that no single source provides."
+    },
+    {
+      "text": "includes_governance_role",
+      "passed": true,
+      "evidence": "Governance is shown as essential in every proposal's table. Opportunity 1: 'Churn intervention playbook: tone rules (empathetic, not desperate), what to offer (help vs discounts), escalation criteria.' Opportunity 3: 'CS playbook: how to interpret signals (ticket about pricing = negotiation vs churn), renewal handling rules.' Opportunity 5: 'Pricing communication rules (how to frame cost, what comparisons are approved, discount authority, required disclaimers).' Additionally, a dedicated 'Governance Variables to Create First' section lists 6 specific variables including brand-voice, churn-intervention-playbook, cs-playbook, and pricing-communication."
+    }
+  ]
+}
