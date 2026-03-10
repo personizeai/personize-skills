@@ -24,7 +24,6 @@ Quick reference for the `@personize/sdk` methods used in GTM pipelines.
 | `memory` | `smartDigest()` | `POST /api/v1/smart-memory-digest` | Compiled entity context bundle. |
 | `memory` | `memorizeBatch()` | `POST /api/v1/batch-memorize` | Bulk sync with per-property AI control (`extractMemories` flag). |
 | `memory` | `search()` | `POST /api/v1/search` | Filter and export records. |
-| `memory` | `search()` | `POST /api/v1/search` | Filter and export records. |
 | `evaluate` | `memorizationAccuracy()` | `POST /api/v1/evaluate/memorization-accuracy` | Three-phase collection schema evaluation. |
 
 ---
@@ -56,6 +55,15 @@ await personize.memory.memorize({
   enhanced: true,                      // enable AI extraction
   tags: ["meeting", "pricing"],        // property selection tags
 });
+
+// Custom key — for entity types where email/websiteUrl don't apply
+await personize.memory.memorize({
+  type: "Student",
+  customKeyName: "studentNumber",      // your identifier name
+  customKeyValue: "S-2024-1234",       // your identifier value
+  content: "Enrolled in Advanced AI course. GPA 3.8.",
+  enhanced: true,
+});
 ```
 
 ### recall — Direct Lookup
@@ -71,6 +79,8 @@ Returns structured properties and free-form memories from DynamoDB for a specifi
 | `email` | No* | Contact email (identifier) |
 | `websiteUrl` / `website_url` | No* | Company website URL (identifier) |
 | `recordId` / `record_id` | No* | Direct record ID (`REC#...`) |
+| `customKeyName` | No* | Custom key name (e.g. `'studentNumber'`, `'linkedinUrl'`) |
+| `customKeyValue` | No* | Custom key value (e.g. `'S-2024-1234'`) |
 | `collectionIds` | No | Scope to specific collections |
 | `propertyIds` | No | Return only specific properties |
 
@@ -121,6 +131,8 @@ AI-powered semantic search across LanceDB vector store. Supports reflection loop
 | `postalCode` / `postal_code` | No | Postal code (identifier) |
 | `deviceId` / `device_id` | No | Device ID (identifier) |
 | `contentId` / `content_id` | No | Content ID (identifier) |
+| `customKeyName` | No | Custom key name for custom entity types (e.g. `'studentNumber'`, `'linkedinUrl'`, `'sku'`) |
+| `customKeyValue` | No | Custom key value matching `customKeyName` (e.g. `'S-2024-1234'`) |
 | `type` | No | Entity type filter |
 | `limit` | No | Max results (default: 10) |
 | `min_score` | No | Min similarity score 0-1 |
@@ -153,6 +165,23 @@ const fast = await personize.memory.smartRecall({
   recordId: "REC#abc123...",
   query: "latest interaction",
   fast_mode: true,
+});
+
+// Custom entity type — scope to a specific record by custom key
+const student = await personize.memory.smartRecall({
+  type: "Student",
+  customKeyName: "studentNumber",
+  customKeyValue: "S-2024-1234",
+  query: "enrolled courses and academic performance",
+  fast_mode: true,
+});
+
+// Org-wide search across all records of a custom type
+const allStudents = await personize.memory.smartRecall({
+  type: "Student",
+  query: "Dean's List academic achievements",
+  limit: 50,
+  minScore: 0.4,
 });
 
 // results.data.answer.text — synthesized answer (if generate_answer: true)
@@ -227,7 +256,22 @@ Unified batch sync with per-property control over AI extraction. Each property m
 
 You can mix both modes in the same batch call.
 
+> **Step 0 — Get your real collectionId and collectionName first.**
+> Collections are org-specific — there are no universal IDs. Call `collections.list()` to discover what you have, then use the returned values in your mapping. Don't guess or hardcode IDs.
+
 ```typescript
+// Step 0: Discover your collections
+const collections = await personize.collections.list();
+const allCollections = collections.data?.actions ?? [];
+
+// Find the collections you want to target
+const contactsCol = allCollections.find(c => c.payload.collectionName === "Contacts");
+const notesCol    = allCollections.find(c => c.payload.collectionName === "Notes");
+
+// Log all available collections if you're not sure what you have:
+// allCollections.forEach(c => console.log(c.payload.collectionId, c.payload.collectionName));
+
+// Step 1: Use the real IDs in your mapping
 await personize.memory.memorizeBatch({
   source: "HubSpot",
   mapping: {
@@ -236,12 +280,12 @@ await personize.memory.memorizeBatch({
     runName: "hubspot-sync-" + Date.now(),
     properties: {
       // Structured fields — stored directly, no AI processing
-      email:     { sourceField: "email",     collectionId: "col_xxx", collectionName: "Standard" },
-      name:      { sourceField: "name",      collectionId: "col_xxx", collectionName: "Standard" },
-      company:   { sourceField: "company",   collectionId: "col_xxx", collectionName: "Standard" },
+      email:   { sourceField: "email",   collectionId: contactsCol!.payload.collectionId, collectionName: contactsCol!.payload.collectionName },
+      name:    { sourceField: "name",    collectionId: contactsCol!.payload.collectionId, collectionName: contactsCol!.payload.collectionName },
+      company: { sourceField: "company", collectionId: contactsCol!.payload.collectionId, collectionName: contactsCol!.payload.collectionName },
       // Unstructured field — AI extraction + vector embeddings
-      notes:     { sourceField: "notes",     collectionId: "col_yyy", collectionName: "Notes",
-                   extractMemories: true },
+      notes:   { sourceField: "notes",   collectionId: notesCol!.payload.collectionId,    collectionName: notesCol!.payload.collectionName,
+                 extractMemories: true },
     },
   },
   rows: arrayOfRecords,
@@ -250,10 +294,50 @@ await personize.memory.memorizeBatch({
 });
 ```
 
+// Custom entity type batch — use customKeyName + customKey instead of email/website
+await personize.memory.memorizeBatch({
+  source: "University DB",
+  mapping: {
+    entityType: "Student",              // any custom type value
+    customKeyName: "studentNumber",     // the identifier name
+    customKey: "student_id",            // source field in rows holding the value
+    properties: {
+      full_name: { sourceField: "name",  collectionId: colId, collectionName: "Students" },
+      gpa:       { sourceField: "gpa",   collectionId: colId, collectionName: "Students" },
+      notes:     { sourceField: "notes", collectionId: colId, collectionName: "Students", extractMemories: true },
+    },
+  },
+  rows: [
+    { student_id: "S-2024-1234", name: "Alice Chen", gpa: "3.8", notes: "Dean's List, AI research focus" },
+    { student_id: "S-2024-5678", name: "Bob Park",   gpa: "3.5", notes: "Full-stack internship at Stripe" },
+  ],
+});
+
+> **Don't have collections yet?** Contact and Company are auto-created system collections every org has. For custom collections (Sales Properties, Notes, etc.), create them via `personize.collections.create()` or the Personize web app. See the `solution-architect` skill → SCHEMA action for guided collection design with prebuilt templates.
+
 ### search — Query Records by Filter
 
+`search()` is **page-based** — a single call returns one page, not all results. Always check `totalPages` and loop if you need everything.
+
+| Pagination field | Description |
+|---|---|
+| `page` | Which page to fetch (1-based, default: 1) |
+| `pageSize` | Records per page (default: 50, max: 200) |
+| `totalMatched` | Total count across ALL pages (in response) |
+| `totalPages` | Total pages available (in response) |
+
 ```typescript
-const results = await personize.memory.search({
+// Custom entity type — search works with any type value
+const deansList = await personize.memory.search({
+  type: "Student",
+  returnRecords: true,
+  groups: [{
+    conditions: [{ property: "gpa", operator: "GTE", value: 3.5 }],
+  }],
+});
+
+// Fetch one page
+const page1 = await personize.memory.search({
   groups: [{
     conditions: [
       { property: "lifecycle_stage", operator: "EQ", value: "opportunity" },
@@ -263,8 +347,31 @@ const results = await personize.memory.search({
   type: "Contact",
   returnRecords: true,
   includeMemories: true,
-  pageSize: 50,
+  pageSize: 100,       // max 200 per page
+  page: 1,
 });
+
+// page1.data.totalMatched  → total records matching (e.g. 2134)
+// page1.data.totalPages    → how many pages at this pageSize (e.g. 22)
+// page1.data.records       → records for this page only
+
+// Loop through ALL pages (e.g. to export all 2,134 records):
+let allRecords: Record<string, unknown> = {};
+let currentPage = 1;
+let totalPages = 1;
+
+do {
+  const result = await personize.memory.search({
+    groups: [{ conditions: [{ property: "lifecycle_stage", operator: "EQ", value: "opportunity" }] }],
+    type: "Contact",
+    returnRecords: true,
+    pageSize: 200,       // use max page size for fewest calls
+    page: currentPage,
+  });
+  Object.assign(allRecords, result.data?.records ?? {});
+  totalPages = result.data?.totalPages ?? 1;
+  currentPage++;
+} while (currentPage <= totalPages);
 ```
 
 ---

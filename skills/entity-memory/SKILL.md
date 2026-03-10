@@ -155,14 +155,9 @@ await client.memory.memorizeBatch({
 
 `memorize()` and `memorizeBatch()` accept a `tier` param that selects the LLM pipeline and credit rate. Defaults to `pro` — no breaking change for existing callers.
 
-| Tier | Rate | Best For |
-|---|---|---|
-| `basic` | 1 credit/1K tokens | High-volume, cost-first |
-| `pro` | 2.5 credits/1K tokens | **Default** — best quality/cost balance |
-| `pro_fast` | 3.5 credits/1K tokens | Speed-critical (~8s latency) |
-| `ultra` | 7 credits/1K tokens | Maximum extraction depth, 50 properties |
+Available tiers: `basic`, `pro` (default), `pro_fast`, `ultra`. For current rates, see [personize.ai](https://personize.ai).
 
-Tiers also control `maxProperties` (15–50), `chunkMaxWords` (2000–4000), and `minPropertyScore` (0.2–0.4). Model fallback is automatic — if the primary model fails, the system routes to the fallback. 1 credit = $0.01.
+Tiers also control `maxProperties` (15–50), `chunkMaxWords` (2000–4000), and `minPropertyScore` (0.2–0.4). Model fallback is automatic — if the primary model fails, the system routes to the fallback.
 
 ```typescript
 await client.memory.memorize({
@@ -184,13 +179,7 @@ await client.memory.memorizeBatch({
 
 ### Generate Tiers (`prompt`)
 
-`client.ai.prompt()` has its own tier system for content generation, separate from memorize tiers:
-
-| Tier | Input | Output | Best For |
-|---|---|---|---|
-| `basic` | 0.2 cr/1K tokens | 0.4 cr/1K tokens | High-volume, cost-first |
-| `pro` | 0.5 cr/1K tokens | 1.0 cr/1K tokens | **Default** — balanced |
-| `ultra` | 1.0 cr/1K tokens | 2.5 cr/1K tokens | Highest capability |
+`client.ai.prompt()` has its own tier system for content generation, separate from memorize tiers. Available tiers: `basic`, `pro` (default), `ultra`. For current rates, see [personize.ai](https://personize.ai).
 
 Pass `tier` to select a curated model (default). Custom `model` and `provider` require BYOK (`openrouterApiKey`) — without it, the API returns 400.
 
@@ -376,13 +365,9 @@ async function assembleContext(email: string, task: string): Promise<string> {
 
 ### Recall Pricing
 
-| Method | Mode | Cost |
-|---|---|---|
-| `recall()` | `fast_mode: false` (default, with reflection) | 0.2 credits/call |
-| `recall()` | `fast_mode: true` (no reflection, ~500ms) | 0.1 credits/call |
-| `smartDigest()` | — | Free (reads cached data) |
+All read operations charge a flat per-call rate regardless of mode (`fast_mode`, `deep`, etc.). Mode choice affects latency and depth, not cost. For current rates, see [personize.ai](https://personize.ai).
 
-1 credit = $0.01. Use `fast_mode: true` in loops and batch pipelines to minimize cost.
+Use `fast_mode: true` in loops and batch pipelines to minimize latency.
 
 ---
 

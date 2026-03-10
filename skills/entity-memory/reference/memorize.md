@@ -27,6 +27,9 @@ interface MemorizeProOptions {
     email?: string;            // Match to contact by email
     website_url?: string;      // Match to company by website
     record_id?: string;        // Match to record by ID
+    type?: string;             // Entity type (e.g. 'Contact', 'Student', 'Webpage')
+    customKeyName?: string;    // Custom key name (e.g. 'studentNumber', 'linkedinUrl')
+    customKeyValue?: string;   // Custom key value (e.g. 'S-2024-1234')
     enhanced?: boolean;        // Enable AI extraction (default: false)
     tags?: string[];           // Categorization tags
     max_properties?: number;   // Max properties to extract
@@ -42,9 +45,52 @@ The system resolves the target record in this order:
 1. `record_id` — exact match (fastest, most reliable)
 2. `email` — match to Contact record
 3. `website_url` — match to Company record
-4. No identifier — creates an orphan memory (avoid this)
+4. `customKeyName` + `customKeyValue` — match by any domain-specific identifier
+5. No identifier — creates an orphan memory (avoid this)
 
 **Always provide at least one identifier.** Orphan memories are harder to retrieve and won't appear in `smartDigest`.
+
+### Custom Keys — Bring Your Own Identifier
+
+Use `customKeyName` and `customKeyValue` when `email` or `website_url` don't apply to your entity type. The recordId is generated deterministically from `orgId + type + key` — same key always resolves to the same record. No registration or entity type setup required.
+
+```typescript
+// Student identified by student number
+await client.memory.memorize({
+    content: 'Enrolled in Advanced AI. GPA 3.8, Dean\'s List.',
+    type: 'Student',
+    customKeyName: 'studentNumber',
+    customKeyValue: 'S-2024-1234',
+    enhanced: true,
+});
+
+// Person identified by LinkedIn URL
+await client.memory.memorize({
+    content: 'VP of Engineering at Acme Corp. Focus on AI/ML infrastructure.',
+    type: 'Person',
+    customKeyName: 'linkedinUrl',
+    customKeyValue: 'https://linkedin.com/in/johndoe',
+    enhanced: true,
+});
+
+// Web page identified by URL
+await client.memory.memorize({
+    content: pageContent,
+    type: 'Webpage',
+    customKeyName: 'pageUrl',
+    customKeyValue: 'https://docs.example.com/api/authentication',
+    enhanced: true,
+});
+
+// Recall by the same custom key
+const result = await client.memory.smartRecall({
+    query: 'What courses is this student taking?',
+    type: 'Student',
+    customKeyName: 'studentNumber',
+    customKeyValue: 'S-2024-1234',
+    fast_mode: true,
+});
+```
 
 ### Examples
 
@@ -104,12 +150,20 @@ Best for: syncing data from HubSpot, Salesforce, databases, or any system with m
 interface BatchMemorizeOptions {
     source: string;            // Source system label ('Hubspot', 'Salesforce')
     mapping: {
-        entityType: string;    // 'contact', 'company'
-        email?: string;        // Source field name for email (e.g., 'email')
-        website?: string;      // Source field name for website (e.g., 'company_website_url')
+        entityType: string;    // Entity type: 'contact', 'company', or any custom type ('Student', 'Product', 'Webpage', ...)
+        // Identifier fields — value is the key name in your row objects
+        // e.g., email: 'email' → look for row['email'] as the contact identifier
+        // e.g., email: 'email_address' → look for row['email_address'] instead
+        // Use email for Contact records, website for Company records, or recordId for direct ID.
+        // For custom entity types, use customKeyName + customKey instead.
+        email?: string;        // Source field name for email (key name in each row)
+        website?: string;      // Source field name for website (key name in each row)
+        recordId?: string;     // Source field name for record ID (key name in each row)
+        customKeyName?: string; // The identifier name for custom types (e.g. 'studentNumber', 'sku', 'linkedinUrl')
+        customKey?: string;     // Source field name in each row holding the custom key value (e.g. 'student_id')
         runName?: string;      // Tracking label for this sync run
         properties: Record<string, {
-            sourceField: string;       // Source field name in row data
+            sourceField: string;       // Key name in row data (e.g., 'firstname', 'notes')
             collectionId: string;      // Target collection ID
             collectionName: string;    // Target collection name
             extractMemories?: boolean; // Default: false. Set true on rich text fields for AI extraction + vectors.
@@ -159,7 +213,7 @@ await client.memory.memorizeBatch({
     source: 'Hubspot',
     mapping: {
         entityType: 'contact',
-        email: 'email',
+        email: 'email',           // 'email' = the key name in each row object (row.email)
         runName: `hubspot-contact-sync-${Date.now()}`,
         properties: {
             full_name:       { sourceField: 'firstname',     collectionId: colId, collectionName: 'Contacts', extractMemories: false },

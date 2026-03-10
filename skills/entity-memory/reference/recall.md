@@ -36,6 +36,8 @@ interface SmartRecallOptions {
     recordId?: string;                 // camelCase alias for record_id
     website_url?: string;              // Company website URL
     websiteUrl?: string;               // camelCase alias for website_url
+    customKeyName?: string;            // Custom key name (e.g. 'studentNumber', 'linkedinUrl')
+    customKeyValue?: string;           // Custom key value (e.g. 'S-2024-1234')
 
     type?: string;                     // Entity type filter (optional — inferred from identifier)
 
@@ -73,6 +75,8 @@ interface RecallOptions {
     recordId?: string;                 // camelCase alias for record_id
     website_url?: string;              // Company website URL
     websiteUrl?: string;               // camelCase alias for website_url
+    customKeyName?: string;            // Custom key name (e.g. 'studentNumber', 'linkedinUrl')
+    customKeyValue?: string;           // Custom key value (e.g. 'S-2024-1234')
     filters?: Record<string, unknown>; // Additional filters
 }
 ```
@@ -94,6 +98,24 @@ interface RecallOptions {
 }
 ```
 
+```typescript
+// By custom key — works for any custom entity type
+const student = await client.memory.recall({
+    query: 'Academic record and enrolled courses',
+    type: 'Student',
+    customKeyName: 'studentNumber',
+    customKeyValue: 'S-2024-1234',
+});
+
+// By custom key — LinkedIn URL as identifier
+const person = await client.memory.recall({
+    query: 'Professional background',
+    type: 'Person',
+    customKeyName: 'linkedinUrl',
+    customKeyValue: 'https://linkedin.com/in/johndoe',
+});
+```
+
 > **`type` is required** for `recall()`. Omitting it returns a 400 error. If you don't want to specify type, use `smartRecall()` instead — it infers type from email/website_url.
 >
 > **Key difference from `smartRecall()`**: `recall()` reads directly from DynamoDB (deterministic, fast). `smartRecall()` searches LanceDB vectors with optional AI reflection (semantic, slower). Use `recall()` for "show me everything about this record". Use `smartRecall()` for "find memories matching this question".
@@ -112,12 +134,21 @@ await client.memory.smartRecall({
     email: 'sarah.chen@initech.com',
     limit: 10,
 });
+
+// Custom entity — scope to a specific Student, Product, Webpage, etc.
+await client.memory.smartRecall({
+    query: 'What courses is this student taking?',
+    type: 'Student',
+    customKeyName: 'studentNumber',
+    customKeyValue: 'S-2024-1234',
+    fast_mode: true,
+});
 ```
 - Results come from one record only
 - Fast, precise, low noise
 - **Recommended for**: personalization, context assembly, entity-specific questions
 
-**Without CRM keys** (org-wide search):
+**Without CRM keys** (org-wide search across all records of a type):
 ```typescript
 // "Which contacts mentioned Kubernetes?"
 await client.memory.smartRecall({
@@ -125,6 +156,14 @@ await client.memory.smartRecall({
     type: 'Contact',
     limit: 20,
     minScore: 0.5,
+});
+
+// Search across ALL records of a custom type
+await client.memory.smartRecall({
+    query: 'Dean\'s List academic achievements',
+    type: 'Student',
+    limit: 50,
+    minScore: 0.4,
 });
 ```
 - Searches across ALL memories in the organization
@@ -414,6 +453,30 @@ interface ExportResponse {
 ### Examples
 
 ```typescript
+// Custom entity type — search works with any type value
+const deansList = await client.memory.search({
+    type: 'Student',
+    returnRecords: true,
+    groups: [{
+        id: 'high-gpa', logic: 'AND',
+        conditions: [
+            { property: 'gpa', operator: 'GTE', value: 3.5 },
+        ],
+    }],
+});
+
+// Webpage type — find all pages flagged with a certain tag
+const authPages = await client.memory.search({
+    type: 'Webpage',
+    returnRecords: true,
+    groups: [{
+        id: 'auth', logic: 'AND',
+        conditions: [
+            { property: 'section', operator: 'EQ', value: 'authentication' },
+        ],
+    }],
+});
+
 // Enterprise contacts with email
 const enterprise = await client.memory.search({
     type: 'Contact',
@@ -476,6 +539,24 @@ const single = await client.memory.search({
     returnRecords: true,
     includeMemories: true,
 });
+
+// --- How to read property values from search() results ---
+// With returnRecords: true, the response includes:
+//   records[recordId][propertyName].value  → plain string value
+//
+// The property name must match what you used in your collection definition (e.g. 'email', 'job_title')
+// Example: iterate all returned records and extract specific fields
+for (const [recordId, props] of Object.entries(enterprise.data?.records ?? {})) {
+    const email = props['email']?.value;        // plain string
+    const jobTitle = props['job_title']?.value;
+    const planTier = props['plan_tier']?.value;
+    console.log(`${recordId}: ${email} — ${jobTitle} (${planTier})`);
+}
+
+// Collect all emails from a search result:
+const emails = Object.values(found.data?.records ?? {})
+    .map(props => props['email']?.value)
+    .filter(Boolean) as string[];
 ```
 
 ---
