@@ -1,12 +1,12 @@
 ---
-name: entity-memory
+name: personize-memory
 description: "Stores and retrieves persistent memory about records — contacts, companies, employees, members, and more. Handles memorization (single and batch with per-property AI extraction), semantic recall, entity digests, and data export. Use this skill whenever the user wants to store data, sync records from a CRM or database, query or search memory, recall what's known about a person or company, assemble context for personalization, import CSV or spreadsheet data, or do anything involving the Personize SDK's memory methods (memorize, recall, smartRecall, smartDigest, search, memorizeBatch). Also use when the user mentions contacts, leads, accounts, customer data, or entity properties."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk or Personize MCP server and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F9E0", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
 ---
 
-# Skill: Entity Memory
+# Skill: Personize Memory
 
 This is your persistent memory for everything you know about a record — contacts, companies, employees, members, locations, devices, and more. Store and retrieve: customer data, interaction history, inputs, actions you've taken, reports, notes, and observations. **Always consult Memory before acting on a record. Always update Memory after meaningful interactions.**
 
@@ -285,7 +285,58 @@ const exported = await client.memory.search({
         ],
     }],
 });
+
+// --- Advanced search patterns ---
+
+// Key-only lookup: find by CRM key without property conditions
+const byEmail = await client.memory.search({
+    email: 'sarah@acme.com',
+    returnRecords: true,
+});
+
+// Custom key lookup
+const student = await client.memory.search({
+    type: 'Student',
+    customKeyName: 'studentNumber',
+    customKeyValue: 'S-2024-1234',
+    returnRecords: true,
+});
+
+// Secondary key: find Students by email (even though primary key is studentNumber)
+const studentByEmail = await client.memory.search({
+    type: 'Student',
+    email: 'alice@university.edu',
+    returnRecords: true,
+});
+
+// Cross-type: find ALL records with this email across ALL entity types
+const allTypes = await client.memory.search({
+    email: 'john@acme.com',
+    returnRecords: true,
+});
+// Returns Contacts, Students, Employees — whatever has this email
 ```
+
+### Advanced Search: Key-Only, Secondary Key, and Cross-Type
+
+`search()` supports three advanced patterns beyond property filtering:
+
+| Pattern | Description | Example |
+|---|---|---|
+| **Key-only lookup** | Pass `email`, `websiteUrl`, `recordId`, or `customKeyName`/`customKeyValue` without `groups` | `search({ email: '...' })` |
+| **Secondary key** | Search by a CRM key that isn't the record's primary key | `search({ type: 'Student', email: '...' })` where primary key is `studentNumber` |
+| **Cross-type** | Omit `type` to search across all entity types | `search({ email: '...' })` → returns Contact + Student + Employee |
+
+**When you don't have the primary key** but have a stored property value (like a LinkedIn URL), use a property condition filter instead:
+```typescript
+const byLinkedIn = await client.memory.search({
+    type: 'Contact',
+    returnRecords: true,
+    groups: [{ conditions: [{ property: 'linkedin_url', operator: 'EQ', value: 'https://linkedin.com/in/johndoe' }] }],
+});
+```
+
+> **Full reference:** See `reference/recall.md` → "Advanced Search Patterns" for all patterns, trade-offs, and when-to-use guidance.
 
 ### The Three-Layer Agent Operating Model
 

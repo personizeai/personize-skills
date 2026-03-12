@@ -1,12 +1,12 @@
 ---
-name: code-pipelines
+name: personize-code-pipelines
 description: "Builds, deploys, and iterates production-ready AI agent pipelines using Trigger.dev and the Personize SDK. Handles the full lifecycle: interview the user about what they want, design the schema and governance, write the pipeline code, deploy it, monitor results, and iterate based on feedback. Generates TypeScript tasks for outbound sequences, inbound lead processing, conversational reply handlers, enrichment pipelines, and account signal monitoring — all backed by Personize memory, AI context, and governance. Use this skill whenever someone wants to build an AI agent, automated workflow, email sequence, drip campaign, cold outreach, lead enrichment, reply handler, account monitor, CRM automation, daily digest, or any durable pipeline — whether they provide technical specs or just describe what they want in plain language. Also trigger for Trigger.dev, background tasks, self-scheduling follow-ups, GTM automation, 'build me an agent that...', or 'I want to automate...'."
 license: Apache-2.0
 compatibility: "Requires Node.js 20+, a Trigger.dev account (cloud or self-hosted), and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\u26A1", "requires": {"env": ["PERSONIZE_SECRET_KEY", "TRIGGER_SECRET_KEY"]}}}
 ---
 
-# Skill: Code Pipelines
+# Skill: Personize Code Pipelines
 
 Build production-ready Go-To-Market automation pipelines using **Trigger.dev** for durable task execution and the **Personize SDK** for AI-powered memory, context, and personalization.
 

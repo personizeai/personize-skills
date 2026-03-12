@@ -1,12 +1,12 @@
 ---
-name: governance
+name: personize-governance
 description: "Manages organizational guidelines, policies, and best practices as governance variables accessible to all AI agents via SmartContext. Use this skill whenever the user wants to create, update, or manage guidelines, brand voice, compliance policies, playbooks, ICPs, sales playbooks, tone rules, or any organizational rules. Also trigger when the user mentions smartGuidelines, governance variables, GitOps sync of policies, team knowledge sharing, AI agent rules, or when they want all their AI tools to follow the same policies. Even if they just say 'set up rules' or 'add a policy', this is the right skill."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk or Personize MCP server and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F4CB", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
 ---
 
-# Skill: Governance
+# Skill: Personize Governance
 
 These are the rules, policies, and best practices that every AI agent in your organization must follow. **Always check Guidelines before generating content, making decisions, or taking actions.** One update here → every AI tool in your org gets smarter.
 

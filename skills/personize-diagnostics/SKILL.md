@@ -1,12 +1,12 @@
 ---
-name: diagnostics
+name: personize-diagnostics
 description: "Verify setup and troubleshoot the Personize stack — memory, governance, pipelines, and workspaces. Two modes: VERIFY (proactive, after setup) and FIX (reactive, when something breaks). Use this skill whenever the user says something isn't working, gets errors, sees empty recall results, has bad extraction quality, hits rate limits (429), or wants to verify their setup. Also trigger when they mention debugging Personize, testing their integration, health checks, smoke tests, 'why is recall returning nothing', 'my pipeline is failing', or 'guidelines aren't showing up'. This is the go-to skill for anything broken or needing verification."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk or Personize MCP server and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "🔍", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
 ---
 
-# Skill: Diagnostics
+# Skill: Personize Diagnostics
 
 Verify setup and troubleshoot the Personize stack. Two modes:
 

@@ -411,10 +411,12 @@ interface ExportOptions {
             collectionId?: string;
         }>;
     }>;
-    type?: string;                 // Entity type filter
-    email?: string;                // Single record by email
-    websiteUrl?: string;           // Single record by website
-    recordId?: string;             // Single record by ID
+    type?: string;                 // Entity type filter (optional — omit for cross-type search)
+    email?: string;                // Scope by email (works as primary or secondary key)
+    websiteUrl?: string;           // Scope by website URL
+    recordId?: string;             // Scope by record ID
+    customKeyName?: string;        // Custom key name (e.g. 'studentNumber', 'linkedinUrl')
+    customKeyValue?: string;       // Custom key value (e.g. 'S-2024-1234')
     collectionIds?: string[];      // Filter by collections
     page?: number;                 // Pagination (1-based)
     pageSize?: number;             // Records per page (default: 50)
@@ -558,6 +560,408 @@ const emails = Object.values(found.data?.records ?? {})
     .map(props => props['email']?.value)
     .filter(Boolean) as string[];
 ```
+
+---
+
+### Raw HTTP Request Payloads — All Patterns
+
+These are the exact JSON bodies to send to `POST /api/v1/search`. Use these when calling the API directly (not via the SDK).
+
+---
+
+#### 1. List all records (no filter)
+
+```json
+{ "type": "Contact" }
+```
+Omit `type` to get all entity types. Returns up to `pageSize` records (default 50).
+
+---
+
+#### 2. Key-only lookup — by email
+
+```json
+{
+  "email": "john@acme.com",
+  "returnRecords": true
+}
+```
+
+---
+
+#### 3. Key-only lookup — by websiteUrl (cross-entity)
+
+```json
+{
+  "websiteUrl": "acme.com",
+  "returnRecords": true
+}
+```
+
+> **Important:** This matches **all entity types** (Contact, Company, Employee, etc.) that were memorized with `websiteUrl: "acme.com"` as a secondary key — not just Company records. A Contact memorized with email + websiteUrl will be returned here.
+
+---
+
+#### 4. Key-only lookup — websiteUrl scoped to one type
+
+```json
+{
+  "websiteUrl": "acme.com",
+  "type": "Contact",
+  "returnRecords": true
+}
+```
+
+Only returns Contact records where `websiteUrl = acme.com`. Useful when you want all contacts at a company (who were memorized with the company's URL as a secondary key).
+
+---
+
+#### 5. Key-only lookup — by recordId
+
+```json
+{
+  "recordId": "REC#abc123",
+  "returnRecords": true
+}
+```
+
+---
+
+#### 6. Key-only lookup — custom key
+
+```json
+{
+  "customKeyName": "hubspot_id",
+  "customKeyValue": "12345",
+  "returnRecords": true
+}
+```
+
+---
+
+#### 7. Property condition filter — single condition
+
+```json
+{
+  "type": "Contact",
+  "groups": [
+    {
+      "id": "g1",
+      "logic": "AND",
+      "conditions": [
+        { "field": "industry", "operator": "EQ", "value": "SaaS" }
+      ]
+    }
+  ],
+  "returnRecords": true
+}
+```
+
+---
+
+#### 8. Property condition filter — AND within a group
+
+Multiple conditions in one group are **AND'd** — record must satisfy all.
+
+```json
+{
+  "type": "Contact",
+  "groups": [
+    {
+      "id": "g1",
+      "logic": "AND",
+      "conditions": [
+        { "field": "industry", "operator": "EQ", "value": "SaaS" },
+        { "field": "location", "operator": "CONTAINS", "value": "Vancouver" }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+#### 9. Property condition filter — OR across groups
+
+Multiple groups are **OR'd** — record matches if it satisfies any group.
+
+```json
+{
+  "type": "Contact",
+  "groups": [
+    {
+      "id": "g1",
+      "logic": "AND",
+      "conditions": [
+        { "field": "industry", "operator": "EQ", "value": "SaaS" }
+      ]
+    },
+    {
+      "id": "g2",
+      "logic": "AND",
+      "conditions": [
+        { "field": "deal_value", "operator": "GT", "value": 50000 }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+#### 10. Property filter + CRM key scope
+
+Combine `websiteUrl` (or `email`/`recordId`) with `groups` to filter properties within a specific CRM key scope.
+
+```json
+{
+  "websiteUrl": "acme.com",
+  "groups": [
+    {
+      "id": "g1",
+      "logic": "AND",
+      "conditions": [
+        { "field": "job_title", "operator": "CONTAINS", "value": "Engineer" }
+      ]
+    }
+  ],
+  "returnRecords": true
+}
+```
+
+Returns all records at acme.com whose `job_title` contains "Engineer" — across all entity types unless `type` is also specified.
+
+---
+
+#### 11. Count only (fast, no record data)
+
+```json
+{
+  "type": "Contact",
+  "countOnly": true,
+  "groups": [
+    {
+      "id": "g1",
+      "logic": "AND",
+      "conditions": [
+        { "field": "plan_tier", "operator": "EQ", "value": "enterprise" }
+      ]
+    }
+  ]
+}
+```
+
+Response: `{ "data": { "totalMatched": 42 } }` — no record IDs or properties returned.
+
+---
+
+#### 12. With memories included
+
+```json
+{
+  "email": "john@acme.com",
+  "returnRecords": true,
+  "includeMemories": true
+}
+```
+
+---
+
+#### 13. Paginated
+
+```json
+{
+  "type": "Contact",
+  "returnRecords": true,
+  "page": 2,
+  "pageSize": 100
+}
+```
+
+Max `pageSize` is 200.
+
+---
+
+#### 14. Scoped to specific collections
+
+```json
+{
+  "type": "Contact",
+  "collectionIds": ["col_abc123", "col_def456"],
+  "groups": [
+    {
+      "id": "g1",
+      "logic": "AND",
+      "conditions": [
+        { "field": "plan_tier", "operator": "EQ", "value": "enterprise", "collectionId": "col_abc123" }
+      ]
+    }
+  ],
+  "returnRecords": true
+}
+```
+
+`collectionId` per condition takes priority over the top-level `collectionIds`.
+
+---
+
+#### All supported operators
+
+| Operator | Meaning | Value required |
+|---|---|---|
+| `EQ` / `EQUALS` | Exact match | Yes |
+| `NEQ` / `NOT_EQUALS` | Not equal | Yes |
+| `CONTAINS` | Substring match | Yes |
+| `NOT_CONTAINS` | Does not contain | Yes |
+| `STARTS_WITH` | Prefix match | Yes |
+| `GT` | Greater than (numeric) | Yes |
+| `GTE` | Greater than or equal (numeric) | Yes |
+| `LT` | Less than (numeric) | Yes |
+| `LTE` | Less than or equal (numeric) | Yes |
+| `IS_SET` | Value exists and non-empty | No |
+| `IS_NOT_SET` | Value is null or empty | No |
+
+---
+
+#### Response shape
+
+```json
+{
+  "success": true,
+  "data": {
+    "recordIds": ["REC#abc", "REC#def"],
+    "totalMatched": 2,
+    "page": 1,
+    "pageSize": 50,
+    "totalPages": 1,
+    "records": {
+      "REC#abc": {
+        "email": { "value": "john@acme.com", "collectionId": "col_xxx" },
+        "job_title": { "value": "Engineer", "collectionId": "col_xxx" }
+      }
+    },
+    "memories": {
+      "REC#abc": [{ "text": "...", "topic": "...", "createdAt": "..." }]
+    }
+  }
+}
+```
+
+`records` and `memories` are only present when `returnRecords: true` and `includeMemories: true` respectively.
+
+---
+
+### Advanced Search Patterns
+
+#### Key-Only Lookup (No Groups Needed)
+
+Pass CRM keys (`email`, `websiteUrl`, `recordId`, `customKeyName`/`customKeyValue`) directly — no `groups` or property conditions required. The system queries LanceDB key columns and returns matching records.
+
+```typescript
+// Find a record by email — no groups needed
+const byEmail = await client.memory.search({
+    email: 'sarah@acme.com',
+    returnRecords: true,
+});
+
+// Find a record by custom key
+const student = await client.memory.search({
+    type: 'Student',
+    customKeyName: 'studentNumber',
+    customKeyValue: 'S-2024-1234',
+    returnRecords: true,
+});
+```
+
+#### Secondary Key Search
+
+When a record's primary key is one identifier (e.g. `studentNumber`) but you know a different key (e.g. `email`), you can search by the secondary key. This works because memorize stores **all** provided CRM keys on every row, not just the primary.
+
+```typescript
+// A Student whose primary key is studentNumber, but you only know their email
+const studentByEmail = await client.memory.search({
+    type: 'Student',
+    email: 'alice@university.edu',
+    returnRecords: true,
+});
+
+// A Contact whose primary key is email, but you want to find by company URL
+// Note: may return multiple contacts at the same company
+const contactsByCompany = await client.memory.search({
+    type: 'Contact',
+    websiteUrl: 'https://acme.com',
+    returnRecords: true,
+});
+```
+
+**Prerequisite**: the secondary key must have been provided during memorize. If a Student was memorized with only `customKeyName: 'studentNumber'` and no `email`, searching by email won't find it.
+
+#### Cross-Type Search
+
+Omit the `type` parameter to search across **all entity types**. Returns Contacts, Students, Companies, Employees — any record that matches the key.
+
+```typescript
+// Find everything linked to this email — regardless of entity type
+const allRecords = await client.memory.search({
+    email: 'john@acme.com',
+    returnRecords: true,
+});
+// May return: Contact (john@acme.com), Employee (john@acme.com), Student (john@acme.com)
+// Each result includes its type in the response
+
+// Cross-type property search — find all records with a specific LinkedIn URL
+const byLinkedIn = await client.memory.search({
+    returnRecords: true,
+    groups: [{
+        conditions: [{ property: 'linkedin_url', operator: 'EQ', value: 'https://linkedin.com/in/johndoe' }],
+    }],
+});
+```
+
+#### Property-Value Lookup (When You Don't Have the Primary Key)
+
+When the identifier you have is stored as a **property value** (not a CRM key), use `groups` with a filter condition. This is useful for attributes like LinkedIn URLs, phone numbers, or any custom field stored in a collection.
+
+```typescript
+// Find contacts by LinkedIn URL stored as a property
+const byLinkedIn = await client.memory.search({
+    type: 'Contact',
+    returnRecords: true,
+    groups: [{
+        conditions: [{ property: 'linkedin_url', operator: 'EQ', value: 'https://linkedin.com/in/johndoe' }],
+    }],
+});
+
+// Find all contacts at a company domain (stored as company_url property)
+// Deliberately returns multiple — one per contact at that company
+const companyContacts = await client.memory.search({
+    type: 'Contact',
+    returnRecords: true,
+    groups: [{
+        conditions: [{ property: 'company_url', operator: 'EQ', value: 'https://acme.com' }],
+    }],
+});
+
+// Use the returned recordId(s) for further targeted recall
+const recordId = byLinkedIn.data?.recordIds[0];
+if (recordId) {
+    const details = await client.memory.smartRecall({
+        query: 'What do we know about this person?',
+        record_id: recordId,
+        fast_mode: true,
+    });
+}
+```
+
+**When to use which pattern:**
+
+| You have... | Pattern | Example |
+|---|---|---|
+| Primary CRM key (email for Contact) | Key-only lookup | `search({ email: '...' })` |
+| Secondary CRM key (email for Student) | Secondary key search | `search({ type: 'Student', email: '...' })` |
+| Custom entity key | Key-only + custom key | `search({ customKeyName: '...', customKeyValue: '...' })` |
+| A stored property value (LinkedIn URL) | Property-value lookup | `search({ groups: [{ conditions: [...] }] })` |
+| Any key, want all types | Cross-type search | `search({ email: '...' })` (no `type`) |
 
 ---
 

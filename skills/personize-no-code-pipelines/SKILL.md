@@ -1,12 +1,12 @@
 ---
-name: no-code-pipelines
+name: personize-no-code-pipelines
 description: "Generates importable n8n workflow JSON files that sync data between Personize and 400+ apps. Produces ready-to-import workflows for batch sync, webhook ingestion, per-record AI enrichment, and data export — no code required. Use this skill whenever the user wants no-code integrations, visual workflows, n8n automation, or to connect Personize to HubSpot, Salesforce, Google Sheets, Slack, Postgres, or any app without writing code. Also trigger when they mention 'workflow automation', 'scheduled sync without code', 'visual pipeline', or 'connect Personize to [app]' and don't want to write TypeScript."
 license: Apache-2.0
 compatibility: "Requires an n8n instance (cloud or self-hosted) and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F504", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
 ---
 
-# Skill: No-Code Pipelines
+# Skill: Personize No-Code Pipelines
 
 Generate importable n8n workflow JSON files that sync data between Personize and 400+ apps. The user describes their source/destination and you produce ready-to-import `.json` files they paste into n8n.
 
