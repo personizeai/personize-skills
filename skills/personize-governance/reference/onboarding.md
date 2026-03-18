@@ -40,6 +40,14 @@ For each high-priority variable:
 4. Show the draft and ask: "Does this capture how your team operates? What would you change?"
 5. On approval, create the variable
 
+**Quick Quality Checklist (for every new guideline):**
+- [ ] Has a clear `# Title` and brief opening sentence
+- [ ] Uses `##` headers for each major topic (enables section-level delivery — saves 50-80% tokens)
+- [ ] Hard rules use explicit language: "Never...", "Must always...", "Required:" (auto-tagged as `<HARD_CONSTRAINT>` at save time)
+- [ ] Has at least one GOOD/BAD contrasted example
+- [ ] Is 300-800 words (check `qualityWarnings` in the API response)
+- [ ] Name is a search query: `sales-cold-outreach` not `doc-v3`
+
 ### Step 4: Verify and Educate
 
 1. After creating variables, call `ai_smart_guidelines` / `client.ai.smartGuidelines()` with a relevant query to demonstrate

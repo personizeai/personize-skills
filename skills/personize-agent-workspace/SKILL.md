@@ -123,9 +123,9 @@ The minimum that covers what agents and humans actually do when working on a rec
 |---|---|---|---|
 | **Context** | text | replace | Current state. What's going on right now. Rewritten each cycle. |
 | **Updates** | array | append (immutable) | What happened. Who did it. When. The timeline. |
-| **Tasks** | array | append (mutable) | What needs to happen. Who owns it. Status. |
+| **Tasks** | array | append (mutable) | What needs to happen. Who owns it. Status. (For automated execution at scale, see lifecycle split below.) |
 | **Notes** | array | append (immutable) | Observations, knowledge, ideas from any contributor. |
-| **Issues** | array | append (mutable) | Problems, blockers, risks. Status and resolution. |
+| **Issues** | array | append (mutable) | Problems, blockers, risks. Status and resolution. (For automated execution at scale, see lifecycle split below.) |
 
 ### Why These 5 Are Enough
 
@@ -134,6 +134,19 @@ The minimum that covers what agents and humans actually do when working on a rec
 - **Conflict resolution?** Two contributors say different things? That's two data points. The consumer reads both and decides.
 - **Permissions?** Governance via `smartGuidelines()` tells each agent what they can and can't do. The organizational guidelines are the access control.
 - **Escalation?** An issue with severity `critical` IS an escalation. Whoever monitors the workspace acts on it.
+
+### Lifecycle Split for Automated Execution
+
+When agents automatically execute tasks (not just create them), the append-only `Tasks` and `Issues` properties accumulate ghost data — completed items sit alongside pending ones. For production workspaces with automated task processing, split these into **replace** (current state, code-managed with `enhanced: false`) + **append** (history, AI-managed). This keeps `smartDigest()` clean and accurate.
+
+> **Full guide:** Read `reference/lifecycle-properties.md` for the complete pattern with schema definitions, code examples, and common mistakes.
+
+| Standard (starter) | Lifecycle split (production) |
+|---|---|
+| `tasks` (append, mutable) | `pending_tasks` (replace, code-managed) + `task_history` (append) |
+| `issues` (append, mutable) | `open_issues` (replace, code-managed) + `issue_history` (append) |
+
+**When to upgrade:** Start with the 5-property starter. Upgrade when you add automated task execution or hit 20+ tasks per entity.
 
 ### CREATE Workflow
 
@@ -335,6 +348,7 @@ No standup needed. The workspace IS the standup.
 | `reference/grow.md` | Full GROW guide: all expansion properties (Decisions, Messages, Monitors, Alerts, Reports, Participants), when to add, maturity stages |
 | `reference/review.md` | Full REVIEW guide: audit checklist, query patterns, health scoring, improvement recommendations |
 | `reference/agent-prompts.md` | **Agent prompt guide:** system prompt templates, MCP tool call examples, role-specific prompts, multi-agent coordination patterns, testing checklist |
+| `reference/lifecycle-properties.md` | **Lifecycle properties:** Best practice for managing tasks and issues at scale — split into code-managed replace (current state) + AI-managed append (history). Essential for automated task execution. |
 | `reference/api-examples.md` | **Raw REST API examples:** curl/fetch for memorize, smart-recall, smart-digest, smart-guidelines, prompt, collections CRUD, search |
 | `reference/schemas/examples/workspace-starter.json` | The 5-property starter schema as JSON |
 | `reference/schemas/examples/workspace-evolved.json` | A fully evolved workspace (all expansion properties added) |

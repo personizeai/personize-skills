@@ -15,6 +15,7 @@ Quick reference for the `@personize/sdk` methods used in GTM pipelines.
 | `collections` | `history()` | `GET /api/v1/collections/:id/history` | Version history for a collection. |
 | `ai` | `smartGuidelines()` | `POST /api/v1/ai/smart-guidelines` | Semantic routing to org guidelines. |
 | `ai` | `prompt()` | `POST /api/v1/prompt` | AI generation with MCP tools, outputs, evaluation. |
+| `ai` | `promptStream()` | `POST /api/v1/prompt` (SSE) | Streaming prompt execution — yields events as outputs arrive. |
 | `agents` | `list()` | `GET /api/v1/agents` | List all agents (paginated). |
 | `agents` | `get(id)` | `GET /api/v1/agents/:id` | Get agent config + expected `{{input}}` variables. |
 | `agents` | `run(id)` | `POST /api/v1/agents/:id/run` | Execute an agent. |
@@ -385,16 +386,27 @@ const ctx = await personize.ai.smartGuidelines({
   message: "cold outbound email for VP of Sales at a SaaS company",
   tags: ["outbound", "email"],         // filter to relevant guidelines
   excludeTags: ["internal"],           // exclude variables with these tags
-  mode: "auto",                        // "fast" (~200ms) | "full" (~3s) | "auto"
+  mode: "auto",                        // "fast" (~200ms) | "deep" (~3s) | "auto"
   minScore: 0.4,                       // minimum cosine similarity (0-1)
-  sessionId: "conv-123",              // optional: conversation continuity
+  sessionId: "conv-123",              // optional: session deduplication — follow-up calls only receive NEW context
+  maxTokenBudget: 4000,               // optional: cap total tokens returned; excess demoted to supplementary[]
 });
 
-// ctx.data.compiledContext — matching guidelines as markdown
-// ctx.data.selection — which variables matched and their scores
-// ctx.data.mode — which routing mode was actually used ("fast" | "full")
+// ctx.data.compiledContext — matching guidelines as markdown (prefixed with constraint tag preamble)
+// ctx.data.selection — which variables matched and their scores (includes .content)
+// ctx.data.supplementary — guidelines that matched but exceeded token budget (names only — call again to fetch)
+// ctx.data.budgetMetadata.demotedGuidelines — names to pass as guidelineNames[] on follow-up call
+// ctx.data.mode — which routing mode was actually used ("fast" | "deep")
 // ctx.data.usage.durationMs — how long routing took
 ```
+
+> **Mode rename:** `'full'` was renamed to `'deep'`. If you see `mode: 'full'` in older code, update it to `mode: 'deep'`.
+
+> **Constraint tags:** Guidelines may contain `<HARD_CONSTRAINT>`, `<BEST_PRACTICE>`, and `<REFERENCE>` tags. These are auto-classified at save time based on language ("Never...", "Must...", "Should...", etc.). The `compiledContext` string is prefixed with a preamble explaining these tags to the consuming agent. Pass `compiledContext` as-is — do not strip the preamble.
+
+> **`constraintLevel` on create/update:** When creating a guideline, the API infers a top-level `constraintLevel` (`'hard'` | `'soft'` | `'reference'`) for the whole document. You can also pass it explicitly: `client.guidelines.create({ ..., constraintLevel: 'hard' })`. This affects routing priority for documents with mix of hard and soft rules.
+
+> **Session deduplication:** Pass a consistent `sessionId` across calls in the same agent session. Each subsequent call returns only guidelines not yet delivered — prevents re-sending the same content. Omit `sessionId` to always get fresh context.
 
 ### prompt — AI Generation with Built-in Tools
 

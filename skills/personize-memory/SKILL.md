@@ -189,7 +189,7 @@ Pass `tier` to select a curated model (default). Custom `model` and `provider` r
 
 > Keywords follow [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119): **MUST** = non-negotiable, **SHOULD** = strong default (override with stated reasoning), **MAY** = agent discretion.
 
-1. **MUST** include at least one tag on every `memorize()` call (e.g. `tags: ['source:hubspot', 'type:interaction', 'team:sales']`) -- because tags enable filtering, attribution, and workspace scoping; untagged memories are unsearchable by category.
+1. **MUST** include at least one tag on every `memorize()` call (e.g. `tags: ['source:hubspot', 'type:interaction', 'team:sales']`) -- because tags serve two purposes: (a) filtering, attribution, and workspace scoping, and (b) **property selection boosting** — tags that match a property definition's own `tags` array give that property a +15% score boost during extraction, making extraction context-aware. For example, `tags: ["qualification"]` boosts properties tagged `["qualification"]` like Decision Maker or Budget.
 2. **SHOULD** include a timestamp in the `content` or use the `timestamp` parameter -- because temporal ordering lets recall distinguish recent facts from stale ones.
 3. **MUST NOT** pre-process content with an LLM before calling `memorize()` with `enhanced: true` -- because double-processing wastes tokens and the extraction pipeline is optimized for raw input.
 4. **MUST NOT** manually deduplicate before memorizing -- because the platform deduplicates at cosine 0.92 similarity and runs background consolidation; client-side dedup adds complexity with no benefit.

@@ -473,3 +473,9 @@ Tags enable filtering on recall. Use a consistent scheme:
 ```typescript
 tags: ['source:hubspot', 'type:interaction', 'team:sales', 'call-notes']
 ```
+
+### Tags and Property Selection
+
+When you pass `tags` on a memorize call, they serve two purposes:
+1. **Categorization** — stored with the memory for filtering on recall
+2. **Property selection boost** — if a tag matches a property's own `tags` array (set on the property definition), that property gets a +15% score boost during extraction. For example, passing `tags: ["qualification"]` boosts properties tagged with `["qualification"]` like "Decision Maker" or "Budget".

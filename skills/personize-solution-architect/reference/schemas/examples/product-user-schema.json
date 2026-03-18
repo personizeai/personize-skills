@@ -1,4 +1,5 @@
 {
+  "_note": "This schema uses the human-friendly format (name, options as array, updateSemantics, tags). The API also accepts the native format (propertyName, options as string, update as boolean). Both are auto-normalized on save.",
   "id": "col_product_user",
   "name": "Product User Properties",
   "entityType": "Contact",
@@ -10,7 +11,11 @@
       "type": "text",
       "description": "The user's first/given name. Populated from signup form or user profile.",
       "autoSystem": false,
-      "tags": ["profile", "identity"]
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
     },
     {
       "name": "Last Name",
@@ -18,7 +23,11 @@
       "type": "text",
       "description": "The user's last/family name. Populated from signup form or user profile.",
       "autoSystem": false,
-      "tags": ["profile", "identity"]
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
     },
     {
       "name": "Full Name",
@@ -26,7 +35,11 @@
       "type": "text",
       "description": "The user's full display name. Populated from signup form or concatenated from first + last name.",
       "autoSystem": false,
-      "tags": ["profile", "identity"]
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
     },
     {
       "name": "Company Name",
@@ -34,16 +47,29 @@
       "type": "text",
       "description": "The company the user belongs to. Populated from signup form or organization settings in the product.",
       "autoSystem": false,
-      "tags": ["profile", "identity"]
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
     },
     {
       "name": "Plan Tier",
       "systemName": "plan_tier",
       "type": "options",
       "description": "The user's current subscription plan. Populated from the billing system. Determines feature access, rate limits, and support priority.",
-      "options": ["Free", "Starter", "Pro", "Enterprise"],
+      "options": [
+        "Free",
+        "Starter",
+        "Pro",
+        "Enterprise"
+      ],
       "autoSystem": false,
-      "tags": ["profile", "queryable"]
+      "tags": [
+        "profile",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Signup Date",
@@ -51,7 +77,11 @@
       "type": "date",
       "description": "The date the user created their account. Populated from the product database. ISO 8601 format. Used for cohort analysis and lifecycle-based communications.",
       "autoSystem": false,
-      "tags": ["profile", "queryable"]
+      "tags": [
+        "profile",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Last Active",
@@ -59,25 +89,48 @@
       "type": "date",
       "description": "The most recent date the user had meaningful product activity (not just a passive page load). Populated from product analytics. ISO 8601 format. Used to detect dormancy and trigger re-engagement.",
       "autoSystem": false,
-      "tags": ["profile", "queryable"]
+      "tags": [
+        "profile",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Usage Frequency",
       "systemName": "usage_frequency",
       "type": "options",
       "description": "How often the user engages with the product. Populated from product analytics or computed from login/activity data. Daily = uses most business days. Weekly = 1-3 sessions per week. Monthly = a few sessions per month. Dormant = no activity in 30+ days.",
-      "options": ["Daily", "Weekly", "Monthly", "Dormant"],
+      "options": [
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "Dormant"
+      ],
       "autoSystem": false,
-      "tags": ["profile", "queryable"]
+      "tags": [
+        "profile",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Onboarding Status",
       "systemName": "onboarding_status",
       "type": "options",
       "description": "Where the user is in the onboarding journey. Can be tracked by the product (checklist completion) or AI-assessed from support conversations and usage patterns. Not Started = account created but no setup actions. In Progress = started setup. Completed = finished core setup steps. Stalled = started but stopped progressing for 7+ days.",
-      "options": ["Not Started", "In Progress", "Completed", "Stalled"],
+      "options": [
+        "Not Started",
+        "In Progress",
+        "Completed",
+        "Stalled"
+      ],
       "autoSystem": true,
-      "tags": ["hybrid", "lifecycle", "queryable"]
+      "tags": [
+        "hybrid",
+        "lifecycle",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Primary Use Case",
@@ -85,7 +138,11 @@
       "type": "text",
       "description": "Why this user signed up — the core problem they're trying to solve. AI extracts from onboarding calls, support tickets, feedback forms, and feature requests (e.g., 'automating sales outreach emails', 'centralizing customer data from 5 tools', 'reducing manual reporting for the exec team'). Updated as the user's needs evolve.",
       "autoSystem": true,
-      "tags": ["ai-extracted", "personalization"]
+      "tags": [
+        "ai-extracted",
+        "personalization"
+      ],
+      "update": true
     },
     {
       "name": "Feature Adoption",
@@ -94,7 +151,10 @@
       "description": "Product features the user has adopted or shown interest in. AI extracts from support tickets ('how do I use the API?'), onboarding calls ('I'm most interested in the reporting dashboard'), and feedback ('just started using the batch import'). Each entry is a feature name. Helps identify adoption gaps and upsell opportunities.",
       "autoSystem": true,
       "updateSemantics": "append",
-      "tags": ["ai-extracted", "product"]
+      "tags": [
+        "ai-extracted",
+        "product"
+      ]
     },
     {
       "name": "Friction Points",
@@ -103,7 +163,11 @@
       "description": "Specific problems, confusions, or frustrations the user has encountered with the product. AI extracts from support tickets, bug reports, feedback sessions, and conversations. Each entry is a concise description (e.g., 'CSV import fails with special characters', 'confused by permission model', 'API rate limit too low for batch processing'). Critical for product improvement and proactive support.",
       "autoSystem": true,
       "updateSemantics": "append",
-      "tags": ["ai-extracted", "product", "support"]
+      "tags": [
+        "ai-extracted",
+        "product",
+        "support"
+      ]
     },
     {
       "name": "Expansion Signals",
@@ -112,7 +176,10 @@
       "description": "Indicators that the user needs more — more seats, higher plan, additional features. AI detects from conversations: 'can I add more team members?', 'what's included in the Pro plan?', 'we're hitting the API limit', 'our other department wants to use this too'. Each entry is a concise signal with context.",
       "autoSystem": true,
       "updateSemantics": "append",
-      "tags": ["ai-extracted", "expansion"]
+      "tags": [
+        "ai-extracted",
+        "expansion"
+      ]
     },
     {
       "name": "User Summary",
@@ -120,7 +187,11 @@
       "type": "text",
       "description": "AI-compiled snapshot of this user's entire product journey. Synthesizes: when they joined, what they use the product for, how actively they use it, what problems they've hit, and where they are in their lifecycle. Updated after each new support interaction or significant product event. This is the 'quick brief' for anyone on the team engaging with this user.",
       "autoSystem": true,
-      "tags": ["ai-extracted", "summary"]
+      "tags": [
+        "ai-extracted",
+        "summary"
+      ],
+      "update": true
     },
     {
       "name": "Churn Risk",
@@ -128,7 +199,12 @@
       "type": "boolean",
       "description": "Whether this user shows signs of potential churn. AI infers from: declining usage frequency, unresolved support tickets, frustrated sentiment in conversations, competitor mentions, questions about cancellation or data export, or extended dormancy. True = signals detected, proactive intervention recommended. False = no concerning signals.",
       "autoSystem": true,
-      "tags": ["ai-extracted", "health", "queryable"]
+      "tags": [
+        "ai-extracted",
+        "health",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Expansion Ready",
@@ -136,7 +212,12 @@
       "type": "boolean",
       "description": "Whether this user is ready for an upsell or plan upgrade conversation. AI infers from: hitting plan limits, requesting features only available on higher tiers, adding team members, positive sentiment, and high usage frequency. True = strong expansion signals present. False = not yet showing expansion readiness.",
       "autoSystem": true,
-      "tags": ["ai-extracted", "expansion", "queryable"]
+      "tags": [
+        "ai-extracted",
+        "expansion",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Power User",
@@ -144,7 +225,12 @@
       "type": "boolean",
       "description": "Whether this user is a highly engaged power user of the product. AI infers from: daily usage, adoption of advanced features, API usage, providing feedback, and helping other users. True = deep product engagement. Power users are candidates for case studies, beta programs, and advocacy.",
       "autoSystem": true,
-      "tags": ["ai-extracted", "engagement", "queryable"]
+      "tags": [
+        "ai-extracted",
+        "engagement",
+        "queryable"
+      ],
+      "update": true
     },
     {
       "name": "Has Integration",
@@ -152,7 +238,12 @@
       "type": "boolean",
       "description": "Whether this user has connected at least one external integration (e.g., Slack, HubSpot, Salesforce, Zapier). Populated from product data. Integration users have higher retention — flag non-integrated users for integration onboarding campaigns.",
       "autoSystem": false,
-      "tags": ["profile", "product", "queryable"]
+      "tags": [
+        "profile",
+        "product",
+        "queryable"
+      ],
+      "update": true
     }
   ]
 }

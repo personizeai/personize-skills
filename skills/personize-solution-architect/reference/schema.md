@@ -133,8 +133,45 @@ For each collection, design the properties (fields) that the AI will extract and
 | **type** | Yes | One of: `text`, `number`, `date`, `boolean`, `options`, `array` |
 | **options** | If type=options | Comma-separated allowed values (e.g., `Discovery, Qualification, Proposal, Negotiation, Closed Won, Closed Lost`) |
 | **description** | Yes (critical) | Detailed extraction instructions for the AI — this is the MOST important field |
-| **autoSystem** | Optional | `true` = AI automatically populates this field during memorization |
-| **update** | Optional | `true` = new values REPLACE existing (default). `false` = values APPEND over time |
+| **autoSystem** | Optional | UI helper — when true, systemName is auto-generated from propertyName. |
+| **update** | Optional | `true` (replace) / `false` (append). `true` for current-state fields (title, stage). `false` for accumulating data (pain points, notes). |
+| **tags** | Optional | Tags for property selection boosting. +15% score boost per match. Common: identity, firmographic, qualification, engagement, ai-extracted. |
+
+#### How to Think About Tags
+
+Tags answer: **"When should this property be extracted?"** During memorization, Personize uses vector similarity to decide which properties to extract from a piece of content. Tags give specific properties a boost when the memorize request includes matching tags — making extraction context-aware rather than purely similarity-based.
+
+**Why this matters:** Without tags, property selection relies entirely on how well a property's name and description match the content's embedding. A property like "First Name" has weak similarity to most content (it matches *everything* weakly), so it might be skipped in favor of more content-specific properties. By tagging it `["identity"]` and passing `tags: ["identity"]` on your memorize call, you guarantee it gets a +15% boost and stays in the selection set.
+
+**How to assign tags — think in categories:**
+
+| Tag | Use for | Example properties |
+|---|---|---|
+| `identity` | Who someone is — always worth capturing | First Name, Last Name, Email, Phone, LinkedIn |
+| `firmographic` | Company-level facts | Industry, Company Size, Revenue, Country |
+| `qualification` | Sales/pipeline relevance | Job Level, Decision Maker, Budget, ICP Match |
+| `engagement` | Interaction signals | Email Opens, Sentiment, Responsiveness |
+| `ai-extracted` | Fields the AI infers (not from CRM) | Pain Points, Personas, Communication Style |
+| `enrichment` | Data from external sources | LinkedIn URL, Tech Stack, Purchase Timeline |
+| `pipeline` | Deal-specific progression | Deal Stage, Expected Close, Next Steps |
+| `messaging` | Used for personalized content | Pain Points, Interests, Communication Style |
+
+**Rules of thumb:**
+- A property should have 1-3 tags. More is noise.
+- If two properties always need to be extracted together, give them the same tag.
+- Tags on the memorize request should match the *purpose* of the content: CRM sync → `["identity", "firmographic"]`, call notes → `["qualification", "ai-extracted"]`, engagement webhook → `["engagement"]`.
+
+#### API Field Format
+
+The API accepts two equivalent formats for property definitions:
+
+| Field | Native Format | Human-Friendly Format |
+|---|---|---|
+| **Property name** | `propertyName: "Job Title"` | `name: "Job Title"` |
+| **Options** | `options: "A, B, C"` (comma-separated string) | `options: ["A", "B", "C"]` (array) |
+| **Update behavior** | `update: true` (replace) / `update: false` (append) | `updateSemantics: "replace"` / `updateSemantics: "append"` |
+
+Both formats are accepted on every write endpoint (`saveAction`, `collections.create`, `collections.update`). The human-friendly format is auto-normalized to the native format on save. The example schema files in `reference/schemas/examples/` use the human-friendly format.
 
 #### Property Types Reference
 

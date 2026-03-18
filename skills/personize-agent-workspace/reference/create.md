@@ -113,6 +113,8 @@ interface WorkspaceTask {
 
 **Key insight:** A task assigned to someone IS a handoff. The description carries the context. The workspace carries the history. No handoff ceremony needed.
 
+> **Production best practice:** When agents automatically execute tasks (not just create them), split `tasks` into `pending_tasks` (replace, `enhanced: false`, code-managed) + `task_history` (append, `enhanced: true`). This keeps `smartDigest()` clean by removing completed tasks from the current state. See `reference/lifecycle-properties.md` for the full pattern.
+
 #### Property 4: Notes (array, append, immutable)
 
 Knowledge, observations, ideas from any contributor. Things that don't fit in a task or update but matter for understanding this entity.
@@ -274,5 +276,6 @@ console.log('Workspace digest:', digest.data?.compiledContext);
 | Missing the `author` field on entries | Every entry must say who contributed it. Without attribution, the workspace is a mystery. |
 | Using `replace` on Updates/Notes | These are append-only. History should not be rewritten. |
 | Using `append` on Context | Context is the current summary. It should be replaced, not accumulated. |
+| Using `enhanced: true` for code-managed state | AI may misparse or lose items in replace-mode properties. Use `enhanced: false` when you manage JSON arrays in code. See `reference/lifecycle-properties.md`. |
 | Forgetting tags | Tag entries with `workspace:tasks`, `workspace:notes`, etc. This enables filtered recall. |
 | Skipping verification | Always write a test entry and read it back. Don't assume the schema is correct until you see it work. |

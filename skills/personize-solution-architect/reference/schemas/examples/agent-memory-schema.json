@@ -1,4 +1,5 @@
 {
+  "_note": "This schema uses the human-friendly format (name, options as array, updateSemantics, tags). The API also accepts the native format (propertyName, options as string, update as boolean). Both are auto-normalized on save.",
   "id": "col_agent_memory",
   "name": "Agent Memory",
   "entityType": "Contact",
@@ -11,7 +12,10 @@
       "description": "The agent's current working memory for this entity — its understanding of what's happening, what matters, and what to focus on next. A narrative summary that persists across autonomous cycles, giving the agent continuity between pulse runs. Includes: current priorities, active goals, recent observations, and pending decisions. Replaced on each cycle with the agent's updated understanding. Think of this as the agent's 'mental model' of this entity.",
       "autoSystem": true,
       "updateSemantics": "replace",
-      "tags": ["context", "working-memory"]
+      "tags": [
+        "context",
+        "working-memory"
+      ]
     },
     {
       "name": "Tasks",
@@ -21,7 +25,11 @@
       "autoSystem": true,
       "updateSemantics": "append",
       "update": true,
-      "tags": ["action", "lifecycle", "operational"]
+      "tags": [
+        "action",
+        "lifecycle",
+        "operational"
+      ]
     },
     {
       "name": "Activity Log",
@@ -31,7 +39,11 @@
       "autoSystem": true,
       "updateSemantics": "append",
       "update": false,
-      "tags": ["audit", "observability", "immutable"]
+      "tags": [
+        "audit",
+        "observability",
+        "immutable"
+      ]
     },
     {
       "name": "Insights",
@@ -41,7 +53,11 @@
       "autoSystem": true,
       "updateSemantics": "append",
       "update": false,
-      "tags": ["intelligence", "learning", "immutable"]
+      "tags": [
+        "intelligence",
+        "learning",
+        "immutable"
+      ]
     },
     {
       "name": "Decisions",
@@ -51,7 +67,11 @@
       "autoSystem": true,
       "updateSemantics": "append",
       "update": false,
-      "tags": ["explainability", "governance", "immutable"]
+      "tags": [
+        "explainability",
+        "governance",
+        "immutable"
+      ]
     },
     {
       "name": "Alerts",
@@ -61,7 +81,11 @@
       "autoSystem": true,
       "updateSemantics": "append",
       "update": true,
-      "tags": ["notification", "escalation", "operational"]
+      "tags": [
+        "notification",
+        "escalation",
+        "operational"
+      ]
     },
     {
       "name": "Monitors",
@@ -71,7 +95,11 @@
       "autoSystem": true,
       "updateSemantics": "append",
       "update": true,
-      "tags": ["proactive", "monitoring", "operational"]
+      "tags": [
+        "proactive",
+        "monitoring",
+        "operational"
+      ]
     },
     {
       "name": "Messages Sent",
@@ -81,7 +109,11 @@
       "autoSystem": true,
       "updateSemantics": "append",
       "update": false,
-      "tags": ["communication", "audit", "immutable"]
+      "tags": [
+        "communication",
+        "audit",
+        "immutable"
+      ]
     }
   ]
 }

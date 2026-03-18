@@ -1,4 +1,5 @@
 {
+  "_note": "This schema uses the human-friendly format (name, options as array, updateSemantics, tags). The API also accepts the native format (propertyName, options as string, update as boolean). Both are auto-normalized on save.",
   "id": "col_support_tickets",
   "name": "Support Ticket Properties",
   "entityType": "Contact",
@@ -9,61 +10,123 @@
       "systemName": "issue_category",
       "type": "options",
       "description": "Primary classification of the support issue. Categorize based on the core problem, not the symptom. If the issue spans multiple categories, choose the most impactful one.",
-      "options": ["Bug Report", "Feature Request", "How-To Question", "Account Issue", "Billing", "Performance", "Integration", "Security"],
-      "tags": ["classification", "routing"]
+      "options": [
+        "Bug Report",
+        "Feature Request",
+        "How-To Question",
+        "Account Issue",
+        "Billing",
+        "Performance",
+        "Integration",
+        "Security"
+      ],
+      "tags": [
+        "classification",
+        "routing"
+      ],
+      "update": true
     },
     {
       "name": "Severity",
       "systemName": "severity",
       "type": "options",
       "description": "Impact severity of the issue. Critical: system down or data loss. High: major feature broken, no workaround. Medium: feature impaired but workaround exists. Low: minor inconvenience or cosmetic issue.",
-      "options": ["Critical", "High", "Medium", "Low"],
-      "tags": ["classification", "priority"]
+      "options": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "tags": [
+        "classification",
+        "priority"
+      ],
+      "update": true
     },
     {
       "name": "Product Area",
       "systemName": "product_area",
       "type": "text",
       "description": "The specific product feature or module affected. Be as specific as possible: 'Dashboard export to CSV' rather than 'Dashboard'. Include the UI location if mentioned.",
-      "tags": ["classification", "routing"]
+      "tags": [
+        "classification",
+        "routing"
+      ],
+      "update": true
     },
     {
       "name": "Steps to Reproduce",
       "systemName": "steps_to_reproduce",
       "type": "text",
       "description": "Ordered sequence of actions that trigger the issue. Extract from the customer's description, normalizing into clear steps. Include browser, OS, or environment details if mentioned.",
-      "tags": ["technical", "debugging"]
+      "tags": [
+        "technical",
+        "debugging"
+      ],
+      "update": true
     },
     {
       "name": "Error Message",
       "systemName": "error_message",
       "type": "text",
       "description": "The exact error message or code the customer reported. Preserve the original text verbatim, including error codes, HTTP status codes, or stack trace snippets.",
-      "tags": ["technical", "debugging"]
+      "tags": [
+        "technical",
+        "debugging"
+      ],
+      "update": true
     },
     {
       "name": "Customer Sentiment",
       "systemName": "customer_sentiment",
       "type": "options",
       "description": "Overall emotional tone of the customer. Frustrated: expressing anger or dissatisfaction. Concerned: worried but composed. Neutral: factual reporting. Positive: understanding or appreciative despite the issue.",
-      "options": ["Frustrated", "Concerned", "Neutral", "Positive"],
-      "tags": ["sentiment", "escalation"]
+      "options": [
+        "Frustrated",
+        "Concerned",
+        "Neutral",
+        "Positive"
+      ],
+      "tags": [
+        "sentiment",
+        "escalation"
+      ],
+      "update": true
     },
     {
       "name": "Resolution Status",
       "systemName": "resolution_status",
       "type": "options",
       "description": "Current resolution state. Resolved: fix confirmed by customer. Workaround Provided: temporary solution given. Escalated: sent to engineering or management. Pending: awaiting action. Unresolved: no solution found.",
-      "options": ["Resolved", "Workaround Provided", "Escalated", "Pending", "Unresolved"],
-      "tags": ["status", "tracking"]
+      "options": [
+        "Resolved",
+        "Workaround Provided",
+        "Escalated",
+        "Pending",
+        "Unresolved"
+      ],
+      "tags": [
+        "status",
+        "tracking"
+      ],
+      "update": true
     },
     {
       "name": "Account Tier",
       "systemName": "account_tier",
       "type": "options",
       "description": "The customer's subscription or account tier, which affects SLA and priority routing. Extract from the ticket metadata or conversation context.",
-      "options": ["Free", "Starter", "Professional", "Enterprise"],
-      "tags": ["account", "priority"]
+      "options": [
+        "Free",
+        "Starter",
+        "Professional",
+        "Enterprise"
+      ],
+      "tags": [
+        "account",
+        "priority"
+      ],
+      "update": true
     }
   ]
 }

@@ -1,23 +1,27 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Property Definition",
-  "description": "Schema for defining a property within a governed memory collection.",
+  "description": "Schema for defining a property within a governed memory collection. The API accepts both the native format (propertyName, options as string, update as boolean) and the human-friendly format (name, options as array, updateSemantics as string). The human-friendly format is auto-converted on save.",
   "type": "object",
-  "required": ["name", "systemName", "type", "description"],
+  "required": ["type", "description"],
   "properties": {
     "id": {
       "type": "string",
       "description": "Unique property identifier. Auto-generated if not provided."
     },
-    "name": {
+    "propertyName": {
       "type": "string",
-      "description": "Human-readable property name displayed in UIs and extraction results.",
+      "description": "Human-readable property name displayed in UIs and extraction results. Alias: 'name'.",
       "minLength": 1,
       "maxLength": 100
     },
+    "name": {
+      "type": "string",
+      "description": "Alias for propertyName. If both are provided, propertyName takes precedence."
+    },
     "systemName": {
       "type": "string",
-      "description": "Machine-readable identifier. Lowercase, underscored. Used for programmatic lookup.",
+      "description": "Machine-readable identifier. Lowercase, underscored. Auto-generated from propertyName if not provided. Immutable on update.",
       "pattern": "^[a-z][a-z0-9_]*$",
       "maxLength": 50
     },
@@ -31,26 +35,31 @@
       "description": "Detailed description guiding the extraction model. Include scope, examples, boundaries, and edge cases. This is the most important field for extraction quality.",
       "minLength": 20
     },
-    "extractionHints": {
-      "type": "string",
-      "description": "Additional guidance for the extraction model. Supplements the description with content-specific tips."
-    },
     "options": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Allowed values when type is 'options'. The extraction model will only return values from this list.",
-      "minItems": 2
+      "description": "Allowed values when type is 'options'. API accepts both comma-separated string ('A, B, C') and array (['A', 'B', 'C']). Arrays are auto-converted to comma-separated strings on save.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" }, "minItems": 2 }
+      ]
     },
-    "tags": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Tags for property selection boosting. Properties with tags matching the content context receive higher relevance scores."
+    "autoSystem": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, AI automatically populates this field during memorization. If false, field is only populated via structured writes (batch-memorize, upsert)."
+    },
+    "update": {
+      "type": "boolean",
+      "description": "If true, new values REPLACE existing. If false, new values APPEND (accumulate). Alias: 'updateSemantics' with values 'replace' (= true) or 'append' (= false)."
     },
     "updateSemantics": {
       "type": "string",
       "enum": ["replace", "append"],
-      "default": "replace",
-      "description": "'replace': new values overwrite existing. 'append': values accumulate over time (e.g., 'pain points mentioned')."
+      "description": "Human-friendly alias for 'update'. 'replace' = update: true, 'append' = update: false. Auto-converted on save."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for property selection boosting. When a memorize request includes tags that match a property's tags, that property receives a +15% boost per match to its similarity score during property selection. Common tags: 'identity', 'firmographic', 'qualification', 'engagement', 'ai-extracted'."
     }
   },
   "additionalProperties": false

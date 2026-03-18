@@ -220,6 +220,67 @@ Error responses:
 
 ---
 
+## Constraint Engineering
+
+Guidelines can express three levels of constraint strength. Use explicit language to signal the level — SmartContext auto-classifies and tags them at save time.
+
+### Constraint Levels
+
+| Level | Tag | Language | Behavior |
+|---|---|---|---|
+| **Hard constraint** | `<HARD_CONSTRAINT>` | "Never...", "Must always...", "Required:", "Prohibited:" | Agent must follow; violations are logged |
+| **Best practice** | `<BEST_PRACTICE>` | "Should...", "Recommended:", "Prefer..." | Agent follows unless there's a specific reason not to |
+| **Reference** | `<REFERENCE>` | "FYI:", "Note:", "Context:" | Informational; agent uses for background understanding |
+
+> **Auto-tagging:** When you save a guideline, the system infers and applies these tags automatically. Using the canonical language above produces the most accurate classification.
+
+### How Agents Read Tagged Content
+
+When guidelines are delivered to agents, a preamble is prepended:
+
+> *"Guidelines may contain `<HARD_CONSTRAINT>` (must follow — violations are logged), `<BEST_PRACTICE>` (should follow when applicable), and `<REFERENCE>` (informational context) tags. If you cannot comply with a HARD_CONSTRAINT, state the conflict explicitly."*
+
+This means agents are primed to treat hard constraints as non-negotiable and to surface conflicts rather than silently choosing a behavior.
+
+### Writing Hard Constraints
+
+Use absolute language and make the constraint self-contained — the agent may only receive this section, not the full document:
+
+```markdown
+## Compliance Requirements
+
+<HARD_CONSTRAINT>Never include competitor product names in outbound emails. This is a legal requirement under our marketing agreement — violations trigger a compliance review.</HARD_CONSTRAINT>
+
+<HARD_CONSTRAINT>All emails must include an unsubscribe link. Required under CAN-SPAM and GDPR. Use the {{unsubscribe_url}} template variable.</HARD_CONSTRAINT>
+
+<BEST_PRACTICE>Keep subject lines under 50 characters. Longer subjects get truncated on mobile (60%+ of opens).</BEST_PRACTICE>
+
+<REFERENCE>Our legal team reviews flagged emails every Monday. Escalate unclear cases via #legal-marketing Slack channel.</REFERENCE>
+```
+
+### Writing Best Practices
+
+Best practices should explain the "why" — agents apply them contextually and need the reasoning to judge edge cases:
+
+```markdown
+<BEST_PRACTICE>Use first name only in email openers (not full name). Reason: full name openers feel automated; first name feels personal. Exception: formal industries (law, government) where full name is standard.</BEST_PRACTICE>
+```
+
+### When to Escalate vs. Skip
+
+If an agent cannot comply with a hard constraint (e.g., the template variable is missing), it should:
+1. State the conflict explicitly to the user
+2. NOT silently skip the requirement
+3. NOT invent a workaround that violates the constraint
+
+Design your guidelines with this in mind — include fallback instructions inside the constraint when relevant:
+
+```markdown
+<HARD_CONSTRAINT>Emails must include the prospect's company name in the first paragraph. If company name is unknown, ask the user to provide it before sending — do not guess or omit.</HARD_CONSTRAINT>
+```
+
+---
+
 ## Layered Context Architecture
 
 ### The Four Layers
@@ -422,6 +483,18 @@ const validation = await client.ai.prompt({
 **Bad:** "All support tickets must be resolved within 24 hours."
 **Good:** "All support tickets must be resolved within 24 hours. Exception: P0 incidents — 4 hour resolution target. Exception: Feature requests — moved to backlog, no resolution target."
 **Why:** Without exceptions, agents apply rules blindly to cases where they shouldn't.
+
+### 6. The Flat Wall of Text
+
+**Bad:** A 2,000-word section with no H2/H3 headers, no bullet points, just paragraphs of prose.
+**Good:** Break into subsections with descriptive H2 headers, use bullet points for lists, tables for comparisons, and code blocks for technical rules.
+**Why:** SmartContext uses section headers as retrieval targets. A flat wall of text cannot be section-delivered — the entire document must be loaded even when only one rule is relevant, burning 5-10× more tokens than needed.
+
+### 7. The Ambiguous Constraint
+
+**Bad:** "Be professional in emails." / "Follow legal requirements."
+**Good:** "Emails must be under 150 words. No exclamation marks. One CTA per email. No competitor mentions (legal requirement — CAN-SPAM + marketing agreement)."
+**Why:** Ambiguous constraints are effectively invisible — agents interpret them optimistically and skip enforcement. Use `<HARD_CONSTRAINT>` tags with explicit, testable rules. If an agent can ask "does this comply?", the rule is too vague.
 
 ---
 

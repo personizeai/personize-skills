@@ -87,13 +87,19 @@ await client.guidelines.delete(variableId);
 4. If overlap exists, suggest updating the existing variable instead of creating a duplicate
 5. Draft the variable with proper markdown structure:
    - Clear `# Title` as H1
-   - Logical `## Section` headers (H2)
+   - Logical `## Section` headers (H2) — **required for section-level delivery**
    - Bullet points, numbered lists, tables where appropriate
    - Concise, actionable language — these are reference docs, not prose
-6. Propose a kebab-case name, relevant tags, and a one-line description
-7. **Show the full draft to the admin and ask for approval**
-8. On approval, call `client.guidelines.create()`
-9. Verify with `client.ai.smartGuidelines()` that the new variable surfaces for relevant queries
+   - Use constraint language for hard rules: "Never...", "Must always...", "Required:" — auto-tagged as `<HARD_CONSTRAINT>` at save time
+6. **Check quality signals** before showing to admin:
+   - At least 2-3 `##` headers (enables section-level delivery — saves 50-80% tokens)
+   - 300-800 words (sweet spot for retrieval + token efficiency)
+   - Contrasted examples (GOOD/BAD) where applicable
+   - The API returns `qualityWarnings` on save — surface these to the admin
+7. Propose a kebab-case name, relevant tags, and a one-line description
+8. **Show the full draft to the admin and ask for approval**
+9. On approval, call `client.guidelines.create()`
+10. Verify with `client.ai.smartGuidelines()` that the new variable surfaces for relevant queries
 
 **Naming conventions:**
 - Use kebab-case: `sales-playbook`, `brand-voice-guidelines`
@@ -131,6 +137,8 @@ await client.guidelines.delete(variableId);
 7. **Show the before/after to the admin and ask for approval**
 8. On approval, call `client.guidelines.update()` with the appropriate `updateMode` and `sectionHeader`
 9. Include a descriptive `historyNote` explaining what changed and why
+
+**Tag preservation:** When editing sections that contain `<HARD_CONSTRAINT>` or `<BEST_PRACTICE>` tags, preserve them. If the rule itself changes, update the content inside the tag. If a rule is downgraded (hard → soft), change the tag accordingly. New rules with absolute language ("Never...", "Must...") are auto-tagged at save time.
 
 **Workflow (Full Replace):**
 

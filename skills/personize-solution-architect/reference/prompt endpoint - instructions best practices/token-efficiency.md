@@ -122,13 +122,52 @@ instructions: [
 | Mode | Speed | Cost | Best for |
 |------|-------|------|----------|
 | `fast` | ~200ms | Free (embedding only) | Real-time chat, known orgs with many variables |
-| `full` | ~3-5s | 1 LLM call | First interaction, complex tasks, few variables |
+| `deep` | ~3-5s | 1 LLM call | First interaction, complex tasks, few variables |
 | `auto` | Varies | System decides | Default — good for most cases |
+
+> **Mode rename:** `'full'` was renamed to `'deep'`. Update any older code using `mode: 'full'`.
 
 For batch/workflow use cases, always pass `mode: 'fast'` to skip the routing LLM call:
 ```typescript
 await client.ai.smartGuidelines({ message: task, mode: 'fast' });
 ```
+
+### SmartContext Token Optimization
+
+SmartContext supports additional controls to keep token usage predictable:
+
+**1. Token budget cap (`maxTokenBudget`)**
+
+Cap how many tokens are returned across all guidelines. Excess guidelines are demoted to `supplementary[]` — delivered by name only (call again with `guidelineNames` to fetch them when needed):
+
+```typescript
+const ctx = await client.ai.smartGuidelines({
+  message: 'cold email guidelines',
+  maxTokenBudget: 3000,  // cap total returned content
+});
+
+// If budget exceeded:
+// ctx.data.supplementary — guidelines that didn't fit (name + reason only)
+// ctx.data.budgetMetadata.demotedGuidelines — names to fetch on follow-up
+
+if (ctx.data.budgetMetadata?.demotedGuidelines?.length) {
+  const moreCtx = await client.ai.smartGuidelines({
+    message: 'cold email guidelines',
+    guidelineNames: ctx.data.budgetMetadata.demotedGuidelines,
+  });
+}
+```
+
+**2. Section-level delivery**
+
+When a guideline has `##` section headers, SmartContext can deliver only the sections relevant to the query — instead of the full document. This is automatic in `fast` mode when sections match the query. To maximize section-level delivery:
+- Write guidelines with clear `##` section headers (minimum 2-3 per guideline)
+- Use headers that match how agents will search (e.g., `## Cold Email Rules` not `## Section 3`)
+- Section-level delivery saves 50-80% tokens vs full-document delivery
+
+**3. Constraint tags are free context**
+
+Guidelines containing `<HARD_CONSTRAINT>`, `<BEST_PRACTICE>`, and `<REFERENCE>` tags get a ~40-token preamble prepended to `compiledContext` — a one-time cost per session. The preamble primes the agent to enforce hard constraints without additional instruction in your prompt. Do NOT repeat constraint instructions in your prompt if guidelines already contain them.
 
 ---
 

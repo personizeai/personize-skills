@@ -169,7 +169,7 @@ Help the developer design their complete data schema — **collections** (entity
 
 1. **Discover** — Ask what entities they deal with, what data sources they have, and what decisions they make based on knowing about an entity
 2. **Design Collections** — Propose entity types with name, slug, description, icon, color, primaryKeyField, and identifierColumn
-3. **Design Properties** — For each collection, design properties with propertyName, type, options (if applicable), description (critical for AI extraction quality), autoSystem, and update mode (replace vs append)
+3. **Design Properties** — For each collection, design properties with propertyName, type, options (if applicable), description (critical for AI extraction quality), autoSystem, update mode (replace vs append), and **tags**
 4. **Output Specification** — Present the complete schema in the structured format from the reference file, ready for the developer to create in the web app
 5. **Create or Verify** — Use `client.collections.create()` to create the schema programmatically, or confirm with `client.collections.list()` after manual creation, and use real `collectionId`/`collectionName` in `memorizeBatch()` mappings
 
@@ -190,6 +190,7 @@ Help the developer design their complete data schema — **collections** (entity
 |---|---|---|
 | **autoSystem** | `true` / `false` | `true` = AI auto-extracts during memorization. Use for all properties you want populated from unstructured content. |
 | **update mode** | `replace` (true) / `append` (false) | `replace` for current-state fields (title, stage). `append` for accumulating data (pain points, notes). |
+| **tags** | string array | Tags answer: *"When should this property be extracted?"* They boost property selection (+15% per match) when memorize request tags match. Assign 1-3 tags per property from categories like `identity`, `firmographic`, `qualification`, `engagement`, `ai-extracted`, `enrichment`, `pipeline`, `messaging`. |
 | **description quality** | — | The #1 factor in extraction quality. Be specific, include examples, define boundaries, handle edge cases. |
 
 > **Full guide:** Read `reference/schema.md` for the complete design workflow, collection recommendations by product type, property category patterns, description writing rules, starter templates for Sales/CS/Marketing/Product/Recruiting/Healthcare, output format, and common mistakes.
