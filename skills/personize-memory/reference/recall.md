@@ -46,8 +46,8 @@ interface SmartRecallOptions {
     enable_reflection?: boolean;       // AI reflects on results for deeper insight (default: true)
     max_reflection_rounds?: number;    // Max reflection iterations (default: 2)
     generate_answer?: boolean;         // AI generates a direct answer from results
-    fast_mode?: boolean;               // Skip reflection + answer gen, ~500ms (default: false)
-    min_score?: number;                // Server-side score filter (in fast_mode, defaults to 0.3)
+    mode?: 'fast' | 'deep';            // 'fast' skips reflection + answer gen, ~500ms; 'deep' enables full reflection (default: 'deep')
+    min_score?: number;                // Server-side score filter (in fast mode, defaults to 0.3)
     minScore?: number;                 // camelCase alias for min_score
 
     // Collection scoping
@@ -122,6 +122,27 @@ const person = await client.memory.recall({
 
 ---
 
+### Recency Bias
+
+Use `prefer_recent` to boost recent memories with exponential decay:
+
+```typescript
+const result = await client.memory.smartRecall({
+  query: "what changed on this contact recently?",
+  email: "john@acme.com",
+  mode: "deep",
+  prefer_recent: true,
+  recency_half_life_days: 30, // 30-day half-life
+});
+```
+
+Default half-life is 90 days. Lower values = more aggressive recency bias:
+- 7 days: "what happened this week?"
+- 30 days: "what happened this month?"
+- 90 days (default): general retrieval with mild recency preference
+
+---
+
 ### Entity Scoping: With vs. Without CRM Keys
 
 Every recall method accepts optional CRM keys (`email`, `website_url`, `record_id`) to scope results to a specific entity. Understanding when to use them — and what happens when you don't — is important.
@@ -141,7 +162,7 @@ await client.memory.smartRecall({
     type: 'Student',
     customKeyName: 'studentNumber',
     customKeyValue: 'S-2024-1234',
-    fast_mode: true,
+    mode: 'fast',
 });
 ```
 - Results come from one record only
@@ -177,7 +198,7 @@ await client.memory.smartRecall({
 - Power search features in your product
 
 **Risks to be aware of:**
-- Results are capped by `limit` / `topK` (default 10, fast_mode default 100, max 5,000) — you get the best matches, not an exhaustive list
+- Results are capped by `limit` / `topK` (default 10, fast mode default 100, max 5,000) — you get the best matches, not an exhaustive list
 - If 1,000 records mention "Kubernetes", you'll get the top N most relevant chunks, not all 1,000
 - For an exhaustive list of all records matching criteria, use `memory.search()` with filter conditions instead — it's designed for that
 - Higher `limit` values increase response size but have negligible cost impact (vector search, no LLM calls)
@@ -265,23 +286,23 @@ const allResults = await client.memory.smartRecall({
 const fast = await client.memory.smartRecall({
     query: 'what do we know about this contact?',
     email: 'sarah.chen@initech.com',
-    fast_mode: true,
+    mode: 'fast',
 });
 
 // Fast mode with custom score threshold
 const fastStrict = await client.memory.smartRecall({
     query: 'budget and pricing discussions',
     email: 'sarah.chen@initech.com',
-    fast_mode: true,
+    mode: 'fast',
     min_score: 0.5,     // Stricter than default 0.3
 });
 ```
 
 ### Fast Mode
 
-Use `fast_mode: true` when latency matters more than depth. It skips the reflection loop and answer generation, returning results in ~500-700ms instead of ~10-20 seconds.
+Use `mode: 'fast'` when latency matters more than depth. It skips the reflection loop and answer generation, returning results in ~500-700ms instead of ~10-20 seconds.
 
-| Aspect | Normal Mode | Fast Mode |
+| Aspect | Deep Mode (`mode: 'deep'`) | Fast Mode (`mode: 'fast'`) |
 |---|---|---|
 | **Latency** | ~10-20s | ~500-700ms |
 | **Reflection** | 2 rounds (LLM calls) | Skipped |
@@ -290,13 +311,13 @@ Use `fast_mode: true` when latency matters more than depth. It skips the reflect
 | **Result limit** | `limit` value (default 10) | Up to 100 results above score threshold (override via `limit`) |
 | **Max results** | Up to 5,000 | Up to 5,000 |
 
-**When to use fast_mode:**
+**When to use fast mode:**
 - Real-time UIs (autocomplete, preview panels)
 - Context injection in hot paths (prompt assembly)
 - Batch processing where per-call latency matters
 - Any scenario where ~10+ second waits are unacceptable
 
-**When NOT to use fast_mode:**
+**When NOT to use fast mode:**
 - Deep research queries ("summarize everything about this relationship")
 - When you need `generate_answer: true` (AI-synthesized answer)
 - When you need the reflection loop to find related but non-obvious memories
@@ -948,7 +969,7 @@ if (recordId) {
     const details = await client.memory.smartRecall({
         query: 'What do we know about this person?',
         record_id: recordId,
-        fast_mode: true,
+        mode: 'fast',
     });
 }
 ```
@@ -1101,7 +1122,7 @@ When assembling context, fetch independent layers in parallel:
 const [governance, digest, recalled] = await Promise.all([
     client.ai.smartGuidelines({ message: `${task} — guidelines` }),
     client.memory.smartDigest({ email, type: 'Contact', token_budget: 2000 }),
-    client.memory.smartRecall({ query: task, email, fast_mode: true }),  // fast_mode for hot paths
+    client.memory.smartRecall({ query: task, email, mode: 'fast' }),  // fast mode for hot paths
 ]);
 ```
 

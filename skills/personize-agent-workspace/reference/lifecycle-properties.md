@@ -38,6 +38,17 @@ Split each lifecycle property into two:
 | **Current state** | replace | `false` | Your code | Only active items — always clean |
 | **History** | append | `true` | AI extraction | Completed/resolved items — audit trail |
 
+### The `update` Flag
+
+Every property has an `update` flag that controls write behavior:
+
+- **`update: true`** (replaceable) — supports `set`, `push`, `remove`, and `patch` operations. Use for code-managed state like `pending_tasks` and `open_issues`.
+- **`update: false`** (append-only) — only supports `push`. Use for immutable history like `task_history`, `updates`, `notes`.
+
+The `memory_get_properties` MCP tool and `client.memory.properties()` SDK method return this flag so agents know which operations are allowed. The `memory_update_property` MCP tool enforces it — attempting `set` on an `update: false` property will fail.
+
+Property change history is automatically written to LanceDB as searchable change summaries, so property updates are findable via `smartRecall` with `prefer_recent: true`.
+
 ### Which Properties Need This?
 
 > **Rule:** If items have lifecycle states, split the property. If items are write-once, keep append-only.

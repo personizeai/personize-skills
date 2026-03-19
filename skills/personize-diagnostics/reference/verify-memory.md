@@ -64,7 +64,7 @@ const recall = await client.memory.recall({
 const results = await client.memory.smartRecall({
   query: '<a question the data should answer>',
   email: '<the-email>',
-  fast_mode: true,                    // fast mode for quick verification
+  mode: 'fast',                    // fast mode for quick verification
 });
 console.log('Results:', results.data.results.length);
 results.data.results.forEach((r, i) => {
@@ -79,6 +79,14 @@ results.data.results.forEach((r, i) => {
 ### Step 4: Check Properties (if using memorizeBatch)
 
 ```typescript
+// Option A: Read property values directly
+const props = await client.memory.properties({
+  email: '<the-email>',
+  type: 'Contact',
+});
+console.log('Properties:', JSON.stringify(props.data, null, 2));
+
+// Option B: Via smartDigest (includes compiled context)
 const digest = await client.memory.smartDigest({
   email: '<the-email>',
   include_properties: true,
@@ -90,6 +98,7 @@ console.log('Properties:', JSON.stringify(digest.data.properties, null, 2));
 **What to check:**
 - Properties you mapped in `memorizeBatch()` appear with correct values
 - Properties with `extractMemories: true` have AI-extracted values (not raw input)
+- `client.memory.properties()` returns the raw property values without compilation overhead — use it for quick verification
 
 ### Step 5: Check Compiled Context
 
@@ -116,6 +125,7 @@ console.log('Preview:', digest.data.compiledContext.substring(0, 500));
 | `recall()` | `query`, `type` | email, websiteUrl, recordId | None (DynamoDB lookup) |
 | `smartRecall()` | `query` | All 7 identifiers | Vector search + reflection |
 | `smartDigest()` | At least 1 identifier | email, websiteUrl, recordId | Context compilation |
+| `properties()` | identifier, `type` | email, websiteUrl, recordId | None (direct property read) |
 
 ## Common Failure Modes
 

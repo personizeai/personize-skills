@@ -61,15 +61,25 @@ This skill helps developers set up shared workspaces on any Personize entity so 
 |---|---|---|
 | Write to workspace | `client.memory.memorize()` | `memory_store_pro` |
 | Batch write | `client.memory.memorizeBatch()` | (SDK only) |
-| Read workspace digest | `client.memory.smartDigest()` | (SDK only — use `memory_recall_pro` with targeted queries) |
+| Read workspace digest | `client.memory.smartDigest()` | `memory_digest` |
 | Search workspace | `client.memory.smartRecall()` | `memory_recall_pro` |
 | Simple lookup | `client.memory.recall()` | `memory_recall_pro` |
+| Read property values | `client.memory.properties()` | `memory_get_properties` |
+| Update a property | (via memorize with `enhanced: false`) | `memory_update_property` |
 | Search records by filters | `client.memory.search()` | (SDK only) |
 | Get governance rules | `client.ai.smartGuidelines()` | `ai_smart_guidelines` |
 | Generate with workspace context | `client.ai.prompt()` | (use assembled context) |
 | Manage collections | `client.collections.create/list/update/delete()` | (SDK only) |
 
-> **Important:** Use `smartRecall()` (not `recall()`) for workspace reads that need `limit`, `fast_mode`, or `include_property_values`. The simpler `recall()` only accepts `query`, `email`, `record_id`, `website_url`, and `filters`. See `reference/api-examples.md` for raw REST equivalents.
+> **Important:** Use `smartRecall()` (not `recall()`) for workspace reads that need `limit`, `mode`, or `include_property_values`. The simpler `recall()` only accepts `query`, `email`, `record_id`, `website_url`, and `filters`. See `reference/api-examples.md` for raw REST equivalents.
+>
+> **`mode` parameter:** Smart-recall accepts `mode: "fast"` (1 credit) or `mode: "deep"` (2 credits, default). Use `"fast"` for simple lookups and `"deep"` for reflective, multi-step retrieval.
+>
+> **Property `update` flag:** Properties with `update: true` are replaceable (set/remove/patch). Properties with `update: false` are append-only (push only). The `memory_update_property` MCP tool and `client.memory.properties()` SDK method respect this flag.
+>
+> **`memory_get_properties`** returns property values with schema descriptions, including the `update` flag so agents know whether a property is replaceable or append-only.
+>
+> **`memory_update_property`** supports operations: `set`, `push`, `remove`, `patch` — but enforces the `update` flag (`update: false` properties only accept `push`).
 
 > **Guiding AI agents via MCP?** Read `reference/agent-prompts.md` for complete system prompt templates, MCP tool call examples, role-specific prompts (sales intel, CS health, product analytics, human-in-the-loop), and multi-agent coordination patterns.
 

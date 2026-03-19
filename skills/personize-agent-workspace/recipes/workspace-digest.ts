@@ -56,7 +56,7 @@ async function getOpenTasks(email: string): Promise<any[]> {
         query: 'tasks pending in progress action items not completed',
         email,
         limit: 20,
-        fast_mode: true,
+        mode: 'fast',
     });
     return result.data || [];
 }
@@ -66,7 +66,7 @@ async function getOpenIssues(email: string): Promise<any[]> {
         query: 'issues problems risks open unresolved',
         email,
         limit: 20,
-        fast_mode: true,
+        mode: 'fast',
     });
     return result.data || [];
 }
@@ -76,7 +76,7 @@ async function getRecentUpdates(email: string): Promise<any[]> {
         query: 'recent updates observations actions changes milestones',
         email,
         limit: 10,
-        fast_mode: true,
+        mode: 'fast',
     });
     return result.data || [];
 }
@@ -89,7 +89,7 @@ async function getNotesByContributor(
         query: `notes observations analysis from ${contributor}`,
         email,
         limit: 10,
-        fast_mode: true,
+        mode: 'fast',
     });
     return result.data || [];
 }
@@ -103,7 +103,7 @@ async function getAllCriticalIssues(): Promise<any[]> {
         query: 'critical severity issues open unresolved urgent',
         limit: 50,
         min_score: 0.3,
-        fast_mode: true,
+        mode: 'fast',
     });
     return result.data || [];
 }
@@ -113,7 +113,7 @@ async function getAllHighPriorityTasks(): Promise<any[]> {
         query: 'high priority urgent tasks pending',
         limit: 50,
         min_score: 0.3,
-        fast_mode: true,
+        mode: 'fast',
     });
     return result.data || [];
 }

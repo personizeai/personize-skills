@@ -18,6 +18,39 @@ Personize doesn't replace your stack — it enriches it. The WIRE action helps d
 
 ## Integration Patterns
 
+### SmartGuidelines — Broad vs. Targeted Fetch
+
+Two modes for fetching governance context — choose based on whether the task is open-ended or requires specific known guidelines:
+
+```typescript
+// Broad (semantic) — let the system route to relevant guidelines by topic
+const governance = await client.ai.smartGuidelines({
+    message: 'cold outbound email for VP of Sales at a SaaS company',
+    tags: ['outbound', 'email'],         // optional: filter to guidelines with these tags
+    excludeTags: ['internal'],           // optional: exclude draft/internal guidelines
+    mode: 'fast',                        // 'fast' (~200ms) | 'deep' (~3s) | 'auto'
+});
+
+// Targeted — force-include specific guidelines by ID (bypasses scoring)
+const governance = await client.ai.smartGuidelines({
+    message: 'pricing email follow-up',
+    guidelineIds: ['action_abc123', 'action_def456'],  // always included regardless of relevance score
+});
+
+// Targeted by name — server resolves names to IDs (case-insensitive)
+const governance = await client.ai.smartGuidelines({
+    message: 'renewal conversation',
+    guidelineNames: ['Sales Playbook', 'Pricing Policy'],
+});
+
+// governance.data.compiledContext — ready-to-inject markdown with guidelines
+// governance.data.selection — which guidelines matched and why
+```
+
+> Use **broad** for open-ended tasks where you don't know which guidelines apply. Use **targeted** when you know exactly which policy must be enforced — e.g., "always include the pricing disclaimer guideline" or "this agent must follow the compliance checklist."
+
+---
+
 ### Pattern 1: Wrap & Enhance
 
 The simplest pattern — wrap an existing function to add personalization while keeping the original signature.

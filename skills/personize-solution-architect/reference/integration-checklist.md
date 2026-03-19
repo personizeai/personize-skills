@@ -10,7 +10,7 @@ Choose one or more:
 
 - [ ] **Skills** — Installed Personize skills into your AI assistant (`npx skills add personizeai/personize-skills`)
 - [ ] **SDK** — Installed `@personize/sdk` and initialized the client with your secret key
-- [ ] **MCP** — Added the Personize MCP server to your agent's tool configuration (Claude Desktop, Cursor, ChatGPT, workflow tools)
+- [ ] **MCP** — Added the Personize MCP server to your agent's tool configuration (Claude Desktop, Cursor, ChatGPT, workflow tools). 13 tools available including `memory_get_properties`, `memory_update_property`, `memory_digest`
 - [ ] **Zapier** — Connected your Personize account via Zapier to memorize data from 8,000+ apps
 
 Verify: `client.me()` → `GET /api/v1/me` returns your org name and plan.
@@ -58,12 +58,18 @@ Retrieve entity data using the right method:
 |---|---|---|
 | **Semantic search** — "what do we know about X?" | `POST /api/v1/smart-recall` | `client.memory.smartRecall()` |
 | **Entity context bundle** — full picture of an entity | `POST /api/v1/smart-memory-digest` | `client.memory.smartDigest()` |
+| **Property values with schema** — values + descriptions + update flag | `POST /api/v1/properties` | `client.memory.properties()` |
 | **Direct lookup** — all stored data for a record | `POST /api/v1/recall` | `client.memory.recall()` |
 | **Filter & export** — list records by conditions | `POST /api/v1/search` | `client.memory.search()` |
 
 - [ ] Semantic recall returns relevant results for your actual use-case queries
+- [ ] `smartRecall()` uses the right `mode`: `"fast"` (1 credit, ~500ms) for real-time lookups, `"deep"` (2 credits, ~10-20s, reflection + answer generation) for thorough analysis. Default is `"deep"`.
 - [ ] `smartDigest()` compiles a useful context bundle for your primary entity type
+- [ ] `properties()` returns property values with schema descriptions and `update` flag — useful for AI agents to know which properties are replaceable vs append-only
 - [ ] Cross-entity context works — pulling company context when working on a contact
+
+Supported entity identifiers: `email`, `websiteUrl`, `recordId`, `customKeyName`+`customKeyValue`, `phoneNumber`, `postalCode`, `deviceId`, `contentId`. Pass multiple for better matching.
+- [ ] `smartRecall()` with `prefer_recent: true` surfaces recent activity and property changes — every property update automatically writes a searchable change summary to LanceDB, so "what changed recently?" queries work without a dedicated history tool
 
 Verify: Run a real query, not a test string. If results are poor, check property descriptions and `extractMemories` flags.
 
@@ -84,6 +90,7 @@ Create and maintain organizational guidelines that govern all AI agents.
 - [ ] `smartGuidelines()` returns content for a sample task relevant to your use case
 - [ ] Guidelines are **reviewed and updated** regularly — not set-and-forget
 - [ ] Version history tracked for auditing → `GET /api/v1/actions/:id/history`
+- [ ] Set `maxContentTokens` based on your LLM's context budget (default: 10,000 tokens). Long guidelines are auto-trimmed to sections. Demoted guidelines include `id` + `description` for follow-up via `getSection()`.
 
 Verify: `client.ai.smartGuidelines({ message: "your real task" })` → returns the right guidelines.
 

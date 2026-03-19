@@ -98,7 +98,7 @@ async function run() {
                 email,
                 limit: 10,
                 min_score: 0.3,
-                fast_mode: true,
+                mode: 'fast',
             });
             if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
                 sections.push('## Usage Signals\n' + recalled.data.results.map((m: any) =>

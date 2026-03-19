@@ -137,6 +137,15 @@ For each collection, design the properties (fields) that the AI will extract and
 | **update** | Optional | `true` (replace) / `false` (append). `true` for current-state fields (title, stage). `false` for accumulating data (pain points, notes). |
 | **tags** | Optional | Tags for property selection boosting. +15% score boost per match. Common: identity, firmographic, qualification, engagement, ai-extracted. |
 
+#### The `update` Flag and AI Agent Property Operations
+
+The `update` boolean on each property tells AI agents which properties they can overwrite vs which they should append to:
+
+- **`update: true`** (replaceable) — The property holds current-state data (e.g., job title, deal stage). AI agents can use `set` operations to replace the value. The `memory_update_property` MCP tool enforces this server-side.
+- **`update: false`** (append-only) — The property accumulates data over time (e.g., pain points, interaction notes). AI agents can only `push` new values. Attempts to `set` will be rejected.
+
+The `POST /api/v1/properties` endpoint returns each property with its `update` flag, so AI agents can inspect which operations are allowed before writing. Response fields per property: `name`, `value`, `type`, `description`, `update`, `collectionId`, `collectionName`.
+
 #### How to Think About Tags
 
 Tags answer: **"When should this property be extracted?"** During memorization, Personize uses vector similarity to decide which properties to extract from a piece of content. Tags give specific properties a boost when the memorize request includes matching tags — making extraction context-aware rather than purely similarity-based.

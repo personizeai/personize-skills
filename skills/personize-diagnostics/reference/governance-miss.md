@@ -53,6 +53,23 @@ console.log('Headers:', structure.data);
 // Headers should be questions or topics that agents would search for
 ```
 
+### Step 5: Check if maxContentTokens Is Causing Truncation
+
+```typescript
+// If using maxContentTokens, try without it to see if the missing guideline appears
+const withBudget = await client.ai.smartGuidelines({
+  message: '<query that should match>',
+  maxContentTokens: 500,   // your current budget
+});
+const withoutBudget = await client.ai.smartGuidelines({
+  message: '<query that should match>',
+  // no maxContentTokens — unlimited
+});
+console.log('With budget:', withBudget.data.compiledContext?.length || 0, 'chars');
+console.log('Without budget:', withoutBudget.data.compiledContext?.length || 0, 'chars');
+// If "without" is significantly larger, the budget is truncating results
+```
+
 ## Common Root Causes (ranked by likelihood)
 
 1. **Headers don't match queries** — guideline uses internal jargon that agents don't search for
@@ -60,6 +77,7 @@ console.log('Headers:', structure.data);
 3. **Content is vague** — prose written for humans, not explicit instructions for agents
 4. **No guidelines created** — the setup step was skipped
 5. **Wrong tags** — if using tag-filtered queries, tags don't match
+6. **`maxContentTokens` budget exceeded** — if using `maxContentTokens` on `smartGuidelines()`, lower-ranked guidelines get demoted (truncated or dropped) when the total exceeds the token budget. Increase the budget or split large guidelines so the important ones fit
 
 ## Fixes
 
@@ -70,6 +88,7 @@ console.log('Headers:', structure.data);
 | Vague content | Rewrite with explicit instructions: "ALWAYS include a CTA" not "Consider including a call to action" |
 | No guidelines | Use the **governance** skill to create them — start with brand voice and ICP definitions |
 | Wrong tags | Standardize tags; check `guidelines.list()` to see existing tag conventions |
+| Token budget exceeded | Remove or increase `maxContentTokens`, or split large guidelines so high-priority ones aren't demoted |
 
 ## Prevention
 

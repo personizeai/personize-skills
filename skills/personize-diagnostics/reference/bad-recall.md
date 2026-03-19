@@ -66,7 +66,7 @@ If 0 results: data was never stored, or the email doesn't match. Check memorize 
 const sr = await client.memory.smartRecall({
   query: 'everything about this entity',
   email: '<the-email>',
-  fast_mode: true,
+  mode: 'fast',
 });
 console.log('smartRecall results:', sr.data.results.length);
 
@@ -74,13 +74,13 @@ console.log('smartRecall results:', sr.data.results.length);
 const sr2 = await client.memory.smartRecall({
   query: 'everything',
   recordId: '<the-record-id>',     // or record_id
-  fast_mode: true,
+  mode: 'fast',
 });
 
 const sr3 = await client.memory.smartRecall({
   query: 'everything',
   websiteUrl: 'https://acme.com',  // or website_url
-  fast_mode: true,
+  mode: 'fast',
 });
 ```
 
@@ -93,7 +93,7 @@ const queries = [
   '<exact phrase from memorized data>', // exact match
 ];
 for (const q of queries) {
-  const r = await client.memory.smartRecall({ query: q, email: '<email>', fast_mode: true });
+  const r = await client.memory.smartRecall({ query: q, email: '<email>', mode: 'fast' });
   console.log(`"${q}" → ${r.data.results.length} results`);
 }
 ```
@@ -122,6 +122,25 @@ console.log('Properties:', Object.keys(digest.data.properties || {}).length);
 console.log('Memories:', digest.data.memories?.length);
 ```
 
+### Step 4b: Debug Recency Issues
+
+If the user expects recent data but gets stale results, use `prefer_recent`:
+
+```typescript
+const r = await client.memory.smartRecall({
+  query: 'latest updates on this person',
+  email: '<email>',
+  mode: 'fast',
+  prefer_recent: true,   // boost recently memorized data
+});
+console.log('Results:', r.data.results.length);
+r.data.results.forEach((r, i) => {
+  console.log(`  ${i+1}. ${r.text?.substring(0, 100)}`);
+});
+```
+
+If `prefer_recent: true` surfaces the expected data but the default does not, the issue is that older memories are outranking newer ones by semantic similarity. This is expected behavior — `prefer_recent` is the fix, not a workaround.
+
 ## Common Root Causes (ranked by likelihood)
 
 1. **Wrong identifier** — typo or format mismatch between memorize and recall
@@ -132,6 +151,7 @@ console.log('Memories:', digest.data.memories?.length);
 6. **`type` mismatch** — memorized as `'Contact'` but recalling with `'Company'`
 7. **Too much noise** — memorized raw data dumps instead of focused content
 8. **Missing context in memorized content** — content was too short for AI extraction
+9. **Stale results outranking recent data** — semantic similarity favors older, more detailed memories over recent ones. Use `prefer_recent: true` on `smartRecall()`
 
 ## Fixes
 
@@ -145,11 +165,12 @@ console.log('Memories:', digest.data.memories?.length);
 | Type mismatch | Verify the type used during memorize matches the type in recall |
 | Too much noise | Use `enhanced: true` with focused content; break large documents into meaningful chunks |
 | Missing context | Include surrounding context when memorizing |
+| Stale results outranking recent | Pass `prefer_recent: true` to `smartRecall()` for recency-sensitive queries |
 
 ## Prevention
 
 - Always verify recall immediately after memorize (see VERIFY-MEMORY action)
 - Use `smartDigest()` instead of raw `recall()` when you need a compiled view
-- Use `smartRecall()` with `fast_mode: true` for quick data existence checks
+- Use `smartRecall()` with `mode: 'fast'` for quick data existence checks
 - Structure content for AI consumption: include entity name, context, and key facts in each memorize call
 - Pass `type` explicitly when calling `recall()` — it is required and will error without it

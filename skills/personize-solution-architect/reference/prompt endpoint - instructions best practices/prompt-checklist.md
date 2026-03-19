@@ -18,7 +18,7 @@ Before calling `client.ai.prompt()`, verify:
 ## Cost Checklist
 
 - [ ] **smart_guidelines mode** — using `fast` for real-time, `auto` for default
-- [ ] **recall fast_mode** — using `true` for chat/interactive flows
+- [ ] **recall mode** — using `'fast'` for chat/interactive flows
 - [ ] **token_budget** — set on smartDigest (500 for emails, 1000+ for planning)
 - [ ] **maxSteps minimal** — no instruction has maxSteps > 5 unless necessary
 - [ ] **No filler phrases** — removed "please", "make sure", "be thorough", "think step by step"

@@ -279,7 +279,7 @@ Then `npx trigger.dev@latest deploy`.
 #### "It's too expensive"
 
 Reduce costs by:
-- Using `fast_mode: true` on `smartRecall()` (~50% faster, slightly less thorough)
+- Using `mode: 'fast'` on `smartRecall()` (~50% faster, slightly less thorough)
 - Reducing `token_budget` on `smartDigest()` (less context but cheaper)
 - Using `mode: 'fast'` on `smartGuidelines()` (~200ms vs ~3s)
 - Batching operations where possible

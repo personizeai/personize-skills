@@ -25,6 +25,7 @@ Quick reference for the `@personize/sdk` methods used in GTM pipelines.
 | `memory` | `smartDigest()` | `POST /api/v1/smart-memory-digest` | Compiled entity context bundle. |
 | `memory` | `memorizeBatch()` | `POST /api/v1/batch-memorize` | Bulk sync with per-property AI control (`extractMemories` flag). |
 | `memory` | `search()` | `POST /api/v1/search` | Filter and export records. |
+| `memory` | `properties()` | `POST /api/v1/memory/filter-by-property` | Get property values with schema descriptions and update flag (no LLM, no token cost). |
 | `evaluate` | `memorizationAccuracy()` | `POST /api/v1/evaluate/memorization-accuracy` | Three-phase collection schema evaluation. |
 
 ---
@@ -55,6 +56,15 @@ await personize.memory.memorize({
   speaker: "sales-call",               // source label
   enhanced: true,                      // enable AI extraction
   tags: ["meeting", "pricing"],        // property selection tags
+});
+
+// Scope extraction to specific collections — AI only fills properties from these collections
+await personize.memory.memorize({
+  email: "lead@company.com",
+  content: "Meeting notes: discussed Q2 budget, timeline, and tech stack requirements.",
+  enhanced: true,
+  collectionIds: ["col_abc123", "col_def456"],  // limit extraction to these collections only
+  // collectionNames: ["Deal Info", "Tech Stack"]  // alternative: resolve by name server-side
 });
 
 // Custom key — for entity types where email/websiteUrl don't apply
@@ -141,7 +151,7 @@ AI-powered semantic search across LanceDB vector store. Supports reflection loop
 | `enable_reflection` | No | Reflection loop for better coverage (default: true) |
 | `max_reflection_rounds` | No | Max reflection iterations (default: 2) |
 | `generate_answer` | No | AI-synthesized answer from results |
-| `fast_mode` | No | Skip reflection/answer, minScore 0.3, ~700ms (default: false) |
+| `mode` | No | `"fast"` skips reflection/answer, minScore 0.3, ~700ms; `"deep"` enables full reflection (default: `"deep"`) |
 | `enable_planning` | No | Query decomposition for multi-hop questions |
 | `collectionIds` | No | Scope to specific collection IDs |
 | `collectionNames` | No | Scope to collections by name (resolved server-side) |
@@ -157,7 +167,7 @@ const results = await personize.memory.smartRecall({
   email: "lead@company.com",
   query: "what pricing concerns did they raise",
   include_property_values: true,
-  fast_mode: false,
+  mode: "deep",
   generate_answer: true,
 });
 
@@ -165,7 +175,7 @@ const results = await personize.memory.smartRecall({
 const fast = await personize.memory.smartRecall({
   recordId: "REC#abc123...",
   query: "latest interaction",
-  fast_mode: true,
+  mode: "fast",
 });
 
 // Custom entity type — scope to a specific record by custom key
@@ -174,7 +184,7 @@ const student = await personize.memory.smartRecall({
   customKeyName: "studentNumber",
   customKeyValue: "S-2024-1234",
   query: "enrolled courses and academic performance",
-  fast_mode: true,
+  mode: "fast",
 });
 
 // Org-wide search across all records of a custom type
@@ -375,6 +385,21 @@ do {
 } while (currentPage <= totalPages);
 ```
 
+### properties — Get Property Values with Schema Descriptions
+
+Deterministic property filter — returns property values with their schema descriptions and an update flag. No LLM involved, no token cost.
+
+```typescript
+const props = await personize.memory.properties({
+  email: "lead@company.com",
+  type: "Contact",
+  propertyNames: ["engagement_score", "lifecycle_stage", "job_title"],
+});
+
+// props.data.properties — array of { name, value, description, updatedAt }
+// props.data.recordId — the resolved record ID
+```
+
 ---
 
 ## AI — Smart Context & Prompts
@@ -384,12 +409,25 @@ do {
 ```typescript
 const ctx = await personize.ai.smartGuidelines({
   message: "cold outbound email for VP of Sales at a SaaS company",
-  tags: ["outbound", "email"],         // filter to relevant guidelines
-  excludeTags: ["internal"],           // exclude variables with these tags
+  tags: ["outbound", "email"],         // filter to guidelines with these tags
+  excludeTags: ["internal"],           // exclude guidelines with these tags
   mode: "auto",                        // "fast" (~200ms) | "deep" (~3s) | "auto"
   minScore: 0.4,                       // minimum cosine similarity (0-1)
   sessionId: "conv-123",              // optional: session deduplication — follow-up calls only receive NEW context
   maxTokenBudget: 4000,               // optional: cap total tokens returned; excess demoted to supplementary[]
+  maxContentTokens: 2000,             // optional: cap tokens per individual guideline content
+});
+
+// Targeted fetch by specific guideline IDs (bypasses scoring — always includes these)
+const ctx = await personize.ai.smartGuidelines({
+  message: "write a follow-up email",
+  guidelineIds: ["action_abc123", "action_def456"],  // fetch specific guidelines by ID
+});
+
+// Targeted fetch by guideline names (case-insensitive, server-side resolved)
+const ctx = await personize.ai.smartGuidelines({
+  message: "pricing email",
+  guidelineNames: ["Sales Playbook", "Email Tone Guide"],  // resolve by name to IDs server-side
 });
 
 // ctx.data.compiledContext — matching guidelines as markdown (prefixed with constraint tag preamble)

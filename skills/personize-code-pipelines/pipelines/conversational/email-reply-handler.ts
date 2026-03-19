@@ -230,7 +230,7 @@ export const scheduledEmailFollowUp = task({
     const recent = await personize.memory.smartRecall({
       email,
       query: "any new messages or replies from this contact in the last week",
-      fast_mode: true,
+      mode: "fast",
     });
 
     const hasNewActivity = recent.data?.results?.some(

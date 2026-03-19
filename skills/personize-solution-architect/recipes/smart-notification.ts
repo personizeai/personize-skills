@@ -108,7 +108,7 @@ async function assembleDeepContext(email: string, trigger: string): Promise<stri
         limit: 10,
         min_score: 0.3,
         include_property_values: true,
-        fast_mode: true,
+        mode: 'fast',
     });
     if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
         sections.push('## Relevant Context for This Notification\n' + recalled.data.results.map((m: any) =>

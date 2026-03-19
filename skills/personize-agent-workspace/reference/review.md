@@ -37,7 +37,7 @@ const tasks = await client.memory.smartRecall({
     query: 'tasks pending overdue not started',
     email: 'sarah@acme.com',
     limit: 20,
-    fast_mode: true,
+    mode: 'fast',
 });
 
 // Parse results — look for tasks with status "pending" and dueDate in the past
@@ -57,7 +57,7 @@ const issues = await client.memory.smartRecall({
     query: 'issues open unresolved',
     email: 'sarah@acme.com',
     limit: 20,
-    fast_mode: true,
+    mode: 'fast',
 });
 
 // Look for issues with status "open" that are older than your SLA threshold
@@ -78,7 +78,7 @@ const agentContributions = await client.memory.smartRecall({
     query: 'workspace contribution from cs-health-agent',
     email: 'sarah@acme.com',
     limit: 5,
-    fast_mode: true,
+    mode: 'fast',
 });
 
 // If no recent results, the agent hasn't contributed
@@ -118,7 +118,7 @@ const allEntries = await client.memory.smartRecall({
     query: 'workspace updates tasks notes issues',
     email: 'sarah@acme.com',
     limit: 50,
-    fast_mode: true,
+    mode: 'fast',
     include_property_values: true,
 });
 
@@ -140,7 +140,7 @@ const allTasks = await client.memory.smartRecall({
     query: 'tasks all statuses pending done cancelled',
     email: 'sarah@acme.com',
     limit: 50,
-    fast_mode: true,
+    mode: 'fast',
     include_property_values: true,
 });
 
@@ -162,10 +162,10 @@ For each entity (or a sample of entities), pull workspace metrics:
 async function reviewWorkspace(email: string) {
     const [digest, updates, tasks, notes, issues] = await Promise.all([
         client.memory.smartDigest({ email, type: 'Contact', token_budget: 2000 }),
-        client.memory.smartRecall({ query: 'updates timeline', email, limit: 30, fast_mode: true }),
-        client.memory.smartRecall({ query: 'tasks action items', email, limit: 30, fast_mode: true }),
-        client.memory.smartRecall({ query: 'notes observations', email, limit: 30, fast_mode: true }),
-        client.memory.smartRecall({ query: 'issues problems', email, limit: 30, fast_mode: true }),
+        client.memory.smartRecall({ query: 'updates timeline', email, limit: 30, mode: 'fast' }),
+        client.memory.smartRecall({ query: 'tasks action items', email, limit: 30, mode: 'fast' }),
+        client.memory.smartRecall({ query: 'notes observations', email, limit: 30, mode: 'fast' }),
+        client.memory.smartRecall({ query: 'issues problems', email, limit: 30, mode: 'fast' }),
     ]);
 
     return {
@@ -216,7 +216,7 @@ Review workspace health across all entities of a type:
 const allWorkspaceActivity = await client.memory.smartRecall({
     query: 'workspace updates tasks notes issues',
     limit: 100,
-    fast_mode: true,
+    mode: 'fast',
 });
 
 // Group by entity (email/website_url)

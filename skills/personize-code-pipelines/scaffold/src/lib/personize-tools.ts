@@ -198,7 +198,7 @@ export async function executePersonizeTool(
         email: args.email as string | undefined,
         website_url: args.website_url as string | undefined,
         include_property_values: (args.include_properties as boolean) ?? true,
-        fast_mode: false,
+        mode: "deep",
         generate_answer: true,
       });
       // Return a formatted string the LLM can use

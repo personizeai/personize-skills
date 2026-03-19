@@ -93,6 +93,8 @@ const guidelines = await client.ai.smartGuidelines({
 
 No intelligence tiers — `smartGuidelines` does not use the `basic`/`pro`/`pro_fast`/`ultra` tier system (those are for `memorize`/`batch-memorize` only).
 
+**Content Budget:** Use `maxContentTokens` to control delivery size. Default: 10,000 tokens. Long guidelines are auto-trimmed to the most relevant sections. Demoted guidelines return as summaries with section TOC for follow-up.
+
 > **`governanceScope`** is a read-only field returned on `guideline_list` and `guideline_read` (structure mode). It contains `alwaysOn` (boolean) and `triggerKeywords` (string array) — auto-inferred at save time. See the "Governance Scope" section below for details.
 
 > **Response shape note:** `client.guidelines.list()` returns `{ data: { actions: [...], count, nextToken? } }` — guidelines are in `data.actions`, not a top-level array. Iterate with `res.data?.actions || []`.

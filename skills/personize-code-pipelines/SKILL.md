@@ -257,7 +257,7 @@ After deployment, help the user evaluate results and improve:
 | "Emails are too formal" | Update governance variable (brand voice) |
 | "It's emailing people we already talked to" | Add recall check before outreach (dedup) |
 | "I want Slack alerts for high-priority leads" | Add Signal/notification step after scoring |
-| "It's too slow" | Use `fast_mode: true` on smartRecall, reduce `token_budget` |
+| "It's too slow" | Use `mode: 'fast'` on smartRecall, reduce `token_budget` |
 | "Some outputs feel hallucinated" | Add `evaluate: true` with `evaluationCriteria`, tighten governance |
 | "I want it to also update HubSpot" | Add HubSpot API call after generation step |
 

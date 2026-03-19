@@ -58,7 +58,7 @@ async function main() {
         query: 'open tasks pending action items',
         email: ENTITY_EMAIL,
         limit: 5,
-        fast_mode: true,
+        mode: 'fast',
     });
     console.log('  Results:', JSON.stringify(results.data, null, 2));
 

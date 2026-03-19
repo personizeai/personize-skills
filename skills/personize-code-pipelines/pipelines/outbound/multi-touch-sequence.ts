@@ -32,7 +32,7 @@ export const multiTouchSequence = task({
     const replyCheck = await personize.memory.smartRecall({
       email,
       query: "did this contact reply to our email or respond in any way",
-      fast_mode: true,
+      mode: "fast",
       include_property_values: false,
     });
 

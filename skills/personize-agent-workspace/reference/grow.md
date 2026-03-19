@@ -312,7 +312,7 @@ const decisions = await client.memory.smartRecall({
     query: 'decisions reasoning',
     email: 'sarah@acme.com',
     limit: 5,
-    fast_mode: true,
+    mode: 'fast',
 });
 
 console.log('Decisions:', decisions.data);

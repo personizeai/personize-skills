@@ -50,6 +50,21 @@ Verify setup and troubleshoot the Personize stack. Two modes:
 
 ---
 
+## Key SDK Methods for Diagnostics
+
+| Method | Purpose | Key Params |
+|--------|---------|------------|
+| `client.memory.recall()` | DynamoDB lookup by entity | `query`, `type`, identifier |
+| `client.memory.smartRecall()` | Semantic vector search | `query`, identifier, `mode: "fast" \| "deep"`, `prefer_recent` |
+| `client.memory.smartDigest()` | Compiled LLM-ready context | identifier, `include_properties`, `include_memories` |
+| `client.memory.properties()` | Read raw property values | identifier, `type` |
+| `client.ai.smartGuidelines()` | Fetch matching guidelines | `message`, `maxContentTokens` |
+| `client.guidelines.list()` | List all guidelines | — |
+
+`smartRecall()` accepts `mode: "fast"` (skip reflection, faster) or `mode: "deep"` (full reflection, higher quality). Use `prefer_recent: true` when debugging recency issues.
+
+---
+
 ## Quick Smoke Test
 
 If the developer isn't sure what's wrong or just wants to verify everything works, run this:

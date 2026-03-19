@@ -22,6 +22,8 @@ Every AI agent that works on an entity should assemble context from three layers
 │   "What do I know about this entity?"                   │
 │                                                         │
 │   → memory_recall_pro / recall() / smartDigest()        │
+│   → memory_digest / memory_get_properties               │
+│   → memory_update_property (set/push/remove/patch)      │
 │   → Properties, extracted facts, conversation history   │
 │   → Everything known about this specific entity         │
 │                                                         │
@@ -88,7 +90,7 @@ async function assembleFullContext(
             query: 'workspace context updates tasks notes issues',
             email,
             limit: 30,
-            fast_mode: true,
+            mode: 'fast',
             include_property_values: true,
         }),
     ]);
@@ -233,11 +235,13 @@ When you put all three layers together, every agent cycle looks like this:
 | **Memory** | `entity-memory` skill | How to memorize data (single, batch, with AI extraction). How to recall (semantic search, digest, export). How to assemble entity context. |
 | **Workspace** | `collaboration` skill | How to design workspace schemas. How agents and humans contribute. How to grow the workspace. How to audit collaboration health. |
 
-The skills are design-time — they help you build the system. At runtime, agents use three calls:
+The skills are design-time — they help you build the system. At runtime, agents use these tools:
 
 1. `ai_smart_guidelines` → gets guidelines (including the workspace protocol)
-2. `recall` / `smartDigest` → gets entity memory
-3. `recall` (by workspace tags) → gets workspace state
+2. `recall` / `smartDigest` / `memory_digest` → gets entity memory
+3. `memory_get_properties` → reads property values with schema metadata and `update` flag
+4. `recall` (by workspace tags) → gets workspace state
+5. `memory_update_property` → set/push/remove/patch property values (respects `update` flag)
 
 Then they act and `memorize` their contributions back.
 

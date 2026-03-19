@@ -432,7 +432,7 @@ Use this to verify a Personize integration is complete. Each section builds on t
 
 **1. Connect** — Pick at least one integration path:
 - [ ] **SDK** installed (`@personize/sdk`) — `client.me()` → `GET /api/v1/me` returns org name
-- [ ] **MCP** server added to agent tools — `memory_recall_pro`, `ai_smart_guidelines` available
+- [ ] **MCP** server added to agent tools — 13 tools available including `memory_recall_pro`, `ai_smart_guidelines`, `memory_get_properties`, `memory_update_property`, `memory_digest`
 - [ ] **Zapier** connected — memorizing data from external apps
 - [ ] **Skills** installed — `npx skills add personizeai/personize-skills`
 
@@ -449,9 +449,10 @@ Use this to verify a Personize integration is complete. Each section builds on t
 - [ ] 429 retry logic in batch operations
 
 **4. Recall** — Right method for each use case:
-- [ ] Semantic search → `POST /api/v1/smart-recall` via `smartRecall()`
+- [ ] Semantic search → `POST /api/v1/smart-recall` via `smartRecall()` — supports `mode: "fast" | "deep"` (fast=1 credit ~500ms, deep=2 credits ~10-20s with reflection)
 - [ ] Entity context bundle → `POST /api/v1/smart-memory-digest` via `smartDigest()`
-- [ ] Direct lookup → `POST /api/v1/recall` via `recall()`
+- [ ] Property values with schema → `POST /api/v1/properties` — returns property values joined with collection schema descriptions and `update` flag. Supports `propertyNames` filter, `includeDescriptions`, `nonEmpty`.
+- [ ] Direct lookup → `POST /api/v1/recall` via `recall()` — scope to specific collections with `collectionIds: [...]`
 - [ ] Filter/export → `POST /api/v1/search` via `search()`
 - [ ] Cross-entity context: pulling company when working on contact
 
@@ -459,7 +460,11 @@ Use this to verify a Personize integration is complete. Each section builds on t
 - [ ] At least one guideline created → `POST /api/v1/guidelines`
 - [ ] `triggerKeywords` set on each guideline (drives retrieval scoring)
 - [ ] `smartGuidelines()` → `POST /api/v1/ai/smart-guidelines` returns content for real tasks
+  - Broad retrieval: pass `message` + optional `tags`/`excludeTags` to route semantically
+  - Targeted fetch: pass `guidelineIds: [...]` or `guidelineNames: [...]` to force-include specific guidelines (bypasses scoring)
 - [ ] Guidelines reviewed and updated regularly — not set-and-forget
+
+**Content Budget:** `maxContentTokens` controls how much guideline content is delivered per call (default: 10,000 tokens). Guidelines exceeding the per-item cap are auto-trimmed to relevant sections. Remaining guidelines are returned as summaries with `id`, `description`, and `sections[]` for follow-up via `client.guidelines.getSection()`. Set lower values (e.g. 5,000) when token budget is tight.
 
 **6. Generate** — `/prompt` used correctly:
 - [ ] Multi-step `instructions[]` → `POST /api/v1/prompt` via `client.ai.prompt()`
@@ -534,6 +539,7 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 | **Remember** | `client.memory.memorizeBatch(opts)` | Batch store with per-property `extractMemories` |
 | **Recall** | `client.memory.recall(opts)` | Semantic search across memories |
 | **Recall** | `client.memory.smartDigest(opts)` | Compiled context for one entity |
+| **Recall** | `client.memory.properties(opts)` | Property values with schema descriptions and update flag |
 | **Recall** | `client.ai.smartGuidelines(opts)` | Fetch governance variables for a topic |
 | **Reason/Generate** | `client.ai.prompt(opts)` | Multi-step AI with `instructions[]` |
 | **Observe** | `client.memory.search(opts)` | Query/filter records |
@@ -602,6 +608,26 @@ await client.ai.prompt({
 ```
 
 **BYOK (bring your own key):** On Pro/Enterprise plans, pass `openrouterApiKey` with `model` and `provider` to use your own key. Without BYOK, `model`/`provider` are rejected (400) — use `tier` instead. Billing switches to time-based: 10 credits base + 10 credits per extra minute.
+
+### MCP Tools (13 total)
+
+When connecting via MCP (Claude Desktop, Cursor, ChatGPT, workflow tools), the following tools are available to AI agents:
+
+| Tool | Purpose |
+|---|---|
+| `memory_memorize` | Store content with AI extraction |
+| `memory_batch_memorize` | Batch store with per-property control |
+| `memory_recall_pro` | Semantic search across memories |
+| `memory_smart_recall` | Semantic search with `mode: "fast" \| "deep"` |
+| `memory_smart_digest` | Compiled entity context bundle |
+| `memory_digest` | Get compiled entity context bundle (properties + memories, token-budgeted) |
+| `memory_get_properties` | Read specific property values with schema descriptions and `update` flag |
+| `memory_update_property` | Update properties with operations: `set` (requires `update:true`), `push` (always allowed), `remove`, `patch`. Enforces `update` flag server-side. |
+| `memory_search` | Query/filter records |
+| `memory_upsert` | Structured upsert without AI extraction |
+| `ai_smart_guidelines` | Fetch governance variables for a topic |
+| `ai_prompt` | Multi-step AI with `instructions[]` |
+| `collections_list` | List collections and schemas |
 
 ### Rate Limits
 

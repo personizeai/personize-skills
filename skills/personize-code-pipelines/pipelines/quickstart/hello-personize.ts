@@ -32,7 +32,7 @@ export const helloPersonize = task({
             email,
             query: "all context about this contact",
             include_property_values: true,
-            fast_mode: false,
+            mode: "deep",
         });
 
         const context = memories.data?.results

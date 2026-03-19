@@ -214,7 +214,7 @@ const openTasks = await client.memory.smartRecall({
     query: 'open tasks pending action items',
     email: 'sarah@acme.com',
     limit: 20,
-    fast_mode: true,
+    mode: 'fast',
     include_property_values: true,
 });
 
@@ -223,7 +223,7 @@ const issues = await client.memory.smartRecall({
     query: 'issues problems risks blockers',
     email: 'sarah@acme.com',
     limit: 10,
-    fast_mode: true,
+    mode: 'fast',
 });
 
 // Get notes from a specific contributor
@@ -231,11 +231,11 @@ const agentNotes = await client.memory.smartRecall({
     query: 'sales intelligence analysis workspace notes',
     email: 'sarah@acme.com',
     limit: 10,
-    fast_mode: true,
+    mode: 'fast',
 });
 ```
 
-> **Note:** Use `smartRecall()` for workspace reads — it supports `limit`, `fast_mode`, and `include_property_values`. The simpler `recall()` only accepts `query`, `email`, `record_id`, `website_url`, and `filters`.
+> **Note:** Use `smartRecall()` for workspace reads — it supports `limit`, `mode`, and `include_property_values`. The simpler `recall()` only accepts `query`, `email`, `record_id`, `website_url`, and `filters`.
 
 ### Cross-Entity Queries
 
@@ -246,7 +246,7 @@ const criticalIssues = await client.memory.smartRecall({
     query: 'critical severity issues open unresolved',
     limit: 50,
     min_score: 0.3,
-    fast_mode: true,
+    mode: 'fast',
 });
 ```
 

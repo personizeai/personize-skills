@@ -94,7 +94,7 @@ async function assembleContext(
                   email,
                   limit: recallLimit,
                   min_score: recallMinScore,
-                  fast_mode: true,
+                  mode: 'fast',
               }),
     ]);
 

@@ -74,6 +74,7 @@ Steps can be skipped or combined. A simple notification = Recall â†’ Generate â†
 | REMEMBER | `client.memory.memorizeBatch(opts)` | Batch store with per-property control |
 | RECALL | `client.memory.recall(opts)` | Semantic search across memories |
 | RECALL | `client.memory.smartDigest(opts)` | Compiled context for one entity |
+| RECALL | `client.memory.properties(opts)` | Property values with schema descriptions and update flag |
 | RECALL | `client.ai.smartGuidelines(opts)` | Fetch governance variables |
 | REASON/PLAN/DECIDE | `client.ai.prompt(opts)` | Multi-step AI with `instructions[]` |
 | GENERATE | `client.ai.prompt(opts)` | Produce the content |
@@ -192,14 +193,14 @@ async function assembleContext(email: string, task: string): Promise<string> {
         include_memories: true,
     });
 
-    // 3. Task-specific facts
+    // 3. Task-specific facts (mode: "fast" = 1 credit ~500ms, "deep" = 2 credits ~10-20s)
     const recalled = await client.memory.smartRecall({
         query: task,
         email,
         limit: 10,
         min_score: 0.5,
         include_property_values: true,
-        fast_mode: true,
+        mode: 'fast',
     });
 
     const sections: string[] = [];

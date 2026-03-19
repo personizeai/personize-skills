@@ -117,7 +117,7 @@ export const reviewSingleLead = task({
     const existingMemory = await personize.memory.smartRecall({
       email,
       query: "enrichment data from Apollo",
-      fast_mode: true,
+      mode: "fast",
     });
 
     const hasEnrichment = existingMemory.data?.results?.some(

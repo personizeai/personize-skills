@@ -111,7 +111,7 @@ async function assembleContext(email: string, purpose: string): Promise<string> 
         email,
         limit: 5,
         min_score: 0.4,
-        fast_mode: true,
+        mode: 'fast',
     });
     if (history.data?.results && Array.isArray(history.data.results) && history.data.results.length > 0) {
         sections.push('## Previously Sent Content\n' + history.data.results.map((m: any) =>

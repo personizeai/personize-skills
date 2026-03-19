@@ -54,7 +54,7 @@ async function generateBrief(email: string): Promise<string> {
             email,
             limit: 5,
             min_score: 0.4,
-            fast_mode: true,
+            mode: 'fast',
         });
         if (recalled.data?.results && Array.isArray(recalled.data.results) && recalled.data.results.length > 0) {
             sections.push(`## Recalled: ${topic}\n` + recalled.data.results.map((m: any) =>

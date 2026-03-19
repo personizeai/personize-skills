@@ -192,14 +192,14 @@ await client.ai.prompt({
 
 ---
 
-## Rule 9: Use fast_mode for Recall in Interactive Flows
+## Rule 9: Use Fast Mode for Recall in Interactive Flows
 
 ```typescript
 // Chat / real-time: skip reflection + answer generation (~700ms)
-await client.memory.recall({ query: '...', email: '...', fast_mode: true });
+await client.memory.smartRecall({ query: '...', email: '...', mode: 'fast' });
 
 // Batch / research: full analysis (~3-5s)
-await client.memory.recall({ query: '...', email: '...', generate_answer: true });
+await client.memory.smartRecall({ query: '...', email: '...', mode: 'deep', generate_answer: true });
 ```
 
 ---

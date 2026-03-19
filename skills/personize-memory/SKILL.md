@@ -57,6 +57,14 @@ This skill works identically whether the LLM accesses memory via the **SDK** (co
 | `client.memory.smartDigest(opts)` | *(SDK only)* | Compiled entity context (properties + memories) |
 | `client.memory.search(opts)` | *(SDK only)* | Filter and export records |
 | `client.memory.memorizeBatch(opts)` | *(SDK only)* | Batch sync with per-property control |
+| `client.memory.update(opts)` | *(SDK only)* | Update property or freeform memory (supports conditional writes + array ops) |
+| `client.memory.bulkUpdate(opts)` | *(SDK only)* | Update multiple properties at once |
+| `client.memory.delete(opts)` | *(SDK only)* | Soft-delete memories (30-day recovery) |
+| `client.memory.deleteRecord(opts)` | *(SDK only)* | Soft-delete all memories for a record |
+| `client.memory.cancelDeletion(opts)` | *(SDK only)* | Cancel pending soft-delete |
+| `client.memory.propertyHistory(opts)` | *(SDK only)* | Query property change history |
+| `client.memory.queryProperties(opts)` | *(SDK only)* | LLM-powered structured property search |
+| `client.memory.filterByProperty(opts)` | *(SDK only)* | Deterministic property filter (no LLM) |
 | `client.ai.smartGuidelines(opts)` | `ai_smart_guidelines(message)` | Fetch guidelines by topic |
 
 ### MCP-Only Feature: Self-Memory (`about='self'`)
@@ -83,12 +91,13 @@ memory_recall_pro(query="What are my preferences and working style?", about="sel
 
 ## Actions
 
-You have 2 actions. Use whichever matches what the developer needs.
+You have 3 actions. Use whichever matches what the developer needs.
 
 | Action | When to Use | Reference |
 |---|---|---|
 | **MEMORIZE** | Developer needs to store data — single items, batch sync, CRM import, webhook data, generated outputs | `reference/memorize.md` |
 | **RECALL** | Developer needs to retrieve data — semantic search, entity context, filtered exports, context assembly | `reference/recall.md` |
+| **CRUD** | Developer needs to directly modify, delete, query history, or filter by property value — no AI extraction | `reference/crud-operations.md` |
 
 **Before each action:** Read the reference file for full method signatures, decision trees, code examples, and common mistakes.
 
@@ -226,7 +235,7 @@ Retrieve data from Personize memory. The right method depends on what kind of an
 | **"List all contacts matching criteria X"** | `memory.search()` | Filtered records with property values |
 | **"What are our guidelines for X?"** | `ai.smartGuidelines()` | Governance variables matching a topic |
 
-> **`smartRecall()` vs `recall()`**: Use `smartRecall()` for most use cases — it supports reflection, answer generation, `fast_mode`, and infers `type` from email/website_url. Use `recall()` only for simple direct lookups — `type` is **required** (e.g. `type: 'Contact'`).
+> **`smartRecall()` vs `recall()`**: Use `smartRecall()` for most use cases — it supports reflection, answer generation, `mode`, and infers `type` from email/website_url. Use `recall()` only for simple direct lookups — `type` is **required** (e.g. `type: 'Contact'`).
 
 > **Identifier behavior** — how `email`, `websiteUrl`, `recordId`, `type`-only, and no identifier affect each endpoint (error vs empty vs org-wide search) → read `reference/identifier-scenarios.md`.
 
@@ -260,7 +269,7 @@ const fast = await client.memory.smartRecall({
     query: 'what do we know about this contact?',
     email: 'sarah.chen@initech.com',
     type: 'Contact',
-    fast_mode: true,
+    mode: 'fast',
 });
 
 // Entity digest — compiled context for one person
@@ -400,7 +409,7 @@ async function assembleContext(email: string, task: string): Promise<string> {
         query: task,
         email,
         type: 'Contact',
-        fast_mode: true,
+        mode: 'fast',
         limit: 10,
         minScore: 0.3,
     });
@@ -416,9 +425,9 @@ async function assembleContext(email: string, task: string): Promise<string> {
 
 ### Recall Pricing
 
-All read operations charge a flat per-call rate regardless of mode (`fast_mode`, `deep`, etc.). Mode choice affects latency and depth, not cost. For current rates, see [personize.ai](https://personize.ai).
+All read operations charge a flat per-call rate regardless of mode (`'fast'`, `'deep'`, etc.). Mode choice affects latency and depth, not cost. For current rates, see [personize.ai](https://personize.ai).
 
-Use `fast_mode: true` in loops and batch pipelines to minimize latency.
+Use `mode: 'fast'` in loops and batch pipelines to minimize latency.
 
 ---
 
@@ -428,13 +437,176 @@ Use `fast_mode: true` in loops and batch pipelines to minimize latency.
 
 1. **MUST** set an explicit `token_budget` on every `smartDigest()` call -- because the default (1000) may truncate critical context for deep personalization or waste tokens for simple lookups.
 2. **SHOULD** set `minScore` on `smartRecall()` (0.3 for broad context, 0.5+ for precision) -- because omitting it returns low-relevance noise that dilutes the context window.
-3. **SHOULD** use `fast_mode: true` for context injection, real-time UIs, and batch processing -- because it cuts recall latency from ~10-20s to ~500ms; override for exploratory queries where reflection adds value.
+3. **SHOULD** use `mode: 'fast'` for context injection, real-time UIs, and batch processing -- because it cuts recall latency from ~10-20s to ~500ms; override for exploratory queries where reflection adds value.
 4. **SHOULD** assemble context from all three layers (`smartGuidelines` + `smartDigest` + `smartRecall`) before generating -- because single-source context produces governance-blind, entity-ignorant, or task-irrelevant output. Use `mode: 'fast'` for real-time agent flows (~200ms), `mode: 'deep'` for first-call or complex planning tasks (~3s). (Note: `'full'` was renamed to `'deep'` in SDK types and API.)
 5. **MAY** set `include_property_values: true` on `smartRecall()` -- because it returns structured properties alongside semantic results, useful when the caller needs both.
 6. **MUST** paginate `export()` calls using `page` and `pageSize` -- because unbounded exports can time out or exceed memory limits on large datasets. Default pageSize is 50.
 7. **MAY** cache `smartDigest()` results within a single pipeline run when the same entity is referenced multiple times -- because redundant API calls waste tokens and add latency.
 
 > **Full guide:** Read `reference/recall.md` for complete method signatures, query writing strategies, token budget tuning, scoring thresholds, all context assembly patterns, export filtering, and performance optimization.
+
+---
+
+## Action: CRUD Operations (Update, Delete, History)
+
+Use these operations when the developer needs to directly modify, delete, or query history for memory data — as opposed to AI-powered memorization.
+
+### When to use CRUD vs Memorize
+
+| Need | Use |
+|------|-----|
+| Store new data from text/conversations | `memorize` (AI extraction) |
+| Directly set a property value | `update` (CRUD) |
+| Change multiple properties at once | `bulk-update` (CRUD) |
+| Edit a freeform memory's text | `update` with `memoryId` + `text` |
+| See how a property changed over time | `property-history` |
+| Find records matching a condition | `query-properties` (LLM-powered) |
+| Delete with recovery option | `delete` / `delete-record` (soft-delete, 30-day recovery) |
+| Undo a deletion | `cancel-deletion` |
+
+### Public API Endpoints (`/api/v1/memory/...`)
+
+All require `sk_live_` API key.
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /memory/update` | Update single property or freeform memory |
+| `POST /memory/bulk-update` | Update multiple properties |
+| `POST /memory/delete` | Soft-delete memories |
+| `POST /memory/delete-record` | Soft-delete all memories for a record |
+| `POST /memory/cancel-deletion` | Cancel pending deletion (30-day window) |
+| `POST /memory/property-history` | Query property change history |
+| `POST /memory/query-properties` | LLM-powered structured search |
+| `POST /memory/filter-by-property` | Deterministic property filter (no LLM, no token cost) |
+
+### Conditional Writes (Optimistic Concurrency)
+
+Pass `expectedVersion` on update/bulk-update to prevent concurrent overwrites:
+
+```typescript
+await client.memory.update({
+  recordId: 'rec-123',
+  propertyName: 'deal_stage',
+  propertyValue: 'negotiation',
+  expectedVersion: 12,  // 409 if another write happened since you last read
+});
+```
+
+### Array Operations
+
+Mutate array-typed properties without read-modify-write races:
+
+```typescript
+// Push items (with dedup)
+await client.memory.update({
+  recordId, propertyName: 'tags',
+  arrayPush: { items: ['vip'], unique: true },
+});
+
+// Remove items by value
+await client.memory.update({
+  recordId, propertyName: 'tags',
+  arrayRemove: { items: ['trial'] },
+});
+
+// Patch matching objects in-place
+await client.memory.update({
+  recordId, propertyName: 'tasks',
+  arrayPatch: { match: { taskId: 'abc' }, set: { status: 'done' } },
+});
+```
+
+### Filter By Property (No LLM)
+
+Deterministic structured filter — no tokens, no latency:
+
+```typescript
+const result = await client.memory.filterByProperty({
+  conditions: [
+    { propertyName: 'status', operator: 'equals', value: 'active' },
+    { propertyName: 'score', operator: 'gt', value: 50 },
+  ],
+  logic: 'AND',
+  limit: 100,
+});
+// result.data.records → [{ recordId, type, matchedProperties, lastUpdatedAt }]
+// result.data.totalMatched, result.data.nextToken
+```
+
+Operators: `equals`, `notEquals`, `contains`, `gt`, `lt`, `gte`, `lte`, `exists`, `isEmpty`
+
+### Update Example
+
+```typescript
+// Update a single property
+const result = await client.memory.update({
+  recordId: 'rec-123',
+  type: 'contact',
+  propertyName: 'company_name',
+  propertyValue: 'Acme Corp',
+});
+// result.data → { previousValue, newValue, version, stores }
+```
+
+### Bulk Update
+
+```typescript
+const result = await client.memory.bulkUpdate({
+  recordId: 'rec-123',
+  type: 'contact',
+  updates: [
+    { propertyName: 'company_name', propertyValue: 'Acme Corp' },
+    { propertyName: 'deal_stage', propertyValue: 'closed_won' },
+  ],
+  expectedVersion: 5,  // optional concurrency guard
+});
+// result.data.results → [{ propertyName, previousValue, newValue, status }]
+```
+
+### Property History
+
+```typescript
+const history = await client.memory.propertyHistory({
+  recordId: 'rec-123',
+  propertyName: 'deal_stage',  // optional — omit for all properties
+  limit: 20,
+});
+// history.data.entries → [{ entryId, propertyName, propertyValue, updatedBy, createdAt, source }]
+```
+
+### Query Properties (LLM-powered)
+
+```typescript
+const matches = await client.memory.queryProperties({
+  propertyName: 'pain_points',
+  query: 'concerns about compliance or security',
+  type: 'Contact',
+  limit: 50,
+});
+// matches.data.matches → [{ recordId, propertyValue, matchReason }]
+```
+
+### Delete with Recovery
+
+All deletes are soft-deletes with a 30-day recovery window. During this window, `cancelDeletion` restores the data.
+
+```typescript
+// Soft-delete a record
+await client.memory.deleteRecord({
+  recordId: 'rec-123',
+  type: 'contact',
+});
+
+// Undo within 30 days
+await client.memory.cancelDeletion({
+  recordId: 'rec-123',
+  type: 'contact',
+});
+```
+
+### Webhook Events
+
+All mutations fire webhook events: `memory.property.updated`, `memory.properties.bulk_updated`, `memory.updated`, `memory.deleted`, `memory.record.deleted`, `memory.record.deletion_cancelled`.
 
 ---
 
@@ -461,6 +633,19 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 | `memory.smartDigest(opts)` | `POST /api/v1/smart-memory-digest` | Compiled entity context (properties + memories) |
 | `memory.search(opts)` | `POST /api/v1/search` | Filter and export records |
 | `ai.smartGuidelines(opts)` | `POST /api/v1/ai/smart-guidelines` | Fetch governance variables by topic |
+
+### CRUD Methods
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `memory.update(opts)` | `POST /api/v1/memory/update` | Update single property or freeform memory. Supports `expectedVersion` + array ops |
+| `memory.bulkUpdate(opts)` | `POST /api/v1/memory/bulk-update` | Update multiple properties on a record |
+| `memory.delete(opts)` | `POST /api/v1/memory/delete` | Soft-delete memories (30-day recovery) |
+| `memory.deleteRecord(opts)` | `POST /api/v1/memory/delete-record` | Soft-delete all memories for a record |
+| `memory.cancelDeletion(opts)` | `POST /api/v1/memory/cancel-deletion` | Cancel pending deletion within 30-day window |
+| `memory.propertyHistory(opts)` | `POST /api/v1/memory/property-history` | Query property change history |
+| `memory.queryProperties(opts)` | `POST /api/v1/memory/query-properties` | LLM-powered structured search across property values |
+| `memory.filterByProperty(opts)` | `POST /api/v1/memory/filter-by-property` | Deterministic property filter (no LLM, no token cost) |
 
 ### Key Type Signatures
 
@@ -512,8 +697,8 @@ interface SmartRecallOptions {
     include_property_values?: boolean; // Include structured properties
     enable_reflection?: boolean;       // AI reflects on results
     generate_answer?: boolean;         // AI generates a direct answer
-    fast_mode?: boolean;       // Skip reflection + answer gen, ~500ms (default: false)
-    min_score?: number;        // Server-side score filter (in fast_mode, defaults to 0.3)
+    mode?: 'fast' | 'deep';    // 'fast' skips reflection + answer gen, ~500ms; 'deep' enables full reflection (default: 'deep')
+    min_score?: number;        // Server-side score filter (in fast mode, defaults to 0.3)
 }
 
 // recall() — direct lookup (simpler, type required)
@@ -578,6 +763,7 @@ interface SmartDigestOptions {
 |---|---|
 | `reference/memorize.md` | Full memorize guide: method signatures, data mapping, extractMemories decision tree, source recipes, batch strategies, error handling, feedback loop |
 | `reference/recall.md` | Full recall guide: method signatures, query strategies, token budgets, scoring, context assembly, export filtering, performance tips |
+| `reference/crud-operations.md` | CRUD operations: update, bulk-update, delete, cancel-deletion, property-history, query-properties, filter-by-property — request/response shapes, error codes |
 | `reference/identifier-scenarios.md` | How each endpoint (memorize, recall, smartRecall, smartDigest) behaves with email, websiteUrl, recordId, type-only, or no identifier — scenarios A–G with error vs empty vs success table |
 | `recipes/data-sync.ts` | Batch sync from CRM/database with validation and error handling |
 | `recipes/context-assembly.ts` | Complete context assembly pattern combining all recall methods |
@@ -630,7 +816,7 @@ const sent = await client.memory.smartRecall({
     query: 'notifications sent by signal',
     email: 'jane@acme.com',
     type: 'Contact',
-    fast_mode: true,
+    mode: 'fast',
     limit: 10,
 });
 
@@ -639,7 +825,7 @@ const pending = await client.memory.smartRecall({
     query: 'deferred notifications pending digest',
     email: 'jane@acme.com',
     type: 'Contact',
-    fast_mode: true,
+    mode: 'fast',
     limit: 20,
 });
 ```

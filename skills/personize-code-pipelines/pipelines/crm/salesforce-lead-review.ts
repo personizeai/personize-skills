@@ -131,7 +131,7 @@ export const reviewSalesforceLead = task({
     const existing = await personize.memory.smartRecall({
       email,
       query: "enrichment data",
-      fast_mode: true,
+      mode: "fast",
     });
 
     const needsEnrichment = !existing.data?.results?.some(

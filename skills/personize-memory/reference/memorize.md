@@ -88,7 +88,7 @@ const result = await client.memory.smartRecall({
     type: 'Student',
     customKeyName: 'studentNumber',
     customKeyValue: 'S-2024-1234',
-    fast_mode: true,
+    mode: 'fast',
 });
 ```
 

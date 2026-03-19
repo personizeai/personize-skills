@@ -62,12 +62,12 @@ curl -X POST https://agent.personize.ai/api/v1/smart-recall \
     "query": "open tasks pending action items",
     "email": "sarah@acme.com",
     "limit": 20,
-    "fast_mode": true,
+    "mode": "fast",
     "include_property_values": true
   }'
 ```
 
-> **Note:** Use `/api/v1/smart-recall` for workspace reads. The simpler `/api/v1/recall` endpoint only supports `query`, `email`, `record_id`, `website_url`, and `filters` — it does not have `limit`, `minScore`, or `fast_mode`.
+> **Note:** Use `/api/v1/smart-recall` for workspace reads. The simpler `/api/v1/recall` endpoint only supports `query`, `email`, `record_id`, `website_url`, and `filters` — it does not have `limit`, `minScore`, or `mode`.
 
 ---
 
@@ -193,6 +193,58 @@ curl -X POST https://agent.personize.ai/api/v1/collections \
 
 ---
 
+## Get Property Values
+
+Read property values for an entity, including schema descriptions and the `update` flag (replaceable vs append-only):
+
+### SDK
+
+```typescript
+const properties = await client.memory.properties({
+    email: 'sarah@acme.com',
+    type: 'Contact',
+});
+
+// properties.data contains property values with schema metadata
+// Each property includes `update: true` (replaceable) or `update: false` (append-only)
+```
+
+### REST
+
+```bash
+curl -X POST https://agent.personize.ai/api/v1/memory/properties \
+  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "sarah@acme.com",
+    "type": "Contact"
+  }'
+```
+
+---
+
+## Update a Property
+
+Set, push, remove, or patch a property value. The `update` flag on the property schema controls which operations are allowed (`update: false` properties only accept `push`):
+
+```bash
+curl -X POST https://agent.personize.ai/api/v1/memory/update-property \
+  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "sarah@acme.com",
+    "propertyName": "pending_tasks",
+    "operation": "set",
+    "value": [{"taskId": "t_001", "title": "Schedule QBR", "status": "pending"}]
+  }'
+```
+
+**Operations:** `set` (replace value), `push` (append to array), `remove` (remove from array), `patch` (merge into object).
+
+> **MCP equivalent:** `memory_update_property` tool.
+
+---
+
 ## Search Records by Property Conditions
 
 Find all entities with specific workspace states:
@@ -213,15 +265,17 @@ curl -X POST https://agent.personize.ai/api/v1/search \
 
 ## Endpoint Reference
 
-| Operation | Endpoint | Method |
-|---|---|---|
-| Memorize (write) | `/api/v1/memorize` | POST |
-| Smart Recall (read with reflection) | `/api/v1/smart-recall` | POST |
-| Recall (simple read) | `/api/v1/recall` | POST |
-| Smart Digest (compiled context) | `/api/v1/smart-memory-digest` | POST |
-| Smart Guidelines (governance) | `/api/v1/ai/smart-guidelines` | POST |
-| Prompt (AI execution) | `/api/v1/prompt` | POST |
-| List Collections | `/api/v1/collections` | GET |
-| Create Collection | `/api/v1/collections` | POST |
-| Update Collection | `/api/v1/collections/:id` | PATCH |
-| Search Records | `/api/v1/search` | POST |
+| Operation | Endpoint | Method | MCP tool |
+|---|---|---|---|
+| Memorize (write) | `/api/v1/memorize` | POST | `memory_store_pro` |
+| Smart Recall (read with reflection) | `/api/v1/smart-recall` | POST | `memory_recall_pro` |
+| Recall (simple read) | `/api/v1/recall` | POST | `memory_recall_pro` |
+| Smart Digest (compiled context) | `/api/v1/smart-memory-digest` | POST | `memory_digest` |
+| Get Properties | `/api/v1/memory/properties` | POST | `memory_get_properties` |
+| Update Property | `/api/v1/memory/update-property` | POST | `memory_update_property` |
+| Smart Guidelines (governance) | `/api/v1/ai/smart-guidelines` | POST | `ai_smart_guidelines` |
+| Prompt (AI execution) | `/api/v1/prompt` | POST | — |
+| List Collections | `/api/v1/collections` | GET | — |
+| Create Collection | `/api/v1/collections` | POST | — |
+| Update Collection | `/api/v1/collections/:id` | PATCH | — |
+| Search Records | `/api/v1/search` | POST | — |
