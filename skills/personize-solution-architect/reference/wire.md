@@ -589,6 +589,145 @@ app.post('/api/personize-bridge', async (req, res) => {
 
 ---
 
+---
+
+## Pattern 6: MCP Tool Provider
+
+When Personize is a tool in an external orchestrator (OpenClaw, CoWork, CrewAI, LangGraph, n8n AI nodes), the wiring is the MCP connection itself.
+
+### How It Works
+
+```
+External Orchestrator
+  ├── Agent receives task (from user, scheduler, or event)
+  ├── Agent calls: memory_recall_pro (Personize MCP) -- get context
+  ├── Agent calls: ai_smart_guidelines (Personize MCP) -- get rules
+  ├── Agent reasons with combined context + rules
+  ├── Agent calls: your_delivery_api or other MCP tools -- act
+  ├── Agent calls: memory_store_pro (Personize MCP) -- record outcome
+  └── Agent calls: memory_update_property (Personize MCP) -- update status
+```
+
+### MCP Connection Setup
+
+**API Key in URL (simplest -- works for Cursor, Windsurf, n8n, Zapier, LangChain):**
+```
+https://agent.personize.ai/mcp/sse?api_key=sk_live_YOUR_KEY
+```
+
+**API Key in header (more secure -- for clients that support custom headers):**
+```
+URL: https://agent.personize.ai/mcp/sse
+Header: Authorization: Bearer sk_live_YOUR_KEY
+```
+
+**OAuth (required for ChatGPT, Claude web/Desktop):**
+```
+URL: https://agent.personize.ai/mcp/sse?organizationId=org_YOUR_ORG
+Client ID: 1oe3h50chvlddca1110ncmr7bg
+```
+
+### Scoping Tools Per Agent
+
+Not every agent needs all 13 tools. Scope by role:
+
+| Agent Role | Tools Needed |
+|---|---|
+| **Read-only researcher** | `memory_recall_pro`, `memory_digest`, `memory_get_properties`, `ai_smart_guidelines`, `memory_search` |
+| **Content generator** | Above + `ai_prompt` |
+| **Data writer** | Above + `memory_store_pro`, `memory_update_property`, `memory_batch_memorize`, `memory_upsert` |
+| **Governance manager** | Above + `guideline_create`, `guideline_update`, `guideline_list`, `guideline_read` |
+
+### Testing MCP Wiring
+
+Verify the agent can:
+1. **List tools** -- should see 13+ Personize tools
+2. **Read** -- `memory_recall_pro` with a known entity returns data
+3. **Write** -- `memory_store_pro` stores a test memory, `memory_recall_pro` retrieves it
+4. **Governance** -- `ai_smart_guidelines` returns guidelines for a real task
+
+---
+
+## Pattern 7: Outbound Webhooks (Personize -> External)
+
+Personize can push data OUT to your systems via webhook destinations.
+
+### Setup
+
+Configure destinations in the Personize dashboard: **Integrations > Destinations**
+
+### Delivery Architecture
+
+```
+Event in Personize
+  └── SQS Queue (Webhook_Core_SQS)
+       └── webhookCore Lambda
+            └── HTTP POST to your URL
+                 ├── X-Personize-Signature: sha256=<HMAC-SHA256 hex>
+                 ├── X-Personize-Signature-Alg: HMAC-SHA256
+                 └── Body: raw event payload (NOT wrapped in envelope)
+```
+
+- **Timeout:** ~1.5s fire-and-forget -- your receiver must respond fast
+- **Retries:** Configurable with exponential backoff
+- **SSRF protection:** Blocks private/internal IP ranges
+
+### Receiver Example
+
+```typescript
+import crypto from 'crypto';
+
+app.post('/webhooks/personize', async (req, res) => {
+    // Verify HMAC signature
+    const signature = req.headers['x-personize-signature'] as string;
+    const expected = 'sha256=' + crypto
+        .createHmac('sha256', process.env.WEBHOOK_SECRET!)
+        .update(JSON.stringify(req.body))
+        .digest('hex');
+
+    if (signature !== expected) {
+        return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    // Body is the raw event payload (NOT wrapped in an envelope)
+    const payload = req.body;
+
+    // Process based on your destination's event configuration
+    await processWebhookPayload(payload);
+
+    res.json({ ok: true }); // Respond fast -- webhook times out at ~1.5s
+});
+```
+
+### When to Use Outbound Webhooks
+
+| Use Case | Direction | Trigger |
+|---|---|---|
+| CRM sync | Personize -> CRM | Memory updated |
+| Delivery | Personize -> email/Slack/SMS | Generation completed |
+| Alerting | Personize -> monitoring | Threshold crossed |
+| Data export | Personize -> data warehouse | Scheduled or on-demand |
+
+---
+
+## The 4-Leg Data Flow -- Wiring Checklist
+
+For every integration, explicitly map which legs are active:
+
+| Leg | Direction | Wiring Pattern | Verify |
+|---|---|---|---|
+| **Leg 1: Ingest** | External -> Personize | Webhook receiver, batch script, CRM sync, event stream | Data appears in `memory_recall_pro` or `search()` |
+| **Leg 2: Context** | Personize -> Agents/Code | SDK `smartDigest`/`recall`/`smartGuidelines`, or MCP tool calls | Context assembly returns meaningful data |
+| **Leg 3: Learn Back** | Agents -> Personize | `memorize()` outcomes, `memory_update_property`, `guideline_update` | Past actions visible in future recalls |
+| **Leg 4: Deliver** | Personize -> External | Outbound webhooks, agent API calls, SDK delivery code | External system receives and processes data |
+
+**Common mistakes:**
+- Missing Leg 3: generating content but never storing what was sent -> future generations don't know what happened
+- Missing Leg 1 diversity: only ingesting CRM data, missing support tickets, usage data, enrichment
+- Assuming Leg 4 only means email: webhooks, Slack, CRM updates, and dashboard data are all delivery
+
+---
+
 ## Testing Wired Integrations
 
 ### Step 1: Validate Each Connection
@@ -597,6 +736,9 @@ app.post('/api/personize-bridge', async (req, res) => {
 // Test Personize auth
 const { data: me } = await client.me();
 console.log('Personize org:', me?.organization.id);
+
+// Test MCP (if using)
+// Have agent call memory_recall_pro with a test query
 
 // Test external service
 await emailService.send({ to: 'test@internal.com', subject: 'Wire test', html: '<p>Test</p>' });
@@ -609,6 +751,7 @@ Set `DRY_RUN=true` and verify that:
 2. Generation produces correct format
 3. Output parsing extracts the right fields
 4. The delivery function receives the correct parameters
+5. The learn-back step stores the outcome correctly
 
 ### Step 3: Single-Contact Live Test
 
@@ -616,8 +759,9 @@ Run the full pipeline for ONE contact with a real delivery but to a test inbox/c
 
 ### Step 4: Scale Gradually
 
-10 contacts → 50 → 100 → full list. Monitor for:
+10 contacts -> 50 -> 100 -> full list. Monitor for:
 - Rate limit errors (429s)
 - Degraded output quality at volume
 - External API failures
 - Memory/CPU usage
+- MCP tool call failures (if applicable)

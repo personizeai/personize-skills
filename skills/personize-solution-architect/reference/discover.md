@@ -4,19 +4,37 @@ Complete discovery framework for understanding a developer's product, data, and 
 
 ---
 
-## Discovery Questions
+## Phase 0: Prospect Research (Before Discovery Questions)
 
-Ask conversationally — 2-3 at a time, adapt based on answers. Don't dump the full list.
+**ALWAYS start here.** Before asking a single discovery question, research the prospect online. Use web search to build a Prospect Intelligence Brief. This transforms discovery from interrogation to validation.
+
+**Full guide:** `reference/prospect-research.md`
+
+**Quick checklist:**
+1. Search for the company website, LinkedIn, Crunchbase, job postings, G2/Capterra reviews
+2. Determine: company size, dev team presence, customer volume, B2B vs B2C, funding stage
+3. Infer: tech stack (from job postings), customer segment, competitive landscape, BYOC likelihood
+4. Look for Personize fit signals: multiple touchpoints, data silos, manual personalization, multiple teams touching customers
+5. Produce a Prospect Intelligence Brief (see `reference/prospect-research.md` for template)
+6. Identify gaps to fill during the conversation
+
+**Output:** A Prospect Intelligence Brief that lets you validate rather than interrogate.
+
+---
+
+## Phase 1: Discovery Questions (Validate & Deepen)
+
+With the Prospect Intelligence Brief in hand, lead with what you know and validate. Ask conversationally -- 2-3 at a time, adapt based on answers. Don't dump the full list.
 
 ### Product Understanding
 
-1. **"What does your product do? Walk me through the core user journey."**
-   - What problem it solves, who uses it, how they use it
-   - This tells you: where personalization touch points exist
+1. **"I see you're a [X] platform for [Y]. How accurate is that, and has the focus shifted recently?"**
+   - Lead with what you learned from research. Validate, don't interrogate.
+   - If you couldn't find enough online: "What does your product do? Walk me through the core user journey."
 
-2. **"Who are your users? What roles or segments do you serve?"**
-   - Are they B2B or B2C? Enterprise or SMB? Technical or non-technical?
-   - This tells you: how to tailor personalization recommendations
+2. **"It looks like you serve mostly [segment] in [verticals]. Is that where the growth is, or are you expanding?"**
+   - Reference your research on their customer base
+   - If unknown: "Who are your users? What roles or segments do you serve?"
 
 3. **"What's the first thing a user does after signup? Walk me through onboarding."**
    - This reveals the earliest personalization opportunity
@@ -66,9 +84,9 @@ Ask conversationally — 2-3 at a time, adapt based on answers. Don't dump the f
 
 ### Technical Context
 
-14. **"What's your tech stack?"**
-    - Frontend framework, backend language, database, hosting, CI/CD
-    - This tells you: how to structure the implementation plan
+14. **"I noticed you're hiring for [framework] and your integrations page lists [tools]. Is that the core of your stack?"**
+    - Reference job postings and integrations page from your research
+    - If unknown: "What's your tech stack?"
 
 15. **"Do you use any workflow automation tools? (n8n, Zapier, Make, custom cron jobs)"**
     - This tells you: where pipelines can plug in
@@ -133,42 +151,124 @@ Source: [their database/CRM/analytics]
 
 ---
 
-## Discovery Output
+## Phase 2: Situation Assessment
 
-After discovery, you should be able to fill in this template:
+After Phase 0 (research) and Phase 1 (validation), assess the 5 dimensions. Ask naturally -- 2-3 at a time, adapt based on answers.
 
-```
-PRODUCT: [what they build]
-USERS: [who uses it, segments]
-CHANNELS: [web, mobile, email, slack, sms, etc.]
-EXISTING DATA: [CRM, analytics, support, ML, etc.]
-CURRENT PERSONALIZATION: [none / basic / advanced]
-TECH STACK: [frontend, backend, DB, hosting]
-TOP OPPORTUNITIES:
-  1. [highest-impact personalization]
-  2. [second]
-  3. [third]
-DATA GAPS: [what they wish they knew]
-MANUAL WORKFLOWS TO AUTOMATE: [what teams do by hand]
-```
+### Integration Mode (D1)
 
-Use this to drive the PROPOSE action.
+**"How do you see Personize fitting into your workflow?"**
+- Are you writing code directly (SDK), or do you want AI agents to have Personize as a tool (MCP)?
+- Do you use AI coding assistants like Cursor or Claude Code?
+- Do you use workflow automation tools like n8n, Zapier, or Make?
+- Are you building multi-agent systems (OpenClaw, CoWork, CrewAI, LangGraph)?
+- Do you need Personize to control the workflow, or will something else orchestrate?
+
+**What to listen for:**
+| Signal | Integration Mode |
+|---|---|
+| "I'll write TypeScript pipelines" | SDK in code |
+| "We use n8n for everything" | MCP on workflow tools |
+| "I'm using Cursor/Claude Code" | MCP on coding assistant |
+| "We're building an agent system" | MCP on multi-agent |
+| "I need an API I can call from Python/Go/Ruby" | REST API |
+| "Different tools for different jobs" | Hybrid |
+
+### Personize's Role (D2)
+
+**"What role should Personize play in your stack?"**
+- Will Personize be your primary customer data layer, or do you have a data warehouse?
+- Do you need AI generation (writing emails, reports), or mainly data storage and recall?
+- Do you need multiple agents to collaborate on the same records?
+- Should agents learn from outcomes and update rules over time?
+
+**Map the data flow legs:**
+| Signal | Active Legs |
+|---|---|
+| "We need to import CRM data and sync it" | Legs 1 + 4 (Execution) |
+| "We need AI to write personalized emails" | Legs 1 + 2 + 3 + 4 (Communication) |
+| "Agents should improve over time" | Legs 1 + 2 + 3 (with governance writes) |
+| "Multiple agents work on the same account" | All 4 legs + workspace coordination |
+
+### Use Case Archetype (D3)
+
+**"What kind of work will Personize power?"**
+- Is this primarily about generating and sending messages? (Communication)
+- Researching and synthesizing information? (Analysis)
+- Scoring and routing decisions? (Decision)
+- Syncing and enriching data? (Execution)
+- Coordinating across multiple agents or teams? (Collaboration)
+
+**If unclear, use these probes:**
+- "What does success look like? An email sent? A report generated? A decision made? Data synced?"
+- "How would you describe the output -- a message, a score, a report, a data update, or a coordinated action?"
+
+### Department (D4)
+
+**"Which team benefits first?"**
+- Sales, Marketing, Customer Success, Product, Operations?
+- Internal collaboration or external communication?
+- Is this for one team or cross-functional?
+
+### Autonomy & Tempo (D5)
+
+**"How much human oversight do you want?"**
+- Every output reviewed before action? (Human-in-loop)
+- Batch jobs with periodic spot-checks? (Supervised)
+- Fully autonomous with governance guardrails? (Autonomous)
+
+**"How often does this run?"**
+- On-demand (when a human triggers it)
+- Event-triggered (when something happens in a CRM/system)
+- Scheduled (daily, weekly)
+- Continuous (always running, monitoring, acting)
 
 ---
 
-## Discovery Output Template
+## Discovery Output
 
-After discovery, you should have answers to produce this document:
+After ALL three phases (research + validation + situation assessment), produce this document. It drives the PROPOSE action and every subsequent recommendation. Use the company's own terminology throughout.
 
-### [Company Name] — Personalization Discovery
+### [Company Name] -- Personalization Discovery
 
-**Product**: [what they build, who it serves]
-**Personalization surfaces**: [list of 3-5 touchpoints identified]
-**Data sources**: [CRM, product usage, support, etc.]
-**Entity types**: [Contact, Company, Deal, etc.]
-**Key properties per entity**: [5-10 most important fields]
-**Governance needs**: [brand voice, compliance, ICP definitions]
-**Priority channel**: [email, in-app, Slack, etc.]
-**Quick win**: [the single highest-impact personalization to build first]
+**Research-Derived (from Phase 0):**
+- **Company**: [name, founded, HQ, one-liner]
+- **Size**: [employee count, estimated engineering team size, funding stage]
+- **Customer base**: [B2B/B2C/B2B2C, segment, estimated volume, verticals]
+- **Business model**: [how they make money]
+- **Tools landscape**: [CRM, support, analytics, marketing tools -- from job postings and integrations page]
+- **Dev team**: [yes/no, estimated size, focus areas from job postings]
+- **BYOC likelihood**: [Low/Medium/High with reasoning]
+- **Competitive position**: [key competitors, differentiation]
+- **Fit signals**: [3-5 specific signals from research]
 
-If you cannot fill in 6+ of these 8 fields, continue discovery.
+**Validated in Conversation (from Phase 1):**
+- **Product**: [what they build, who it serves -- in their own words]
+- **Users**: [who uses it, segments -- validated and refined]
+- **Channels**: [web, mobile, email, Slack, SMS, notifications, dashboards]
+- **Data sources**: [CRM, product usage, support, analytics, ML, enrichment -- named specifically]
+- **Entity types**: [using their terminology -- "Members" not "Contacts" if that's what they say]
+- **Key properties per entity**: [5-10 most important fields -- using their field names]
+- **Current personalization**: [none / basic merge-tags / advanced -- with specific examples]
+- **Tech stack**: [frontend, backend, DB, hosting, CI/CD -- validated against job posting inferences]
+- **Governance needs**: [brand voice, compliance, ICP definitions -- specific to their industry]
+- **Priority channel**: [email, in-app, Slack, etc.]
+- **Quick win**: [the single highest-impact personalization to build first]
+- **Top opportunities** (specific to their business, not generic):
+  1. [highest-impact -- described using their terminology, their tools, their workflow]
+  2. [second -- same specificity]
+  3. [third -- same specificity]
+- **Data gaps**: [what they wish they knew]
+- **Manual workflows to automate**: [what teams do by hand -- name the role and the current tool]
+
+**Situation Profile:**
+- Integration Mode: [SDK / MCP on agents / Multi-agent / Hybrid / ...]
+- Personize Role: [Memory + Intelligence + Governance + Learning] (legs: 1,2,3,4)
+- Archetype: [Communication / Analysis / Decision / Execution / Collaboration]
+- Company Profile Pattern: [A: High-volume B2C / B: Mid-market B2B / C: Enterprise B2B / D: Platform / E: No dev team]
+- Department: [Sales / Marketing / CS / Product / Operations / Cross-functional]
+- Autonomy: [Human-driven / Human-in-loop / Supervised / Fully autonomous]
+
+**Use case builder guide:** After completing this output, read `reference/use-case-builder.md` to build use cases that demonstrate deep knowledge of their business.
+
+If you cannot fill in the research-derived section + 10 of the validated fields + the Situation Profile, continue discovery.

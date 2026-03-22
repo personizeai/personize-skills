@@ -43,17 +43,37 @@ When this skill is activated, guide the developer through a conversational journ
 
 **When:** Developer is new or you need to understand their product.
 
-Ask questions conversationally — 2-3 at a time, not a checklist:
+Discovery has three phases:
 
-1. What does your product do? Walk me through the core user journey.
-2. Where do your users interact? (web app, mobile, email, Slack, SMS, notifications, dashboards)
-3. What data do you already have about your users?
-4. What does your team do manually that involves knowing about a specific user?
-5. What do you wish your product knew about each user that it doesn't?
-6. What personalization do you have today, if any?
-7. What's your tech stack?
+**Phase 0: Prospect Research (ALWAYS START HERE)**
+Before asking questions, research the prospect online using web search. Build a Prospect Intelligence Brief covering:
+- Company profile (size, funding, business model)
+- Organizational complexity (dev team? how big?)
+- Customer base (B2B vs B2C, volume, segments)
+- Tools landscape (CRM, support, analytics from job postings)
+- BYOC/deployment needs (regulated industry? security-conscious?)
+- Competitive position and fit signals
 
-**Output:** A clear understanding of the product, data sources, and personalization gaps.
+Classify into a Company Profile Pattern:
+- **Pattern A:** High-volume B2C (10K+ customers) -- segment-of-one messaging, notification throttling
+- **Pattern B:** Mid-market B2B SaaS (100-5K customers) -- meeting prep, health narratives, cross-team context
+- **Pattern C:** Enterprise B2B (< 500 high-ACV) -- institutional knowledge, multi-stakeholder coordination
+- **Pattern D:** Platform/Marketplace -- dual-entity personalization, match narratives
+- **Pattern E:** No dev team -- MCP workflows, n8n/Zapier, Claude/ChatGPT-based
+
+**Phase 1: Validate & Deepen**
+Lead with research findings. Validate, don't interrogate:
+1. "I see you're a [X] for [Y]. Has the focus shifted recently?"
+2. "It looks like you serve mostly [segment]. Is that where the growth is?"
+3. "With [CRM] and [tools] in your stack, where are the data gaps?"
+4. "Your engineering team looks like about [N] people. What are they focused on?"
+5. "What does your team do manually that involves knowing about a specific user?"
+6. "What personalization do you have today, if any?"
+
+**Phase 2: Situation Assessment**
+Assess integration mode, Personize role, use case archetype, department, and autonomy level.
+
+**Output:** A Prospect Intelligence Brief + validated Discovery Output + Situation Profile. Use `reference/prospect-research.md` for the full research framework. Use `reference/use-case-builder.md` to build use cases that demonstrate deep business knowledge.
 
 ### Action 2: PROPOSE
 
@@ -323,7 +343,9 @@ Read these files for deeper guidance on each action:
 
 | Resource | Contents |
 |---|---|
-| `reference/discover.md` | Discovery framework, questions, codebase analysis patterns |
+| `reference/prospect-research.md` | **NEW** -- Online research framework: company profiling, sizing signals, dev team detection, customer volume estimation, B2B/B2C inference, BYOC likelihood, fit signals |
+| `reference/use-case-builder.md` | **NEW** -- Building use cases with deep business knowledge: company profile patterns, "Day in the Life" narratives, terminology customization, credibility checklist |
+| `reference/discover.md` | Discovery framework with 3 phases (research, validate, assess), codebase analysis patterns |
 | `reference/propose.md` | All use cases, user stories, surface areas, before/after examples |
 | `reference/plan.md` | Data intelligence guide, 10-step loop, SDK methods, code for each step, recipes, scheduling |
 | `reference/schema.md` | Schema design workflow, collection specs, property types, description writing, starter templates |

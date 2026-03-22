@@ -111,6 +111,52 @@ const result = await client.ai.prompt({
 
 ---
 
+## Adapt by Situation Profile
+
+Before presenting proposals, check the Situation Profile from discovery. This changes WHAT you propose and HOW you present it.
+
+### By Archetype
+
+| Archetype | Proposal Focus | Lead With |
+|---|---|---|
+| **Communication-heavy** | Email/notification generation with governance guardrails | Before/after email examples, generation prompt patterns, channel format rules |
+| **Analysis-heavy** | Research synthesis, health reports, scoring narratives | Deep recall with high token budgets, cross-entity context, narrative generation |
+| **Decision-heavy** | Scoring, routing, qualification with structured outputs | Structured JSON outputs, governance scoring criteria, decision learning loops |
+| **Execution-heavy** | Batch sync, enrichment, webhook delivery | `memorizeBatch()` code, rate limit calculations, webhook patterns. Minimize narrative -- show data flow. |
+| **Collaboration-heavy** | Workspace patterns, multi-agent coordination | Agent coordination diagrams, workspace schemas, contribution protocols |
+
+### By Integration Mode
+
+| Mode | How to Present Proposals |
+|---|---|
+| **SDK in code** | Show TypeScript code with `client.*` methods. Include error handling and rate limiting. |
+| **MCP on coding assistant** | Describe what the agent experience looks like: "You'll say 'write a follow-up for Sarah' and the AI will call memory_recall_pro, then ai_smart_guidelines, then generate the email." |
+| **MCP on multi-agent** | Show agent coordination: which agent does what, how they share state, tool scoping per agent. |
+| **MCP on workflow tools** | Describe visually: "Trigger: HubSpot deal closed -> AI Node: recall context + generate email -> Gmail Node: send -> AI Node: memorize outcome." |
+| **Responses API** | Show step definitions with tool scoping and structured outputs. |
+| **No-code** | Describe in workflow terms. Reference no-code-pipelines skill for n8n JSON generation. |
+
+### By Department
+
+| Department | What Resonates | What to Avoid |
+|---|---|---|
+| **Sales** | Pipeline velocity, outreach quality, qualification accuracy | Over-engineering. Sales wants results fast. |
+| **Marketing** | Campaign personalization, brand consistency, attribution | Technical complexity. Marketing thinks in campaigns and audiences. |
+| **Customer Success** | Proactive outreach, health monitoring, churn prevention | Reactive patterns. CS wants to get ahead of problems. |
+| **Product** | User research synthesis, feature adoption, feedback analysis | Communication-heavy proposals unless asked. Product cares about understanding users. |
+| **Operations** | Data governance, compliance, automation, cost reduction | Flashy generation demos. Ops wants reliable, auditable systems. |
+
+### By Autonomy Level
+
+| Autonomy | Proposal Emphasis |
+|---|---|
+| **Human-driven** | Show the developer experience. "Here's what you type, here's what you get." |
+| **Human-in-loop** | Show the review queue. "Emails are generated in batch, you review and approve before sending." |
+| **Supervised** | Show the monitoring dashboard. "The system runs nightly, you check scores and exceptions." |
+| **Fully autonomous** | Show governance guardrails + learning loop. "Agents act within these rules, and update the rules based on outcomes. Here's the safety net." |
+
+---
+
 ## Surface Area 1: Software / Web Application
 
 ### What basic personalization looks like (no Personize needed):
