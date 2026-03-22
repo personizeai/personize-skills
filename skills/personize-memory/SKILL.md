@@ -54,10 +54,10 @@ This skill works identically whether the LLM accesses memory via the **SDK** (co
 | `client.memory.memorize(opts)` | `memory_store_pro(content, email, ...)` | Store data with AI extraction |
 | `client.memory.smartRecall(opts)` | `memory_recall_pro(query, email, ...)` | Semantic search (recommended) |
 | `client.memory.recall(opts)` | *(SDK only)* | Direct DynamoDB lookup — properties + freeform memories (`type` required, no AI) |
-| `client.memory.smartDigest(opts)` | *(SDK only)* | Compiled entity context (properties + memories) |
+| `client.memory.smartDigest(opts)` | `memory_digest(email, ...)` | Compiled entity context (properties + memories) |
 | `client.memory.search(opts)` | *(SDK only)* | Filter and export records |
 | `client.memory.memorizeBatch(opts)` | *(SDK only)* | Batch sync with per-property control |
-| `client.memory.update(opts)` | *(SDK only)* | Update property or freeform memory (supports conditional writes + array ops) |
+| `client.memory.update(opts)` | `memory_update_property(email, ...)` | Update property or freeform memory (supports conditional writes + array ops) |
 | `client.memory.bulkUpdate(opts)` | *(SDK only)* | Update multiple properties at once |
 | `client.memory.delete(opts)` | *(SDK only)* | Soft-delete memories (30-day recovery) |
 | `client.memory.deleteRecord(opts)` | *(SDK only)* | Soft-delete all memories for a record |
@@ -66,6 +66,8 @@ This skill works identically whether the LLM accesses memory via the **SDK** (co
 | `client.memory.queryProperties(opts)` | *(SDK only)* | LLM-powered structured property search |
 | `client.memory.filterByProperty(opts)` | *(SDK only)* | Deterministic property filter (no LLM) |
 | `client.ai.smartGuidelines(opts)` | `ai_smart_guidelines(message)` | Fetch guidelines by topic |
+| `client.memory.similar()` | `memory_find_similar` | Find records similar to a seed record |
+| `client.memory.segment()` | `memory_segment` | Bucket records into similarity tiers |
 
 ### MCP-Only Feature: Self-Memory (`about='self'`)
 
@@ -91,13 +93,15 @@ memory_recall_pro(query="What are my preferences and working style?", about="sel
 
 ## Actions
 
-You have 3 actions. Use whichever matches what the developer needs.
+You have 5 actions. Use whichever matches what the developer needs.
 
 | Action | When to Use | Reference |
 |---|---|---|
 | **MEMORIZE** | Developer needs to store data — single items, batch sync, CRM import, webhook data, generated outputs | `reference/memorize.md` |
 | **RECALL** | Developer needs to retrieve data — semantic search, entity context, filtered exports, context assembly | `reference/recall.md` |
 | **CRUD** | Developer needs to directly modify, delete, query history, or filter by property value — no AI extraction | `reference/crud-operations.md` |
+| **FIND SIMILAR** | Developer wants lookalikes, related records, "find more like this", or records connected through shared properties/memories | `reference/similar.md` |
+| **SEGMENT** | Developer wants to bucket, tier, or segment records relative to a seed record or text description | `reference/segment.md` |
 
 **Before each action:** Read the reference file for full method signatures, decision trees, code examples, and common mistakes.
 
@@ -423,6 +427,8 @@ async function assembleContext(email: string, task: string): Promise<string> {
 }
 ```
 
+**New:** Add `groupByRecord: true` to group results by record instead of a flat list. Returns `recordGroups` array with `topScore`, `matchCount`, and top 3 matches per record. No extra cost.
+
 ### Recall Pricing
 
 All read operations charge a flat per-call rate regardless of mode (`'fast'`, `'deep'`, etc.). Mode choice affects latency and depth, not cost. For current rates, see [personize.ai](https://personize.ai).
@@ -610,6 +616,79 @@ All mutations fire webhook events: `memory.property.updated`, `memory.properties
 
 ---
 
+## Action: FIND SIMILAR RECORDS
+
+**When to use:** User wants to find lookalikes, related records, "find more like this", or records connected through shared properties/memories.
+
+**SDK:** `client.memory.similar({ seed: { email }, dimensions, topK })`
+**MCP:** `memory_find_similar`
+**CLI:** `personize memory similar --email <email>`
+
+**Key parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| seed | object | required | Record identifier: { email?, recordId?, websiteUrl? } |
+| dimensions | string | "hybrid" | properties, memories, hybrid, or connections |
+| topK | number | 25 | Max results (max 500) |
+| minScore | number | 0.3 | Min similarity threshold |
+| returnAllIds | boolean | false | Batch mode: flat list for downstream processing |
+| rankingMode | string | "balanced" | balanced (+0.08 bonus for multi-dim) or weighted |
+
+**Tiers:** very_similar (>=0.75), similar (>=0.5), somewhat_similar (>=0.3)
+
+**Example:**
+```typescript
+// Find 10 records most similar to john@acme.com
+const result = await client.memory.similar({
+    seed: { email: 'john@acme.com' },
+    topK: 10,
+    dimensions: 'hybrid',
+});
+// result.data.results[0].recordId, .score, .tier, .matchBreakdown
+// result.data.tiers.very_similar = ['REC#...', ...]
+```
+
+**Cost:** 1 credit per request.
+
+See `reference/similar.md` for full parameter and response reference.
+
+---
+
+## Action: SEGMENT AUDIENCE
+
+**When to use:** User wants to bucket, tier, or segment records relative to a seed record or text description.
+
+**SDK:** `client.memory.segment({ seed: { email } | { text }, maxPerTier })`
+**MCP:** `memory_segment`
+**CLI:** `personize memory segment --email <email>` or `--text "description"`
+
+**Key parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| seed | object | required | Record identifier OR { text: "description" } |
+| dimensions | string | "hybrid" | properties, memories, or hybrid |
+| maxPerTier | number | 50 | RecordIds per tier page (max 500) |
+| returnTier | string | - | Fetch single tier only |
+| tierOffset | number | 0 | Pagination within tiers |
+
+**Example:**
+```typescript
+// Segment all records relative to an ICP description
+const result = await client.memory.segment({
+    seed: { text: 'Enterprise SaaS CTO interested in AI automation' },
+    maxPerTier: 20,
+});
+// result.data.tiers.very_similar.recordIds = ['REC#...', ...]
+// result.data.tiers.very_similar.count = 12
+// result.data.tiers.not_similar.approximate = true
+```
+
+**Cost:** 2 credits per request.
+
+See `reference/segment.md` for full parameter and response reference.
+
+---
+
 ## SDK Method Reference
 
 ```typescript
@@ -633,6 +712,13 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 | `memory.smartDigest(opts)` | `POST /api/v1/smart-memory-digest` | Compiled entity context (properties + memories) |
 | `memory.search(opts)` | `POST /api/v1/search` | Filter and export records |
 | `ai.smartGuidelines(opts)` | `POST /api/v1/ai/smart-guidelines` | Fetch governance variables by topic |
+
+### Similarity Methods
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `memory.similar(opts)` | `POST /api/v1/similar` | Find records similar to a seed record |
+| `memory.segment(opts)` | `POST /api/v1/segment` | Bucket all records into similarity tiers |
 
 ### CRUD Methods
 
@@ -765,6 +851,8 @@ interface SmartDigestOptions {
 | `reference/recall.md` | Full recall guide: method signatures, query strategies, token budgets, scoring, context assembly, export filtering, performance tips |
 | `reference/crud-operations.md` | CRUD operations: update, bulk-update, delete, cancel-deletion, property-history, query-properties, filter-by-property — request/response shapes, error codes |
 | `reference/identifier-scenarios.md` | How each endpoint (memorize, recall, smartRecall, smartDigest) behaves with email, websiteUrl, recordId, type-only, or no identifier — scenarios A–G with error vs empty vs success table |
+| `reference/similar.md` | Find Similar Records: full parameter reference, response shapes, tiers, cross-type similarity, billing |
+| `reference/segment.md` | Segment Audience: full parameter reference, text-based seeds, tier response shapes, pagination, billing |
 | `recipes/data-sync.ts` | Batch sync from CRM/database with validation and error handling |
 | `recipes/context-assembly.ts` | Complete context assembly pattern combining all recall methods |
 

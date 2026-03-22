@@ -1,0 +1,268 @@
+{
+  "_note": "This schema uses the human-friendly format (name, options as array, updateSemantics, tags). The API also accepts the native format (propertyName, options as string, update as boolean). Both are auto-normalized on save.",
+  "id": "col_contact",
+  "name": "Contact Properties",
+  "entityType": "Contact",
+  "description": "Core properties for tracking individuals your organization interacts with — prospects, leads, customers, and partners. Combines profile data (CRM/forms), hybrid fields (enrichment + AI), and AI-extracted relationship intelligence from unstructured content like calls, emails, and meeting notes.",
+  "properties": [
+    {
+      "name": "First Name",
+      "systemName": "first_name",
+      "type": "text",
+      "description": "The contact's first/given name. Populated from CRM, form submissions, or manual entry. If the AI encounters a name in conversation (e.g., 'Hi, this is Sarah'), it may fill this if empty.",
+      "autoSystem": false,
+      "update": true,
+      "tags": [
+        "profile",
+        "identity"
+      ]
+    },
+    {
+      "name": "Last Name",
+      "systemName": "last_name",
+      "type": "text",
+      "description": "The contact's last/family name. Populated from CRM, form submissions, or manual entry.",
+      "autoSystem": false,
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
+    },
+    {
+      "name": "Full Name",
+      "systemName": "full_name",
+      "type": "text",
+      "description": "The contact's full display name. Populated from CRM or concatenated from first + last name. Used as the primary display identifier in summaries and generated content.",
+      "autoSystem": false,
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
+    },
+    {
+      "name": "Phone Number",
+      "systemName": "phone_number",
+      "type": "text",
+      "description": "The contact's primary phone number. Populated from CRM or form submissions. Include country code if available (e.g., '+1-555-123-4567').",
+      "autoSystem": false,
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
+    },
+    {
+      "name": "LinkedIn URL",
+      "systemName": "linkedin_url",
+      "type": "text",
+      "description": "The contact's LinkedIn profile URL. Populated from CRM, enrichment tools, or manual entry. Full URL format: 'https://linkedin.com/in/username'.",
+      "autoSystem": false,
+      "tags": [
+        "profile",
+        "identity"
+      ],
+      "update": true
+    },
+    {
+      "name": "Company Name",
+      "systemName": "company_name",
+      "type": "text",
+      "description": "The name of the company or organization the contact works for. Primarily from CRM or enrichment, but AI can also extract from conversations (e.g., 'I work at Acme Corp' or email signatures). Use the formal company name, not abbreviations.",
+      "autoSystem": true,
+      "tags": [
+        "hybrid",
+        "identity"
+      ],
+      "update": true
+    },
+    {
+      "name": "Company Website",
+      "systemName": "company_website",
+      "type": "text",
+      "description": "The website URL of the contact's company. Primarily from enrichment tools (Apollo, Clearbit), but AI can extract if mentioned in conversation or email signatures. Full URL format: 'https://acme.com'.",
+      "autoSystem": true,
+      "tags": [
+        "hybrid",
+        "identity"
+      ],
+      "update": true
+    },
+    {
+      "name": "Job Title",
+      "systemName": "job_title",
+      "type": "text",
+      "description": "The contact's current job title or role. Primarily from CRM or enrichment, but AI should update when it detects changes (e.g., 'I just got promoted to VP of Engineering'). Extract the most specific title mentioned. If multiple titles are mentioned, use the most recent or primary one.",
+      "autoSystem": true,
+      "tags": [
+        "hybrid",
+        "identity",
+        "qualification"
+      ],
+      "update": true
+    },
+    {
+      "name": "Seniority Level",
+      "systemName": "seniority_level",
+      "type": "options",
+      "description": "The contact's seniority within their organization. Can come from enrichment tools or be inferred by AI from job title and conversation context. IC = Individual Contributor (no direct reports).",
+      "options": [
+        "IC",
+        "Manager",
+        "Director",
+        "VP",
+        "C-Suite",
+        "Founder"
+      ],
+      "autoSystem": true,
+      "tags": [
+        "hybrid",
+        "qualification",
+        "queryable"
+      ],
+      "update": true
+    },
+    {
+      "name": "Personas",
+      "systemName": "personas",
+      "type": "array",
+      "description": "Buyer or user personas this contact matches, based on their role, behavior, goals, and challenges. AI infers by comparing the contact's profile and conversation patterns against the organization's defined persona definitions in governance variables. Examples: 'Technical Evaluator', 'Executive Sponsor', 'End User Champion', 'Budget Holder'. A contact can match multiple personas.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": [
+        "ai-extracted",
+        "segmentation",
+        "queryable"
+      ]
+    },
+    {
+      "name": "Engagement Summary",
+      "systemName": "engagement_summary",
+      "type": "text",
+      "description": "AI-compiled snapshot of the entire relationship with this contact. Synthesizes across all interactions — calls, emails, meetings, support tickets. Should capture: how many interactions, what was discussed, current sentiment, where the relationship stands, and any notable patterns. Updated after each new interaction. This is the 'quick brief' for anyone engaging with this contact.",
+      "autoSystem": true,
+      "tags": [
+        "ai-extracted",
+        "summary"
+      ],
+      "update": true
+    },
+    {
+      "name": "Pain Points",
+      "systemName": "pain_points",
+      "type": "array",
+      "description": "Business problems or challenges the contact has expressed across any interaction. Each pain point should be a concise phrase (5-15 words). Extract both explicitly stated problems ('our deployments take 3 hours') and strongly implied ones ('we keep losing deals to competitors with faster onboarding'). Examples: 'slow deployment cycles', 'vendor lock-in concerns', 'manual reporting overhead'.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": [
+        "ai-extracted",
+        "qualification",
+        "messaging"
+      ]
+    },
+    {
+      "name": "Interests & Topics",
+      "systemName": "interests_topics",
+      "type": "array",
+      "description": "Subjects, themes, and topics this contact actively discusses, asks about, or shows interest in. Extracted from conversations, emails, and meeting notes. Each entry should be a concise topic label (1-5 words). Examples: 'AI automation', 'data privacy compliance', 'team scaling challenges', 'API integrations'. Useful for content personalization and conversation starters.",
+      "autoSystem": true,
+      "updateSemantics": "append",
+      "tags": [
+        "ai-extracted",
+        "personalization"
+      ]
+    },
+    {
+      "name": "Communication Style",
+      "systemName": "communication_style",
+      "type": "text",
+      "description": "AI-observed communication preferences and style patterns. Captures: formality level (formal/casual), preferred communication length (brief/detailed), response speed patterns, technical depth preference, and any stated preferences ('just send me the bullet points', 'I prefer email over calls'). Used to tailor generated messages to match how this contact communicates.",
+      "autoSystem": true,
+      "tags": [
+        "ai-extracted",
+        "personalization"
+      ],
+      "update": true
+    },
+    {
+      "name": "Decision Maker",
+      "systemName": "decision_maker",
+      "type": "boolean",
+      "description": "Whether this contact has final purchasing or decision authority. True if they explicitly state they can sign, approve budget, or make the decision unilaterally. False if they mention needing approval from someone else ('I'll need to run this by my VP'). Leave null/unset if unclear from available information.",
+      "autoSystem": true,
+      "tags": [
+        "ai-extracted",
+        "qualification",
+        "queryable"
+      ],
+      "update": true
+    },
+    {
+      "name": "Lead Status",
+      "systemName": "lead_status",
+      "type": "options",
+      "description": "Current status of this contact in the sales/relationship pipeline. AI infers from conversation context and interaction patterns: no prior interaction = New, initial outreach sent = Contacted, needs confirmed and budget discussed = Qualified, ongoing nurture without active deal = Nurturing, paying customer = Customer, stopped engaging = Churned.",
+      "options": [
+        "New",
+        "Contacted",
+        "Qualified",
+        "Nurturing",
+        "Customer",
+        "Churned"
+      ],
+      "autoSystem": true,
+      "tags": [
+        "ai-extracted",
+        "pipeline",
+        "queryable"
+      ],
+      "update": true
+    },
+    {
+      "name": "Sentiment",
+      "systemName": "sentiment",
+      "type": "options",
+      "description": "The contact's overall emotional disposition toward your organization based on recent interactions. AI assesses from tone, word choice, and context. Positive: enthusiastic, appreciative, engaged. Neutral: factual, business-like. Frustrated: expressing dissatisfaction or impatience. At Risk: signs of disengagement, competitor mentions, or escalation language.",
+      "options": [
+        "Positive",
+        "Neutral",
+        "Frustrated",
+        "At Risk"
+      ],
+      "autoSystem": true,
+      "tags": [
+        "ai-extracted",
+        "health",
+        "queryable"
+      ],
+      "update": true
+    },
+    {
+      "name": "Responsive",
+      "systemName": "responsive",
+      "type": "boolean",
+      "description": "Whether this contact is actively responsive to outreach. True if they reply to emails, attend scheduled calls, or engage in conversations. False if they have gone silent, missed multiple meetings, or stopped replying. AI infers from interaction patterns and explicit cues ('sorry I've been hard to reach').",
+      "autoSystem": true,
+      "tags": [
+        "ai-extracted",
+        "engagement",
+        "queryable"
+      ],
+      "update": true
+    },
+    {
+      "name": "ICP Match",
+      "systemName": "icp_match",
+      "type": "boolean",
+      "description": "Whether this contact's company and role match the organization's Ideal Customer Profile criteria. AI evaluates by comparing the contact's company size, industry, role seniority, and use case against ICP definitions stored in governance variables. True if the contact fits at least one defined ICP. Requires ICP governance variables to be configured.",
+      "autoSystem": true,
+      "tags": [
+        "ai-extracted",
+        "qualification",
+        "queryable"
+      ],
+      "update": true
+    }
+  ]
+}

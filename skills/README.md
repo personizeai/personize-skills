@@ -13,6 +13,7 @@ Skills are modular packages of instructions that help AI agents perform specific
 | Skill | Description | Use when... |
 |---|---|---|
 | [entity-memory](./entity-memory/) | Persistent memory for contacts, companies, and records — store, sync, recall, export | Storing data, syncing CRM/databases, querying memory, assembling context |
+| [responses](./personize-responses/) | AI generation and step-driven orchestration with client tools, governance, memory, and BYOK | Generating content, multi-step workflows, tool calling, OpenAI-compatible chat completions |
 | [governance](./governance/) | Org rules, brand voice, compliance, and playbooks as AI guidelines via SmartContext | Setting up policies, brand voice, ICPs, or any rules agents must follow |
 | [code-pipelines](./code-pipelines/) | GTM automation with Trigger.dev + Personize SDK — outbound, inbound, enrichment, signals | Building durable pipelines: email sequences, lead processing, reply handlers |
 | [no-code-pipelines](./no-code-pipelines/) | n8n workflow JSON for 400+ app integrations — no code required | Building visual no-code workflows to sync data between Personize and other apps |
@@ -42,6 +43,7 @@ When multiple skills could apply, use the developer's primary intent to route:
 | "Sync my CRM/database" (wants code) | **entity-memory** | Has CRM sync section with batch-memorize, deploy templates, source recipes |
 | "Sync my CRM/database" (wants no-code) | **no-code-pipelines** | Visual n8n workflows, no TypeScript needed |
 | "Build outbound sequences / GTM automation" | **code-pipelines** | Durable execution with Trigger.dev, retries, scheduling |
+| "Generate content / run a prompt / AI orchestration" | **responses** | Step-driven generation with governance, memory, tools, and BYOK |
 | "Add personalization to my product" | **solution-architect** | Covers architecture, channels, schemas, and guardrails end-to-end |
 | "Store or retrieve data" (single call) | **entity-memory** | Other skills add unnecessary scaffolding |
 | "Set up organizational rules" | **governance** | `entity-memory` is for entity data, not org policies |

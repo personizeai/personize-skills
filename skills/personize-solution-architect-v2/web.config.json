@@ -1,0 +1,20 @@
+{
+  "webName": "personize-solution-architect",
+  "exclude": [
+    "channels/",
+    "recipes/batch-pipeline.ts",
+    "recipes/health-check-message.ts",
+    "recipes/product-intelligence.ts",
+    "recipes/product-usage-alert.ts",
+    "recipes/smart-notification.ts",
+    "recipes/web-personalization.ts",
+    "reference/review.md",
+    "reference/archetypes.md",
+    "reference/integration-modes.md",
+    "reference/guideline-authoring-standards.md",
+    "reference/prompt endpoint - instructions best practices/streaming-outputs.md"
+  ],
+  "rename": {
+    "reference/prompt endpoint - instructions best practices": "reference/prompt-best-practices"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Property Definition",
+  "description": "Schema for defining a property within a governed memory collection. The API accepts both the native format (propertyName, options as string, update as boolean) and the human-friendly format (name, options as array, updateSemantics as string). The human-friendly format is auto-converted on save.",
+  "type": "object",
+  "required": ["type", "description"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique property identifier. Auto-generated if not provided."
+    },
+    "propertyName": {
+      "type": "string",
+      "description": "Human-readable property name displayed in UIs and extraction results. Alias: 'name'.",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "name": {
+      "type": "string",
+      "description": "Alias for propertyName. If both are provided, propertyName takes precedence."
+    },
+    "systemName": {
+      "type": "string",
+      "description": "Machine-readable identifier. Lowercase, underscored. Auto-generated from propertyName if not provided. Immutable on update.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 50
+    },
+    "type": {
+      "type": "string",
+      "enum": ["text", "number", "date", "boolean", "options", "array"],
+      "description": "Data type for the extracted value."
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description guiding the extraction model. Include scope, examples, boundaries, and edge cases. This is the most important field for extraction quality.",
+      "minLength": 20
+    },
+    "options": {
+      "description": "Allowed values when type is 'options'. API accepts both comma-separated string ('A, B, C') and array (['A', 'B', 'C']). Arrays are auto-converted to comma-separated strings on save.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" }, "minItems": 2 }
+      ]
+    },
+    "autoSystem": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, AI automatically populates this field during memorization. If false, field is only populated via structured writes (batch-memorize, upsert)."
+    },
+    "update": {
+      "type": "boolean",
+      "description": "If true, new values REPLACE existing. If false, new values APPEND (accumulate). Alias: 'updateSemantics' with values 'replace' (= true) or 'append' (= false)."
+    },
+    "updateSemantics": {
+      "type": "string",
+      "enum": ["replace", "append"],
+      "description": "Human-friendly alias for 'update'. 'replace' = update: true, 'append' = update: false. Auto-converted on save."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for property selection boosting. When a memorize request includes tags that match a property's tags, that property receives a +15% boost per match to its similarity score during property selection. Common tags: 'identity', 'firmographic', 'qualification', 'engagement', 'ai-extracted'."
+    }
+  },
+  "additionalProperties": false
+}
