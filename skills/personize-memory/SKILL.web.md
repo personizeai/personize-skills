@@ -157,6 +157,14 @@ const digest = await client.memory.smartDigest({
 });
 // digest.data.compiledContext → ready-to-inject markdown
 
+// Entity digest via custom key (e.g. LinkedIn URL, student number)
+const linkedinDigest = await client.memory.smartDigest({
+    customKeyName: 'linkedin_url',
+    customKeyValue: 'sarah-chen-12345',
+    token_budget: 2000,
+});
+// Works with any customKeyName used during memorize
+
 // Filtered export
 const exported = await client.memory.search({
     type: 'Contact',

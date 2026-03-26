@@ -12,22 +12,21 @@ Skills are modular packages of instructions that help AI agents perform specific
 
 | Skill | Description | Use when... |
 |---|---|---|
-| [entity-memory](./entity-memory/) | Persistent memory for contacts, companies, and records | Storing, syncing, or querying entity data |
-| [governance](./governance/) | Org rules, brand voice, and compliance as AI guidelines | Setting up policies agents must follow |
-| [personalization](./personalization/) | End-to-end personalization architecture across channels | Centralizing customer knowledge, deploying personalized experiences |
-| [code-pipelines](./code-pipelines/) | GTM automation with Trigger.dev + Personize SDK | Outbound sequences, durable scheduled pipelines |
-| [no-code-pipelines](./no-code-pipelines/) | n8n workflow JSON for 400+ app integrations | No-code visual workflows |
-| [data-sync](./data-sync/) | CRM and database sync connectors | Connecting Salesforce, HubSpot, Postgres to Personize |
-| [collaboration](./collaboration/) | Shared workspace for multi-agent coordination | Agents + humans working on the same record |
-| [signal](./signal/) | AI-powered notification engine (IF, WHAT, WHEN, HOW) | Building smart notifications for a SaaS product |
-| [verify-setup](./verify-setup/) | Post-setup verification for every stack layer | Confirming things work after setup |
-| [troubleshooting](./troubleshooting/) | Diagnose and fix common Personize issues | Something isn't working as expected |
+| [entity-memory](./entity-memory/) | Persistent memory for contacts, companies, and records — store, sync, recall, export | Storing data, syncing CRM/databases, querying memory, assembling context |
+| [responses](./personize-responses/) | AI generation and step-driven orchestration with client tools, governance, memory, and BYOK | Generating content, multi-step workflows, tool calling, OpenAI-compatible chat completions |
+| [governance](./governance/) | Org rules, brand voice, compliance, and playbooks as AI guidelines via SmartContext | Setting up policies, brand voice, ICPs, or any rules agents must follow |
+| [code-pipelines](./code-pipelines/) | GTM automation with Trigger.dev + Personize SDK — outbound, inbound, enrichment, signals | Building durable pipelines: email sequences, lead processing, reply handlers |
+| [no-code-pipelines](./no-code-pipelines/) | n8n workflow JSON for 400+ app integrations — no code required | Building visual no-code workflows to sync data between Personize and other apps |
+| [collaboration](./collaboration/) | Shared workspace for multi-agent coordination on any entity | Multiple agents, humans, or systems need to work on the same record |
+| [signal](./signal/) | AI-powered notification engine — decides IF, WHAT, WHEN, HOW per person | Building smart notifications, alerts, or digests for a SaaS product |
+| [diagnostics](./diagnostics/) | Verify setup and troubleshoot the Personize stack | After setting up any Personize capability, or when something isn't working |
+| [solution-architect](./solution-architect/) | Plan, design, and validate complete Personize integrations end-to-end | Centralizing customer knowledge, deploying personalization, or reviewing an integration |
 
 ### Meta
 
 | Skill | Description | Use when... |
 |---|---|---|
-| [skill-builder](./skill-builder/) | Create and structure new skills | Building a new skill for this repo |
+| [skill-builder](./skill-builder/) | Create, structure, and install new skills | Building a new skill for this repo |
 
 ### Internal Reference Docs
 
@@ -41,21 +40,23 @@ When multiple skills could apply, use the developer's primary intent to route:
 
 | Developer says... | Primary skill | Why not the others |
 |---|---|---|
-| "Sync my CRM/database" (wants code) | **data-sync** | `entity-memory` is too low-level; `no-code-pipelines` is no-code; `code-pipelines` is for GTM motions |
-| "Sync my CRM/database" (wants no-code) | **no-code-pipelines** | `data-sync` requires TypeScript |
-| "Build outbound sequences / GTM automation" | **code-pipelines** | `personalization` is design-time, not runtime pipelines |
-| "Add personalization to my product" | **personalization** | Covers architecture, channels, and guardrails end-to-end |
+| "Sync my CRM/database" (wants code) | **entity-memory** | Has CRM sync section with batch-memorize, deploy templates, source recipes |
+| "Sync my CRM/database" (wants no-code) | **no-code-pipelines** | Visual n8n workflows, no TypeScript needed |
+| "Build outbound sequences / GTM automation" | **code-pipelines** | Durable execution with Trigger.dev, retries, scheduling |
+| "Generate content / run a prompt / AI orchestration" | **responses** | Step-driven generation with governance, memory, tools, and BYOK |
+| "Add personalization to my product" | **solution-architect** | Covers architecture, channels, schemas, and guardrails end-to-end |
 | "Store or retrieve data" (single call) | **entity-memory** | Other skills add unnecessary scaffolding |
 | "Set up organizational rules" | **governance** | `entity-memory` is for entity data, not org policies |
 | "Coordinate multiple agents on a record" | **collaboration** | `entity-memory` is single-entity; workspace is multi-contributor |
 | "Build smart / AI-powered notifications" | **signal** | `code-pipelines` runs sequences; signal decides IF/WHAT/WHEN per person |
-| "How do I verify my setup works?" | **verify-setup** | No other skill covers end-to-end testing |
-| "Something isn't working" | **troubleshooting** | Systematic diagnosis with ranked root causes |
+| "How do I verify my setup works?" | **diagnostics** | VERIFY mode confirms every stack layer works |
+| "Something isn't working" | **diagnostics** | FIX mode with systematic diagnosis and ranked root causes |
+| "Help me plan my Personize integration" | **solution-architect** | Discovery → Schema → Plan → Generate → Wire → Review |
 
 ### Disambiguation
 
 When intent is ambiguous (e.g., "I want to automate emails"), ask:
 
-> "Do you want to (a) **design** the personalization architecture for your product, (b) **build** a production pipeline that runs on a schedule, or (c) connect your data via a **no-code** workflow?"
+> "Do you want to (a) **plan** the full personalization architecture for your product, (b) **build** a production pipeline that runs on a schedule, or (c) connect your data via a **no-code** workflow?"
 >
-> (a) → personalization  |  (b) → code-pipelines  |  (c) → no-code-pipelines
+> (a) → solution-architect  |  (b) → code-pipelines  |  (c) → no-code-pipelines

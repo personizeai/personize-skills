@@ -286,6 +286,14 @@ const digest = await client.memory.smartDigest({
 });
 // digest.data.compiledContext → ready-to-inject markdown
 
+// Entity digest via custom key (e.g. LinkedIn URL, student number)
+const linkedinDigest = await client.memory.smartDigest({
+    customKeyName: 'linkedin_url',
+    customKeyValue: 'sarah-chen-12345',
+    token_budget: 2000,
+});
+// Works with any customKeyName used during memorize
+
 // Filtered export — find all enterprise contacts
 const exported = await client.memory.search({
     type: 'Contact',
@@ -803,6 +811,8 @@ interface SmartDigestOptions {
     website_url?: string;      // Company website
     record_id?: string;        // Record ID
     type?: string;             // Entity type ('Contact', 'Company')
+    customKeyName?: string;    // Custom identifier field (e.g. 'linkedin_url', 'student_number')
+    customKeyValue?: string;   // Custom identifier value
     token_budget?: number;     // Max tokens for output (default: 1000)
     max_memories?: number;     // Max memories to include (default: 20)
     include_properties?: boolean; // Include structured properties (default: true)
