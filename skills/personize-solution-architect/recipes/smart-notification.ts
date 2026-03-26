@@ -2,19 +2,15 @@
  * Recipe: Smart Notification — Uniquely Personalized Alerts
  *
  * ┌──────────────────────────────────────────────────────────────────┐
- * │ FOR PRODUCTION USE: @personize/signal                           │
+ * │ FOR REFERENCE: Personize Signal (open-source)                   │
  * │                                                                  │
- * │ This recipe demonstrates the underlying SDK calls that Signal   │
- * │ packages into a production-ready engine with:                   │
- * │   - Built-in channels (SES, SendGrid, Slack, InApp)            │
- * │   - Dedup + fatigue prevention (daily cap, dedup window)        │
- * │   - Digest pipeline (deferred → compiled weekly digest)         │
- * │   - Workspace integration (tasks, notes, updates per entity)   │
- * │   - Feedback loop (memorizes what was sent)                     │
- * │   - Cost controls (pre-check skips, rate limiting)              │
+ * │ This recipe demonstrates the underlying SDK calls. For a        │
+ * │ complete smart notification engine with built-in channels,      │
+ * │ dedup, fatigue prevention, digests, and workspace integration,  │
+ * │ see the open-source Signal repo:                                │
  * │                                                                  │
- * │ npm install @personize/signal @personize/sdk                    │
- * │ See: signal/README.md and signal/examples/                      │
+ * │ https://github.com/personizeai/signal                           │
+ * │ (Not yet published to npm -- clone the repo to use)             │
  * └──────────────────────────────────────────────────────────────────┘
  *
  * Uses smartDigest() to assemble deep context about each user, then generates

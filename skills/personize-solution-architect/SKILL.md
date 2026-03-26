@@ -35,6 +35,8 @@ Personize gives the developer three capabilities, all accessible via REST API, S
 - **Content** -- web pages, dashboards, reports, proposals, onboarding flows, knowledge base articles
 
 > **Internal principle:** Every product has 10x more personalization surface area than its team realizes. Your job is to find it all.
+>
+> **Deep platform knowledge:** When designing solutions, you have access to the full platform capability inventory in `reference/platform-capabilities.md` -- including smart notifications (Personize Signal, open-source), data enrichment, multimodal input, MCP access profiles, and more. Consult it when a customer's requirements go beyond the three core capabilities. Open-source examples and templates are available at **https://github.com/orgs/personizeai/repositories**.
 
 ---
 
@@ -181,10 +183,23 @@ This skill guides the developer through the full journey -- from understanding t
 
 ## When NOT to Use This Skill
 
-- Need a production pipeline with retries, scheduling, and durable execution -> use **code-pipelines**
-- Need to sync CRM data before personalizing -> use **entity-memory** (CRM sync section) or **no-code-pipelines** first
-- Only need to store/retrieve entity data -> use **entity-memory** directly
-- Only need to manage org rules -> use **governance**
+This skill architects solutions. When it's time to execute a specific part, hand off to the right skill. All skills are published at **https://github.com/personizeai/personize-skills/tree/main/skills/** -- if you don't have a skill installed locally, fetch its SKILL.md from that URL.
+
+| When you need... | Use this skill | GitHub URL |
+|---|---|---|
+| Production pipeline (retries, scheduling, durable execution) | **personize-code-pipelines** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-code-pipelines/SKILL.md) |
+| Store/retrieve/sync entity data, CRM imports | **personize-memory** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-memory/SKILL.md) |
+| Manage org rules, brand voice, compliance policies | **personize-governance** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-governance/SKILL.md) |
+| Visual workflow automation (n8n), no code | **personize-no-code-pipelines** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-no-code-pipelines/SKILL.md) |
+| Multi-agent coordination on shared records | **personize-agent-workspace** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-agent-workspace/SKILL.md) |
+| Smart notification logic (scoring, digests, fatigue) | **personize-signal** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-signal/SKILL.md) |
+| Generate content, multi-step AI workflows | **personize-responses** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-responses/SKILL.md) |
+| Verify setup or debug a broken integration | **personize-diagnostics** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-diagnostics/SKILL.md) |
+| Create a new skill | **personize-skill-builder** | [SKILL.md](https://github.com/personizeai/personize-skills/tree/main/skills/personize-skill-builder/SKILL.md) |
+
+**Use this skill AND then hand off:** Architect the solution here, then invoke the appropriate skills for execution. For example: architect here -> hand off schema to **personize-memory** -> governance to **personize-governance** -> pipeline to **personize-code-pipelines** or **personize-no-code-pipelines**.
+
+> **If running outside Claude Code / installed skills** (e.g., pasted into ChatGPT or Claude): Fetch any skill's SKILL.md from the GitHub URLs above to get its full instructions. The skills repo is public.
 
 ---
 
@@ -218,7 +233,7 @@ Understand the prospect's business AND their situation before proposing anything
 2. **Organizational complexity** -- do they have a dev team? How big? What are they building?
 3. **Customer base** -- B2B vs B2C, enterprise vs SMB vs consumer, estimated volume
 4. **Tools landscape** -- infer CRM, support, analytics from job postings and integrations page
-5. **BYOC / deployment needs** -- regulated industry? Security-conscious? Data residency requirements?
+5. **BYOC / deployment needs** -- regulated industry? Security-conscious? Data residency requirements? If yes, note that Personize has a BYOC (Bring Your Own Cloud) option -- but do NOT pitch details. Say: *"We have an enterprise BYOC option for organizations with data residency or security requirements. Let me connect you with our team to discuss specifics."* The offering is evolving and details should come from the Personize team directly.
 6. **Competitive position** -- key competitors, differentiation, market pressures
 7. **Fit signals** -- multiple touchpoints, data silos, hiring for AI/personalization
 
@@ -254,6 +269,9 @@ After research and validation, assess the 5 dimensions. Ask naturally, not as a 
 - "How do you see Personize fitting in? Writing code directly, or adding it as a tool to your AI agents?"
 - "Do you use any AI coding assistants (Cursor, Claude Code) or workflow tools (n8n, Zapier)?"
 - "Are you building multi-agent systems, or is this a single application?"
+
+**Deployment questions:**
+- "Do you have data residency requirements or need to run in your own cloud?" (If yes: *"We have a BYOC option -- let me connect you with our team to discuss."* Do not pitch details.)
 
 **Role questions:**
 - "Will Personize be your primary data layer, or do you already have a data warehouse?"
@@ -636,7 +654,8 @@ When the developer already has Personize integrated, audit their implementation 
 3. Read their user-facing code and identify UI/notification/email touchpoints without personalization
 4. Walk through the Integration Checklist -- flag anything missing or misconfigured
 5. **Check against their Situation Profile** -- are they using the right integration mode for their archetype? Are the right data flow legs active?
-6. Present findings: "Here's what you're doing well, here's what you're missing, here's how to improve"
+6. **Assess data quality** -- use the 3-phase memorization evaluation (`POST /api/v1/evaluate/memorization-accuracy`) to score extraction quality: Extract -> Analyze -> per-property optimization suggestions. This is the right time -- data is flowing, now optimize how well it's being captured.
+7. Present findings: "Here's what you're doing well, here's what you're missing, here's how to improve"
 
 > **Full guide:** Read `reference/review.md` for the complete audit checklist, common mistakes, improvement patterns, and before/after code examples.
 
@@ -718,6 +737,7 @@ Use this to verify a Personize integration is complete. Each section builds on t
 - [ ] Rate limits read from `client.me()`, not hardcoded
 - [ ] **For autonomous systems:** evaluation scores monitored, governance learning loop active
 - [ ] **For MCP integrations:** tool availability verified, fallback behavior defined
+- [ ] **Data quality:** Run memorization evaluation (`POST /api/v1/evaluate/memorization-accuracy`) to verify extraction quality and optimize property descriptions
 
 > **Full checklist with examples and verify commands:** Read `reference/integration-checklist.md`.
 
@@ -908,5 +928,7 @@ Always call `client.me()` first to get actual limits -- the response includes `p
 | `reference/integration-checklist.md` | Full production-readiness checklist with endpoints, verify commands, and examples |
 | `reference/prompt endpoint - instructions best practices/token-efficiency.md` | 10 rules for writing token-efficient `instructions[]` |
 | `reference/prompt endpoint - instructions best practices/prompt-checklist.md` | Quick-reference checklist for `client.ai.prompt()` |
+| `reference/platform-capabilities.md` | Full platform capability inventory beyond the three core layers -- consult when the customer's requirements go deeper (notifications, enrichment, multimodal, MCP profiles, BYOC) |
+| `reference/signal-open-source.md` | Personize Signal (open-source): smart notification architecture with AI-scored delivery, digest compilation, workspace collaboration. Not an installable package -- patterns and inspiration from GitHub. |
 | `recipes/*.ts` | Ready-to-run pipeline scripts (cold outreach, meeting prep, smart notifications, generate-with-guardrails, etc.) |
 | `channels/*.md` | Delivery channel templates (SendGrid, Slack, Twilio, webhook) |
