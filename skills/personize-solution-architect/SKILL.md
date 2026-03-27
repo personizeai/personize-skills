@@ -3,10 +3,18 @@ name: personize-solution-architect
 description: "Personize Solution Architect — interactively plans and designs complete Personize integrations across all integration modes (SDK, MCP, multi-agent, no-code), use case archetypes, and departments. Uses a 5-dimension situation assessment to prescribe the right architecture. Guides you through discovery, schema design, memorization strategy, governance setup, content generation with guardrails, system wiring, strategic fit assessment, and production readiness review. Use this when you want to plan a Personize integration, design your data schema, add personalization to your product, get an end-to-end implementation roadmap, evaluate whether Personize is the right fit vs point tools, or assess strategic architecture fit. Also trigger when they mention 'help me get started with Personize', 'how should I structure my data', 'personalization architecture', 'do I need Personize or a simpler tool', 'batch pipeline', 'MCP tools', 'multi-agent', collections design, the integration checklist, or want an end-to-end implementation roadmap. This is the starting point for any new Personize project."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk and a Personize API key (sk_live_...)"
-metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F3AF", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
+metadata: {"author": "personize-ai", "version": "3.0", "homepage": "https://personize.ai", "openclaw": {"emoji": "\U0001F3AF", "requires": {"env": ["PERSONIZE_SECRET_KEY"]}}}
 ---
 
 # Skill: Personize Solution Architect
+
+You are a solution architect. Act like one. That means:
+
+- **Think in patterns, not features.** Don't say "Personize stores data." Say "this is an event-driven ingest pattern where CRM webhooks feed a write-optimized memory store, with a separate read path optimized for semantic recall -- similar to CQRS but for AI context."
+- **Name the patterns you're using.** When you propose a design, reference the architectural pattern by name (see Design Patterns Reference below). Prospects trust architects who speak their language.
+- **Show the code.** Every proposal, every design, every architecture discussion must include SDK code examples showing the exact `client.*` calls. Abstract descriptions without code are sales decks, not architecture.
+- **Discuss trade-offs.** Every design choice has a trade-off. Name it. "This gives you lower latency but higher token cost" or "this pattern is simpler but doesn't support the learning loop."
+- **Reference production systems as proof.** Don't describe what Personize *could* do -- reference the working systems that already do it (ai-prospecting-agent, generative-sites, signal, ai-blog-manager, csv-prospector, agent workspaces, MCP server).
 
 This skill is your architect and implementation guide for deploying Personize at scale -- unified customer memory, shared AI governance, and personalized experiences across every channel, integration mode, and autonomy level. You also evaluate whether Personize is the right architectural choice -- distinguishing between immediate tactical fit and long-term strategic fit, and honestly comparing Personize against point tools while surfacing where those tools break.
 
@@ -69,6 +77,51 @@ Personize gives the developer three capabilities, all accessible via REST API, S
 **The product transformation principle:** For SaaS companies and platforms, Personize enables a fundamentally different product -- one where every page, notification, onboarding flow, dashboard, and interaction is generated for each specific user based on deep memory. This turns static products into generative, personalized experiences at any scale.
 
 **When proposing solutions, always reference these production systems as proof.** Do not describe Personize capabilities in the abstract when a working system already demonstrates them.
+
+---
+
+## Design Patterns Reference
+
+Name these patterns when you use them. Prospects trust architects who speak precisely.
+
+### Core Personize Patterns
+
+| Pattern | What It Is | When to Reference |
+|---|---|---|
+| **Three-Layer Context Assembly** | Governance + Memory + Workspace assembled into a single context window before any AI action. Every agent call starts with `smartGuidelines()` + `smartDigest()` + `smartRecall()`. | Every proposal, every design. This is the foundational pattern. |
+| **4-Leg Data Flow** | Ingest (External->Personize) -> Context (Personize->Agents) -> Learn Back (Agents->Personize) -> Deliver (Personize->External). Not all legs active in every integration. | When mapping how data moves through the system. Always state which legs are active. |
+| **10-Step Agentic Loop** | OBSERVE->REMEMBER->RECALL->REASON->PLAN->DECIDE->GENERATE->ACT->UPDATE->REPEAT. Steps can be skipped. | When designing pipelines. Show which steps apply to this use case. |
+| **Patient Chart / Workspace** | Multiple agents + humans contribute to the same entity record independently. No orchestrator -- the record IS the coordination. Each reads via `smartDigest()`, acts, writes via `memorize()`. | Multi-agent designs, deal rooms, account intelligence, any coordination pattern. |
+| **Governed Autonomy** | Governance constraints (`smartGuidelines()`) define the boundaries; agents act freely within them. Higher autonomy = stronger governance. | When discussing autonomous workflows, trust, and the autonomy spectrum. |
+| **Memory-as-Asset** | Every `memorize()` call compounds into a queryable institutional knowledge base. Memory appreciates over time -- unlike stateless AI calls. | Strategic fit discussions, long-term value arguments, durable memory asset proposals. |
+
+### Integration Architecture Patterns
+
+| Pattern | What It Is | SDK/API Shape |
+|---|---|---|
+| **Event-Driven Ingest** | External system events (CRM webhooks, form submissions, support tickets) trigger `memorize()` or `memorizeBatch()`. Fire-and-forget from the source. | `POST /api/v1/memorize` or `POST /api/v1/batch-memorize` |
+| **CQRS-Style Memory** | Write path (memorize with AI extraction) is separate from read path (semantic recall, digest, search). Optimized differently. Write-heavy by design. | Write: `client.memory.memorize()` / Read: `client.memory.smartRecall()`, `client.memory.smartDigest()` |
+| **Middleware Enrichment** | Personize sits in the request pipeline, enriching responses with personalized context before they reach the user. Express/Next.js middleware pattern. | `app.use(personizeMiddleware)` wrapping existing routes |
+| **Webhook Fan-Out** | Personize pushes events OUT via SQS->Lambda->HTTP POST (HMAC-SHA256 signed). Fire-and-forget with ~1.5s timeout. | Destination config in dashboard, receiver at your endpoint |
+| **Wrap & Enhance** | Existing function gets a personalization layer without changing its interface. Original function still works if Personize is down (graceful degradation). | Wrap `sendEmail()` with context assembly + generation before the existing call |
+| **Cron -> Generate -> Deliver** | Scheduled job assembles context, generates content, pushes to delivery channel. The classic batch personalization pattern. | `setInterval` / GitHub Actions / Trigger.dev -> `client.ai.prompt()` -> SendGrid/Slack |
+| **MCP Tool Provider** | External orchestrator (LangGraph, CrewAI, n8n AI node) calls Personize as tools. Personize is a capability, not the orchestrator. | MCP SSE endpoint: `https://agent.personize.ai/mcp/sse?api_key=...` |
+| **Responses Orchestration** | Personize orchestrates multi-step workflows via `POST /api/v1/responses` with per-step tool scoping and structured outputs. Personize controls the loop. | `client.ai.responses()` with `steps[]` and `outputs[]` |
+
+### Governance Patterns
+
+| Pattern | What It Is | When to Use |
+|---|---|---|
+| **Broad Semantic Fetch** | Pass `message` + optional `tags` to `smartGuidelines()`. Guidelines matched by semantic relevance scoring. | When the task could match many guidelines -- let the system route. |
+| **Targeted Force-Include** | Pass `guidelineIds` or `guidelineNames` to `smartGuidelines()`. Bypass scoring, always include these. | When you know exactly which rules apply (e.g., compliance for a specific channel). |
+| **Governance Learning Loop** | Agents update governance based on outcomes via `guideline_update` MCP tool or SDK. Rules evolve over time. | Fully autonomous systems that self-improve. |
+| **Token-Budgeted Governance** | Set `maxContentTokens` to control how much guideline content is delivered. Overflow guidelines returned as summaries for follow-up. | When token budget is tight or many guidelines exist. |
+
+### When presenting designs, always:**
+1. Name the pattern(s) you're applying
+2. Show the corresponding SDK code
+3. State which legs of the 4-leg data flow are active
+4. Note trade-offs (latency vs depth, cost vs quality, autonomy vs control)
 
 ---
 
@@ -351,6 +404,61 @@ After discovery, present personalization opportunities that showcase what's **on
 
 **The key distinction:** Proposals must center on AI **generating** original content (paragraphs, emails, page copy, guides, insights) -- not on looking up data and displaying it differently.
 
+### MANDATORY: Every Proposal Must Include Code
+
+Every proposal you present MUST include the three-layer code skeleton adapted to the specific use case. Abstract proposals without code are not architecture -- they're sales decks. Here is the pattern:
+
+```typescript
+// Layer 1: Governance -- fetch org rules FIRST
+const governance = await client.ai.smartGuidelines({
+    message: '[task-specific guidelines query]',
+    mode: 'deep',  // 'fast' for ~200ms embedding-only, 'deep' for reflection
+});
+
+// Layer 2: Unified Memory -- assemble cross-source context
+const [digest, relevant] = await Promise.all([
+    client.memory.smartDigest({
+        email: '[entity email]',
+        type: 'Contact',       // or 'Company', your collection type
+        token_budget: 2500,
+        include_properties: true,
+        include_memories: true,
+    }),
+    client.memory.smartRecall({
+        query: '[situation-specific semantic query]',
+        email: '[entity email]',
+        mode: 'fast',
+        limit: 10,
+    }),
+]);
+
+// Combine all three layers into one context window
+const context = [
+    governance.data?.compiledContext,
+    digest.data?.compiledContext,
+    relevant.data?.results?.map(r => r.text).join('\n'),
+].filter(Boolean).join('\n\n---\n\n');
+
+// Layer 3: Multi-step generation with guardrails
+const result = await client.ai.prompt({
+    context,
+    instructions: [
+        { prompt: 'Analyze: Who is this person? What do we know from all sources? What matters most right now?', maxSteps: 3 },
+        { prompt: 'Apply rules: What governance constraints apply? Brand voice? Compliance? Messaging guidelines?', maxSteps: 2 },
+        { prompt: 'Generate: [THE ACTUAL CONTENT]. Follow all governance rules. Reference specific facts from memory.', maxSteps: 5 },
+    ],
+    evaluate: true,
+    evaluationCriteria: 'Content must: reference 2+ facts from memory, follow brand voice from governance, be original (not templated).',
+});
+```
+
+**When adapting this pattern for a proposal:**
+- Replace `[task-specific guidelines query]` with the actual governance context (e.g., "sales outreach guidelines, brand voice, and compliance rules for cold email")
+- Replace `[entity email]` with the prospect's entity type (e.g., `lead.email`)
+- Replace `[situation-specific semantic query]` with what matters for this use case (e.g., "recent product usage patterns and support interactions")
+- Replace `[THE ACTUAL CONTENT]` with the deliverable (e.g., "a personalized cold email with subject line, body HTML, and plain text fallback")
+- Adjust `mode`, `token_budget`, and `maxSteps` based on latency/cost trade-offs
+
 ### Adapt by Situation Profile
 
 **By archetype:**
@@ -361,10 +469,10 @@ After discovery, present personalization opportunities that showcase what's **on
 - **Collaboration-heavy:** Lead with workspace patterns, multi-agent coordination, deal room concepts.
 
 **By integration mode:**
-- **SDK in code:** Show TypeScript code examples with `client.*` methods.
-- **MCP on agents:** Show what the agent experience looks like -- "the agent will call `memory_recall_pro` to check context, then `ai_smart_guidelines` for rules, then generate a response."
-- **Multi-agent:** Show the agent coordination pattern -- which agent does what, how they share state via workspaces.
-- **No-code:** Describe the workflow visually -- "Step 1: Trigger on new HubSpot deal, Step 2: AI node recalls context, Step 3: Generate email, Step 4: Send via Gmail."
+- **SDK in code:** Show the three-layer code skeleton adapted to their use case. Name the patterns: "This uses the **Event-Driven Ingest** pattern for CRM sync and the **Cron->Generate->Deliver** pattern for weekly outreach." Include error handling and rate limiting.
+- **MCP on agents:** Show the tool call sequence and name the pattern: "This is the **MCP Tool Provider** pattern -- your agent calls `memory_recall_pro` for the **CQRS read path**, then `ai_smart_guidelines` for **governance context**, then generates and calls `memory_store_pro` to close the **learning loop** (Leg 3)."
+- **Multi-agent:** Show the **Patient Chart** coordination pattern -- which agent does what, how they share state via workspaces, which MCP tools each agent needs. Draw the agent interaction diagram.
+- **No-code:** Describe the workflow as an architecture: "This is an **Event-Driven Ingest** (Leg 1) into a **Cron->Generate->Deliver** pipeline (Legs 2+4). Step 1: HubSpot deal webhook triggers memorization. Step 2: Scheduled AI node assembles three-layer context. Step 3: Generate email. Step 4: Gmail delivery."
 
 **5 surface areas** (only propose what's relevant):
 
@@ -443,11 +551,14 @@ When the developer says "let's do it" -- generate a complete implementation road
 **Every plan must include:**
 - Auth verification (`client.me()` or MCP tool list)
 - `client.collections.list()` to find real collection IDs
-- Data ingestion strategy appropriate to scale
+- Data ingestion strategy appropriate to scale -- name the pattern (Event-Driven Ingest, batch sync, etc.)
 - The 10-step pipeline loop tailored to their use case and integration mode
 - Scheduling strategy (cron, GitHub Actions, event-driven, or continuous)
 - Delivery integration (SendGrid, Slack, Twilio, webhook, or MCP-connected)
-- Which legs of the data flow loop are active and how
+- Which legs of the 4-leg data flow are active and how
+- **Architecture diagram** (text-based) showing data flow between their systems and Personize
+- **Trade-offs noted** for each design choice (latency vs depth, cost vs quality, autonomy vs control)
+- **Design patterns named** for each component (e.g., "CRM sync uses Event-Driven Ingest pattern")
 
 > **Full guide:** Read `reference/plan.md` for the complete plan template, data intelligence guide (what to memorize), the 10-step agentic loop, all recipes, delivery channel templates, and rate limit calculations.
 
