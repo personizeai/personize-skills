@@ -108,6 +108,42 @@ const result = await client.ai.smartGuidelines({
 // Confirm the updated content appears in the response
 ```
 
+### SMART UPDATE — AI-Powered Bulk Changes
+
+When the admin has raw material (policy docs, meeting notes, customer feedback, CRM exports, competitor analysis) and wants AI to figure out what to create or update:
+
+```typescript
+// 1. Suggest mode: get a plan without writing anything
+const plan = await client.guidelines.smartUpdate({
+    type: 'guideline',  // or 'collection' for property schemas
+    instruction: 'Update our sales guidelines with this competitor analysis',
+    material: '... raw text, notes, pasted content ...',
+    strategy: 'suggest',
+});
+
+// 2. Review what the AI proposes
+for (const item of plan.data.items) {
+    console.log(`${item.action} on ${item.target}: ${item.detail}`);
+    if (item.hasConflict) console.log(`  CONFLICT: ${item.conflictDescription}`);
+}
+
+// 3. Apply non-conflicting changes
+const applied = await client.guidelines.smartUpdate({
+    type: 'guideline',
+    instruction: 'Update our sales guidelines with this competitor analysis',
+    material: '... same material ...',
+    strategy: 'safe',  // skips conflicts, applies the rest
+});
+```
+
+**When to use instead of manual UPDATE:**
+- Material is unstructured and you don't know which sections need changing
+- Multiple guidelines or collections might be affected
+- You want conflict detection before writing
+- You're processing batch feedback, post-mortems, or policy changes
+
+**MCP tool:** `governance_smart_update`
+
 ### ONBOARD — First-Time Setup
 
 For users with 0-2 guidelines, guide them through initial setup. Recommended starter set:
@@ -237,6 +273,7 @@ Read these files for deeper guidance on each action:
 | Resource | Contents |
 |---|---|
 | `reference/operations.md` | Full workflows for CREATE, UPDATE, IMPROVE, AUDIT, VERIFY + conversation patterns + code |
+| `reference/smart-update.md` | SMART UPDATE workflow, use cases, strategy guide, conversation patterns |
 | `reference/onboarding.md` | First-time setup, starter templates (brand voice, ICP), handling existing content |
 | `reference/collaboration.md` | Version history, conflict avoidance, attribution, team patterns |
 | `reference/use-cases.md` | IDE integration, autonomous learning, document ingestion, context engineering |

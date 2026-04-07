@@ -26,7 +26,7 @@ Guidelines are stored as markdown documents and are automatically available to a
 
 ## Actions
 
-You have 6 actions available. Use whichever is appropriate for what the admin needs. They are not sequential — jump to the right action based on the conversation.
+You have 11 actions available. Use whichever is appropriate for what the admin needs. They are not sequential — jump to the right action based on the conversation.
 
 | Action | When to Use | Reference |
 |---|---|---|
@@ -35,7 +35,12 @@ You have 6 actions available. Use whichever is appropriate for what the admin ne
 | **IMPROVE** | Admin wants to clean up, restructure, or improve guideline quality | `reference/operations.md` |
 | **AUDIT** | A factual change affects multiple guidelines (pricing, branding, policy) | `reference/operations.md` |
 | **VERIFY** | Confirm agents can see the updated content via `smartGuidelines` | `reference/operations.md` |
+| **SMART UPDATE** | Admin has raw material (docs, notes, feedback, CRM exports) and wants AI to figure out what to create/update | `reference/smart-update.md` |
 | **ONBOARD** | First-time user with 0-2 guidelines — guide them through setup | `reference/onboarding.md` |
+| **UPLOAD ATTACHMENT** | User wants to attach a file (script, config, template, etc.) to a guideline | `reference/governance-attachments.md` |
+| **LIST ATTACHMENTS** | User wants to see what files are attached to a guideline | `reference/governance-attachments.md` |
+| **READ ATTACHMENT** | Agent needs the full content of an attachment | `reference/governance-attachments.md` |
+| **DELETE ATTACHMENT** | User wants to remove an attachment from a guideline | `reference/governance-attachments.md` |
 
 **Before each action:** Read the reference file for full workflows, conversation patterns, and code examples.
 
@@ -62,6 +67,11 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `client.guidelines.delete(id)` | `guideline_delete(guidelineId)` | Delete guideline |
 | `client.guidelines.history(id)` | `guideline_history(guidelineId)` | View change history |
 | `client.ai.smartGuidelines({ message })` | `ai_smart_guidelines(message)` | Verify/fetch guidelines |
+| `client.guidelines.smartUpdate(opts)` | `governance_smart_update(type, instruction, material, ...)` | AI-powered bulk create/update from raw material |
+| `client.guidelines.uploadAttachment(id, opts)` | `guideline_attachment_upload` | Attach a file (script, config, template, etc.) to a guideline |
+| `client.guidelines.listAttachments(id)` | `guideline_attachment_list` | List all attachments on a guideline |
+| `client.guidelines.getAttachmentContent(id, attachmentId)` | `guideline_attachment_read` | Read the full content of an attachment |
+| `client.guidelines.deleteAttachment(id, attachmentId)` | `guideline_attachment_delete` | Remove an attachment from a guideline |
 
 ### `smartGuidelines` Mode and Model
 
@@ -168,6 +178,28 @@ Admin reports a factual change → list ALL guidelines → search for old fact �
 After any create/update: call `smartGuidelines` with relevant query → confirm the updated content appears.
 
 > **Full workflows, conversation patterns, and code:** Read `reference/operations.md`
+
+### UPLOAD ATTACHMENT — Attach a File to a Guideline
+
+1. Confirm which guideline should receive the file (`guidelineId`)
+2. Confirm attachment type (`script`, `template`, `reference`, `config`, `data`, `schema`, `prompt`, `image`)
+3. Ask for a description (used by agents to decide when to retrieve it) and usage instructions
+4. Upload with `client.guidelines.uploadAttachment(guidelineId, { file, type, description, usage })`
+5. Confirm the attachment was created and share the `attachmentId`
+
+### LIST ATTACHMENTS — See All Files on a Guideline
+
+Call `client.guidelines.listAttachments(guidelineId)` and present the results as a table: ID, type, description, filename, size, and created date.
+
+### READ ATTACHMENT — Retrieve Full Attachment Content
+
+Call `client.guidelines.getAttachmentContent(guidelineId, attachmentId)` and return the raw content. Use when an agent needs to execute a script or apply a template from a guideline.
+
+### DELETE ATTACHMENT — Remove an Attachment
+
+Show the admin the attachment details (type, description, filename), confirm intent, then call `client.guidelines.deleteAttachment(guidelineId, attachmentId)`.
+
+> **Full parameter tables, response shapes, and code examples:** Read `reference/governance-attachments.md`
 
 ---
 
@@ -334,6 +366,7 @@ This skill supports three deployment patterns beyond conversational editing:
 | `reference/onboarding.md` | First-time setup, starter templates (brand voice, ICP), handling existing content |
 | `reference/use-cases.md` | IDE integration, autonomous learning, document ingestion, context engineering |
 | `reference/team-setup.md` | Team onboarding runbook for SDK + Skills + MCP + governance CI guardrails |
+| `reference/governance-attachments.md` | Full parameter tables, response shapes, and code for UPLOAD/LIST/READ/DELETE ATTACHMENT |
 | `recipes/ide-governance-bridge.ts` | Fetch guidelines from IDE, push learnings back |
 | `recipes/auto-learning-loop.ts` | Automatically extract and persist learnings |
 | `recipes/document-ingestion.ts` | Batch-import policies from a folder of documents |

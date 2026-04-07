@@ -756,6 +756,7 @@ interface MemorizeProOptions {
     tags?: string[];           // Categorization tags
     max_properties?: number;   // Max properties to extract
     schema?: Record<string, unknown>; // Extraction schema hint
+    extractionPrompt?: string;       // Guide what extraction focuses on (max 500 chars)
     actionId?: string;         // Target collection ID
 }
 
