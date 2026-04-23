@@ -96,7 +96,7 @@ For each entity type the developer needs, propose a collection with these attrib
 | **icon** | Lucide icon name | `User`, `Building2`, `ShoppingCart`, `Ticket` |
 | **color** | Hex color for UI | `#3B82F6` |
 | **primaryKeyField** | Property systemName used as unique ID | `email` |
-| **identifierColumn** | LanceDB column mapping | `email`, `websiteUrl`, `phoneNumber`, `postalCode`, `deviceId`, `contentId` |
+| **identifierColumn** | Vector store field mapping | `email`, `websiteUrl`, `phoneNumber`, `postalCode`, `deviceId`, `contentId` |
 
 #### Collection Recommendations by Product Type
 

@@ -84,6 +84,11 @@ memory_store_pro(content="I prefer formal communication. My timezone is PST.", a
 memory_recall_pro(query="What are my preferences and working style?", about="self", generate_answer=true)
 ```
 
+### Canonical API Names (v1.1)
+- `memory_save` replaces `memory_store_pro` as the canonical MCP tool name
+- `memory_retrieve` replaces `memory_recall_pro` / `smartRecall`
+- Old tool names still work — use whichever you prefer
+
 **When reading this skill document:**
 - If you're connected via **MCP**, use the MCP tool names (`memory_store_pro`, `memory_recall_pro`, etc.)
 - If you're running via **SDK**, use the `client.memory.*` methods
@@ -93,15 +98,16 @@ memory_recall_pro(query="What are my preferences and working style?", about="sel
 
 ## Actions
 
-You have 5 actions. Use whichever matches what the developer needs.
+You have 6 actions. Use whichever matches what the developer needs.
 
 | Action | When to Use | Reference |
 |---|---|---|
-| **MEMORIZE** | Developer needs to store data — single items, batch sync, CRM import, webhook data, generated outputs | `reference/memorize.md` |
-| **RECALL** | Developer needs to retrieve data — semantic search, entity context, filtered exports, context assembly | `reference/recall.md` |
-| **CRUD** | Developer needs to directly modify, delete, query history, or filter by property value — no AI extraction | `reference/crud-operations.md` |
+| **MEMORIZE** | Developer needs to store data -- single items, batch sync, CRM import, webhook data, generated outputs | `reference/memorize.md` |
+| **RECALL** | Developer needs to retrieve data -- semantic search, entity context, filtered exports, context assembly | `reference/recall.md` |
+| **CRUD** | Developer needs to directly modify, delete, query history, or filter by property value -- no AI extraction | `reference/crud-operations.md` |
 | **FIND SIMILAR** | Developer wants lookalikes, related records, "find more like this", or records connected through shared properties/memories | `reference/similar.md` |
 | **SEGMENT** | Developer wants to bucket, tier, or segment records relative to a seed record or text description | `reference/segment.md` |
+| **ENTITY TYPES** | Developer needs to inspect or customize entity type metadata (rename, re-icon, archive, restore) | See "Entity Type Management" section below |
 
 **Before each action:** Read the reference file for full method signatures, decision trees, code examples, and common mistakes.
 
@@ -831,7 +837,7 @@ interface SmartDigestOptions {
 │                                                             │
 │  ┌───────────────────┐    ┌──────────────────────────────┐  │
 │  │  STRUCTURED DATA  │    │     SEMANTIC MEMORIES         │  │
-│  │  (DynamoDB)       │    │     (LanceDB + Vectors)       │  │
+│  │  (DynamoDB)       │    │     (Vector Store)            │  │
 │  │                   │    │                              │  │
 │  │  Records:         │    │  AI-extracted facts from:    │  │
 │  │  ├─ email: "..."  │    │  ├─ Call notes              │  │
@@ -866,6 +872,73 @@ interface SmartDigestOptions {
 | `reference/segment.md` | Segment Audience: full parameter reference, text-based seeds, tier response shapes, pagination, billing |
 | `recipes/data-sync.ts` | Batch sync from CRM/database with validation and error handling |
 | `recipes/context-assembly.ts` | Complete context assembly pattern combining all recall methods |
+
+---
+
+## Entity Type Management
+
+Entity types define the schema for your memory records (Contact, Company, Employee, etc.). Each org has system-built types and can have custom types. Use these endpoints to inspect and customize entity type metadata -- you cannot change the slug or archive system types.
+
+### When to Use
+
+| Need | Action |
+|---|---|
+| List all entity types in your org | `client.entityTypes.list()` |
+| Get details on a specific entity type | `client.entityTypes.get(id)` |
+| Rename, re-icon, or change description | `client.entityTypes.update(id, opts)` |
+| Soft-remove a custom entity type | `client.entityTypes.archive(id)` |
+| Restore an archived entity type | `client.entityTypes.update(id, { status: 'Active' })` |
+
+### SDK Methods
+
+| SDK Method | Endpoint | Scope |
+|---|---|---|
+| `client.entityTypes.list()` | `GET /api/v1/entities` | all |
+| `client.entityTypes.get(id)` | `GET /api/v1/entities/:id` | all |
+| `client.entityTypes.update(id, opts)` | `PATCH /api/v1/entities/:id` | admin only |
+| `client.entityTypes.archive(id)` | `DELETE /api/v1/entities/:id` | admin only |
+
+> **Note:** MCP does not currently expose entity type management tools. Use the SDK or REST API directly.
+
+### Key Parameters -- `update()`
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `name` | string | Display label (e.g. "Lead") |
+| `pluralLabel` | string | Plural form (e.g. "Leads") |
+| `description` | string | Human-readable description |
+| `icon` | string | Icon identifier |
+| `color` | string | Color hex or name |
+| `primaryKeyField` | string | Which field is the primary identifier |
+| `identifierColumn` | string | Column used as the display identifier |
+| `status` | `'Active'` or `'Archived'` | Archive or restore |
+
+**Constraints:**
+- `slug` and `isSystem` cannot be changed via API (silently ignored)
+- System types cannot be archived (returns 403)
+- Restore an archived custom type: `update(id, { status: 'Active' })`
+
+### Quick Example
+
+```typescript
+// List all entity types
+const types = await client.entityTypes.list();
+// types.data -> EntityTypeResponse[]
+
+// Update label and icon
+await client.entityTypes.update('act_xxx', {
+    name: 'Lead',
+    pluralLabel: 'Leads',
+    icon: 'user-plus',
+    color: '#4F46E5',
+});
+
+// Archive a custom entity type
+await client.entityTypes.archive('act_xxx');
+
+// Restore it later
+await client.entityTypes.update('act_xxx', { status: 'Active' });
+```
 
 ---
 

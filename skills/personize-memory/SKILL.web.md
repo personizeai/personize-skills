@@ -40,7 +40,7 @@ Personize memory stores everything you know about a record — contacts, compani
 
 ## Actions
 
-You have 5 actions. Use whichever matches the conversation.
+You have 6 actions. Use whichever matches the conversation.
 
 ### MEMORIZE — Plan Data Ingestion
 
@@ -366,6 +366,43 @@ const result = await client.memory.segment({
 **Cost:** 2 credits per request.
 
 See `reference/segment.md` for full parameter and response reference.
+
+---
+
+## ENTITY TYPES -- Inspect and Customize Schemas
+
+Help the developer list, inspect, rename, or archive entity types.
+
+Entity types define the schemas for memory records (Contact, Company, Employee, etc.). Each org has system-built types and may have custom types.
+
+| Need | Method |
+|---|---|
+| List all entity types | `client.entityTypes.list()` |
+| Get one by ID | `client.entityTypes.get(id)` |
+| Rename, re-icon, or update description | `client.entityTypes.update(id, opts)` |
+| Soft-remove a custom type | `client.entityTypes.archive(id)` |
+| Restore an archived type | `client.entityTypes.update(id, { status: 'Active' })` |
+
+**Constraints:**
+- `slug` and `isSystem` cannot be changed (silently ignored)
+- System types cannot be archived (returns 403)
+
+```typescript
+// List all entity types
+const { data } = await client.entityTypes.list();
+
+// Update display metadata
+await client.entityTypes.update('act_xxx', {
+    name: 'Lead',
+    pluralLabel: 'Leads',
+    icon: 'user-plus',
+});
+
+// Archive a custom type
+await client.entityTypes.archive('act_xxx');
+```
+
+> **Note:** MCP does not currently expose entity type management tools. Use the SDK directly.
 
 ---
 

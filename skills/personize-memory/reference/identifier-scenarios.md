@@ -22,16 +22,16 @@ How each memory endpoint behaves when you pass different combinations of `email`
 
 | Endpoint | Route | Mechanism | Required |
 |----------|-------|-----------|----------|
-| `memorize` | `POST /api/v1/memorize` | AI extraction → Lambda → LanceDB + DynamoDB write | `content` + at least one CRM key |
+| `memorize` | `POST /api/v1/memorize` | AI extraction → Lambda → vector store + database write | `content` + at least one CRM key |
 | `recall` | `POST /api/v1/recall` | DynamoDB Snapshot exact key lookup | `type` + at least one CRM key |
-| `smartRecall` | `POST /api/v1/smart-recall` | LanceDB vector search + reranking + reflection | `query` only |
+| `smartRecall` | `POST /api/v1/smart-recall` | vector similarity search + reranking + reflection | `query` only |
 | `smartDigest` | `POST /api/v1/smart-memory-digest` | DynamoDB Snapshot + Freeform memories, token-budgeted | at least one CRM key |
 
 ---
 
 ## memorize — `POST /api/v1/memorize`
 
-**What it does:** Runs AI extraction on `content`, writes structured property values to LanceDB + DynamoDB Snapshot, and stores free-form memories.
+**What it does:** Runs AI extraction on `content`, writes structured property values to the vector store + database, and stores free-form memories.
 
 **Required:** `content` + at least one of `email`, `websiteUrl`, or `recordId`.
 
@@ -139,13 +139,13 @@ How each memory endpoint behaves when you pass different combinations of `email`
 - Controller validates: `type` is required
 - **Result:** **400 Bad Request** — `"type is required (e.g. Contact, Company)"`
 
-> **Note:** `recall` is NOT a search. It is a direct lookup. It will always return empty if the exact DynamoDB Snapshot record doesn't exist, even if memories were written to LanceDB only.
+> **Note:** `recall` is NOT a search. It is a direct lookup. It will always return empty if the exact record doesn't exist in the database, even if memories were written to the vector store only.
 
 ---
 
 ## smartRecall — `POST /api/v1/smart-recall`
 
-**What it does:** Embeds `query`, runs vector similarity search against LanceDB, applies filters, reranks, optionally runs reflection loops. CRM keys scope the search; without them it searches all org data.
+**What it does:** Embeds `query`, runs vector similarity search, applies filters, reranks, optionally runs reflection loops. CRM keys scope the search; without them it searches all org data.
 
 **Required:** `query` only. All CRM keys are optional filters.
 
@@ -153,7 +153,7 @@ How each memory endpoint behaves when you pass different combinations of `email`
 ```json
 { "query": "...", "email": "john@acme.com" }
 ```
-- Sets `filter.email = "john@acme.com"` in LanceDB query
+- Sets `filter.email = "john@acme.com"` in the vector search query
 - Searches all entries where `metadata.email` matches
 - **Result:** Semantic search scoped to that contact's entries
 
@@ -194,7 +194,7 @@ How each memory endpoint behaves when you pass different combinations of `email`
 ```
 - `getCrmKeyForRecordId("Contact", undefined, undefined)` → `null`
 - No recordId generated, **no filter added**
-- `type` column in LanceDB stores entry kind (`"property_value"`, `"memory"`), NOT entity type
+- `type` field in the vector store stores entry kind (`"property_value"`, `"memory"`), NOT entity type
 - **Result:** Full org-wide search — NOT scoped to contacts only. Behaves exactly like Scenario G.
 
 ### Scenario G — nothing (query only)

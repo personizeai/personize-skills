@@ -9,7 +9,7 @@ Complete guide to retrieving data from Personize memory — method signatures, q
 | Method | Returns | Best For |
 |---|---|---|
 | `memory.smartRecall()` | Ranked semantic search + optional reflection/answer | "What do we know about X topic?" (recommended) |
-| `memory.recall()` | Direct DynamoDB lookup — properties + freeform memories (`type` required) | "Give me all stored data for this record" (no AI, no LanceDB) |
+| `memory.recall()` | Direct DynamoDB lookup — properties + freeform memories (`type` required) | "Give me all stored data for this record" (no AI, no vector search) |
 | `memory.smartDigest()` | Compiled markdown context for one entity | "Give me everything about this person/company" |
 | `memory.search()` | Filtered records with property values | "List all contacts matching criteria X" |
 | `ai.smartGuidelines()` | Governance variables matching a topic | "What are our guidelines for X?" |
@@ -60,7 +60,7 @@ interface SmartRecallOptions {
 
 ## `memory.recall()` — Direct DynamoDB Lookup (No AI)
 
-Returns all stored data for a record directly from DynamoDB — **no vector search, no AI, no LanceDB**. Reads structured properties from the RecordSnapshot table AND freeform memories from the Freeform table.
+Returns all stored data for a record directly from DynamoDB — **no vector search, no AI**. Reads structured properties from the RecordSnapshot table AND freeform memories from the Freeform table.
 
 Use this when you need a complete, deterministic dump of everything stored for a record.
 
@@ -118,7 +118,7 @@ const person = await client.memory.recall({
 
 > **`type` is required** for `recall()`. Omitting it returns a 400 error. If you don't want to specify type, use `smartRecall()` instead — it infers type from email/website_url.
 >
-> **Key difference from `smartRecall()`**: `recall()` reads directly from DynamoDB (deterministic, fast). `smartRecall()` searches LanceDB vectors with optional AI reflection (semantic, slower). Use `recall()` for "show me everything about this record". Use `smartRecall()` for "find memories matching this question".
+> **Key difference from `smartRecall()`**: `recall()` reads directly from DynamoDB (deterministic, fast). `smartRecall()` runs vector similarity search with optional AI reflection (semantic, slower). Use `recall()` for "show me everything about this record". Use `smartRecall()` for "find memories matching this question".
 
 ---
 
@@ -326,7 +326,7 @@ Use `mode: 'fast'` when latency matters more than depth. It skips the reflection
 
 ## `memory.smartDigest()` — Entity Context
 
-Compiles a complete context bundle for one entity: structured properties (DynamoDB) + semantic memories (LanceDB), formatted as a token-budgeted markdown block ready for prompt injection.
+Compiles a complete context bundle for one entity: structured properties + semantic memories, formatted as a token-budgeted markdown block ready for prompt injection.
 
 ### Full Signature
 
@@ -876,7 +876,7 @@ Max `pageSize` is 200.
 
 #### Key-Only Lookup (No Groups Needed)
 
-Pass CRM keys (`email`, `websiteUrl`, `recordId`, `customKeyName`/`customKeyValue`) directly — no `groups` or property conditions required. The system queries LanceDB key columns and returns matching records.
+Pass CRM keys (`email`, `websiteUrl`, `recordId`, `customKeyName`/`customKeyValue`) directly — no `groups` or property conditions required. The system queries vector store key columns and returns matching records.
 
 ```typescript
 // Find a record by email — no groups needed

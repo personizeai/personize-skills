@@ -12,9 +12,10 @@ Use SMART UPDATE when the admin has **raw unstructured material** and wants AI t
 - Processing batch feedback, post-mortems, or policy docs
 
 **Choose manual UPDATE when:**
-- The admin knows exactly which section to edit
-- The change is a simple word/phrase replacement
-- Only one guideline needs a targeted fix
+- The admin knows exactly which section to edit → `context_manage_update`
+- The change is a simple word/phrase replacement → `context_manage_update` (section mode)
+- Only one guideline needs a targeted fix → `context_manage_update`
+- Creating a new doc with explicit name/tags/type (no AI routing needed) → `context_manage_create`
 
 ---
 
@@ -22,18 +23,22 @@ Use SMART UPDATE when the admin has **raw unstructured material** and wants AI t
 
 | Interface | Method |
 |---|---|
-| **SDK** | `client.guidelines.smartUpdate({ type, instruction, material, strategy?, targetIds? })` |
-| **MCP** | `governance_smart_update(type, instruction, material, strategy?, target_ids?)` |
+| **SDK** | `client.context.save({ type, instruction, material, strategy?, targetIds?, aiExtraction?, tier?, pipelinePreset?, agentDocType? })` |
+| **MCP** | `context_save(type, instruction, material, strategy?, target_ids?, ai_extraction?, tier?, pipeline_preset?, agent_doc_type?)` |
 
 ### Parameters
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `type` | `'guideline' \| 'collection'` | Yes | -- | What to update |
+| `type` | `'guideline' \| 'collection' \| 'agentdoc'` | Yes | -- | What to update |
 | `instruction` | `string` | Yes | -- | What to do with the material |
-| `material` | `string` | Yes | -- | Raw content (max 50K chars) |
+| `material` | `string` | Yes | -- | Raw content (max 800K chars) |
 | `strategy` | `'suggest' \| 'safe' \| 'force'` | No | `'suggest'` | Execution strategy |
 | `targetIds` | `string[]` | No | -- | Specific IDs to target |
+| `aiExtraction` | `boolean` | No | `true` | AI mode (true) or Direct mode (false) |
+| `tier` | `'basic' \| 'pro' \| 'ultra'` | No | `'pro'` | Intelligence tier (AI mode only) |
+| `pipelinePreset` | `'fast' \| 'standard' \| 'thorough'` | No | `'standard'` | Pipeline depth (AI mode only) |
+| `agentDocType` | `'guideline' \| 'playbook' \| 'reference' \| 'template' \| 'brief'` | No | `'guideline'` | Doc subtype (when type='agentdoc') |
 
 ### Strategies
 
@@ -42,6 +47,33 @@ Use SMART UPDATE when the admin has **raw unstructured material** and wants AI t
 | `suggest` | Returns plan only, writes nothing | Default. Review before applying. |
 | `safe` | Applies non-conflicting items, skips conflicts | When you trust the AI but want to protect existing content. |
 | `force` | Applies everything including overrides | When you've reviewed the plan and want all changes. |
+
+### Direct Mode (aiExtraction=false)
+
+When `aiExtraction` is set to `false`, the material is saved directly without AI processing. This is useful for:
+- Importing pre-structured content that doesn't need AI analysis
+- Bulk loading guidelines from an existing knowledge base
+- Cost-sensitive operations (Direct mode costs 0 credits)
+
+```typescript
+const result = await client.context.save({
+    type: 'guideline',
+    instruction: 'Save this pre-formatted policy as-is',
+    material: preFormattedContent,
+    aiExtraction: false,
+    strategy: 'force',
+});
+```
+
+### Pipeline Presets (AI Mode)
+
+When `aiExtraction` is `true` (default), the `pipelinePreset` controls how deep the AI analysis goes:
+
+| Preset | Steps | Latency | When to use |
+|---|---|---|---|
+| `fast` | Extract only, no verification | ~5s | Quick imports, trusted material |
+| `standard` | Expand + verify + conflict detection | ~15s | Default. Balanced quality and speed. |
+| `thorough` | All steps + cross-encoder reranking | ~30s | Critical policies, compliance docs, high-stakes content |
 
 ---
 
@@ -52,10 +84,10 @@ Use SMART UPDATE when the admin has **raw unstructured material** and wants AI t
 **When:** Admin provides raw material (policy doc, meeting notes, feedback batch, competitor analysis, post-mortem) and wants guidelines updated.
 
 1. Confirm the admin's intent: "You want me to analyze this material and propose changes to your guidelines?"
-2. Call `smartUpdate` with `strategy: 'suggest'` to get the plan first:
+2. Call `context.save` with `strategy: 'suggest'` to get the plan first:
 
 ```typescript
-const plan = await client.guidelines.smartUpdate({
+const plan = await client.context.save({
     type: 'guideline',
     instruction: 'Update our sales guidelines with this post-mortem',
     material: adminProvidedContent,
@@ -84,7 +116,7 @@ const plan = await client.guidelines.smartUpdate({
 3. For collection creates, review the `createMetadata` (collectionName, entityType) and property types
 
 ```typescript
-const plan = await client.guidelines.smartUpdate({
+const plan = await client.context.save({
     type: 'collection',
     instruction: 'Make sure we can capture all data from these LinkedIn profiles',
     material: linkedInProfileSamples,
@@ -105,7 +137,7 @@ Admin: "Legal just approved our new refund policy. Update the customer service g
 [pastes refund policy]
 
 You: Let me analyze this against your existing guidelines.
-[calls smartUpdate with strategy: 'suggest']
+[calls context.save with strategy: 'suggest']
 
 Result: 1 item -- update_section on ## Refunds in customer-service-playbook.
 Conflict flagged: existing says "14 days, no exceptions", new policy says "30 days full refund."

@@ -69,7 +69,7 @@ Retrieve entity data using the right method:
 - [ ] Cross-entity context works — pulling company context when working on a contact
 
 Supported entity identifiers: `email`, `websiteUrl`, `recordId`, `customKeyName`+`customKeyValue`, `phoneNumber`, `postalCode`, `deviceId`, `contentId`. Pass multiple for better matching.
-- [ ] `smartRecall()` with `prefer_recent: true` surfaces recent activity and property changes — every property update automatically writes a searchable change summary to LanceDB, so "what changed recently?" queries work without a dedicated history tool
+- [ ] `smartRecall()` with `prefer_recent: true` surfaces recent activity and property changes — every property update automatically writes a searchable change summary to the vector store, so "what changed recently?" queries work without a dedicated history tool
 
 Verify: Run a real query, not a test string. If results are poor, check property descriptions and `extractMemories` flags.
 

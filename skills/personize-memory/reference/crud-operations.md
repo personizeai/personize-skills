@@ -87,7 +87,7 @@ await client.memory.update({
 });
 ```
 
-> **Change history is automatic.** Every property update writes a searchable change summary to LanceDB. Use `client.memory.smartRecall({ query: "what changed recently?", prefer_recent: true, recency_half_life_days: 7 })` to find recent changes.
+> **Change history is automatic.** Every property update writes a searchable change summary to the vector store. Use `client.memory.smartRecall({ query: "what changed recently?", prefer_recent: true, recency_half_life_days: 7 })` to find recent changes.
 
 ## Update Freeform Memory
 

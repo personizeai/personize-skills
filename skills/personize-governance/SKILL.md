@@ -67,11 +67,48 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `client.guidelines.delete(id)` | `guideline_delete(guidelineId)` | Delete guideline |
 | `client.guidelines.history(id)` | `guideline_history(guidelineId)` | View change history |
 | `client.ai.smartGuidelines({ message })` | `ai_smart_guidelines(message)` | Verify/fetch guidelines |
-| `client.guidelines.smartUpdate(opts)` | `governance_smart_update(type, instruction, material, ...)` | AI-powered bulk create/update from raw material |
+| `client.context.save(opts)` | `context_save(type, instruction, material, ...)` | AI-powered bulk create/update from raw material |
 | `client.guidelines.uploadAttachment(id, opts)` | `guideline_attachment_upload` | Attach a file (script, config, template, etc.) to a guideline |
 | `client.guidelines.listAttachments(id)` | `guideline_attachment_list` | List all attachments on a guideline |
 | `client.guidelines.getAttachmentContent(id, attachmentId)` | `guideline_attachment_read` | Read the full content of an attachment |
 | `client.guidelines.deleteAttachment(id, attachmentId)` | `guideline_attachment_delete` | Remove an attachment from a guideline |
+
+### AgentDocs: Unified Knowledge Layer
+
+Guidelines are one type of **AgentDoc**. The AgentDocs layer unifies all org knowledge documents under a single API:
+
+| Type | Purpose | When to use |
+|------|---------|-------------|
+| `guideline` | Enforceable rules (default) | Compliance, brand voice, coding standards |
+| `playbook` | Step-by-step processes | SOPs, runbooks, how-to guides |
+| `reference` | Background information | Definitions, glossaries, research |
+| `template` | Output scaffolds | Email templates, report formats |
+| `brief` | Account context | Customer briefs, deal context |
+
+Use `/api/v1/context` for all types. `/api/v1/guidelines` remains a stable alias for guideline-type docs. `/api/v1/agentdocs` also remains a stable alias.
+
+**SDK:** `client.context.list({ type: 'playbook' })`, `client.context.create({ type: 'playbook', name: '...', value: '...' })`
+
+**MCP:** `context_manage_create({ ..., agentDocType: 'playbook' })`, `context_manage_list({ agentDocType: 'playbook' })`
+
+**Smart retrieval:** Use `ai_smart_docs` (MCP) or `client.ai.smartDocs()` (SDK) to retrieve across all doc types with optional `types` filter. Use `ai_smart_guidelines` when you need guidelines only.
+
+#### Canonical Names (v1.1)
+The unified API rename introduces cleaner canonical routes alongside the stable aliases above:
+
+| Canonical | Previous | Notes |
+|-----------|----------|-------|
+| `POST /context/retrieve` | `POST /ai/smart-docs` | AI-powered doc routing (type-filtered) |
+| `POST /context/save` | `POST /smart-update` | AI-powered doc evolution |
+| `GET/POST /context/manage` | `GET/POST /agentdocs` | List and create context docs |
+| `context_retrieve` (MCP) | `ai_smart_docs` | Canonical MCP tool name |
+| `context_save` (MCP) | `governance_smart_update` | Canonical MCP tool name |
+| `client.context.retrieve()` (SDK) | `client.ai.smartDocs()` | Canonical SDK method |
+| `client.context.save()` (SDK) | `client.guidelines.smartUpdate()` | Canonical SDK method |
+
+All old routes and tool names remain as stable aliases (`/agentdocs/*`, `agentdocs_*`, `client.agentdocs.*`).
+
+---
 
 ### `smartGuidelines` Mode and Model
 
@@ -354,6 +391,156 @@ This skill supports three deployment patterns beyond conversational editing:
 | **Document Ingestion** | Batch-import policies from folders of docs (wikis, Notion, Google Docs) | `reference/use-cases.md` |
 
 > **Full guide:** Read `reference/use-cases.md` for code examples, recipes, context engineering best practices, and layered context architecture.
+
+---
+
+## Analytics
+
+Governance admins can query real-time and historical metrics about how their org is using Personize memory, credits, and operations. Use these when checking credit burn, monitoring memorization latency, or validating that a new pipeline is working.
+
+### When to Use
+
+| Need | SDK Method | Endpoint |
+|---|---|---|
+| High-level org stats | `client.analytics.overview()` | `GET /api/v1/analytics/overview` |
+| Memory operation metrics (calls, latency, success rate) | `client.analytics.memory(opts)` | `GET /api/v1/analytics/memory` |
+| Historical memory trends | `client.analytics.memoryHistory(opts)` | `GET /api/v1/analytics/memory/history` |
+| Credit balance and usage | `client.analytics.credits()` | `GET /api/v1/analytics/credits` |
+| Operations and token usage | `client.analytics.operations(opts)` | `GET /api/v1/analytics/operations` |
+
+All analytics endpoints require `admin`, `member-only`, or `read-only` scope.
+
+### Key Parameters
+
+`memory()` and `operations()` accept a `window` param: `'1h'`, `'24h'`, `'7d'` (default), `'30d'`.
+
+`memoryHistory()` accepts: `metric` (`latency` | `throughput` | `quality` | `cost`), `granularity` (`hourly` | `daily`), `days` (number).
+
+### Quick Example
+
+```typescript
+// Credit balance
+const credits = await client.analytics.credits();
+// { balance, included, used, purchased, monthly }
+
+// Memory metrics for the last 24 hours
+const metrics = await client.analytics.memory({ window: '24h' });
+// { memorize: { totalCalls, successRate, avgLatencyMs }, recall: { ... } }
+
+// Org overview
+const overview = await client.analytics.overview();
+// { records: { total }, memories: { total }, activeDestinations, activeMcps }
+```
+
+---
+
+## Notifications
+
+Admins can send targeted or broadcast in-app notifications to org members. Members can list, read, and act on their notifications.
+
+### When to Use
+
+| Need | SDK Method | Endpoint | Scope |
+|---|---|---|---|
+| Send to specific users | `client.notifications.send(opts)` | `POST /api/v1/notifications` | admin |
+| Broadcast to a role group | `client.notifications.broadcast(opts)` | `POST /api/v1/notifications/broadcast` | admin |
+| List my notifications | `client.notifications.list(opts)` | `GET /api/v1/notifications` | all |
+| Unread count | `client.notifications.unreadCount()` | `GET /api/v1/notifications/unread-count` | all |
+| Mark as read | `client.notifications.markRead(id)` | `PATCH /api/v1/notifications/:id/read` | admin, member-only |
+| Dismiss | `client.notifications.dismiss(id)` | `PATCH /api/v1/notifications/:id/dismiss` | admin, member-only |
+| Execute a callback action | `client.notifications.executeAction(id, actionId)` | `POST /api/v1/notifications/:id/actions/:actionId` | admin, member-only |
+
+> **Note:** MCP does not currently expose notification management tools. Use the SDK directly.
+
+### Key Parameters -- `send()`
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `recipients` | string[] | User IDs of the recipients |
+| `title` | string | Notification title |
+| `body` | string | Notification body text |
+| `priority` | `'normal'` or `'urgent'` | Default: `'normal'` |
+| `actions` | NotificationAction[] | Optional: `link`, `callback`, or `dismiss` actions |
+
+### Key Parameters -- `broadcast()`
+
+Same as `send()` but replace `recipients` with `recipientGroup`: `'all'`, `'admins'`, or `'owners'`.
+
+### Quick Example
+
+```typescript
+// Send to specific users
+const result = await client.notifications.send({
+    recipients: ['user_abc', 'user_xyz'],
+    title: 'New dataset synced',
+    body: 'The HubSpot contact sync completed. 1,240 records updated.',
+    priority: 'normal',
+    actions: [
+        { type: 'link', label: 'View Records', url: 'https://app.personize.ai/records' },
+    ],
+});
+
+// Broadcast to all admins
+await client.notifications.broadcast({
+    recipientGroup: 'admins',
+    title: 'Credit usage alert',
+    body: 'You have used 80% of your monthly credits.',
+    priority: 'urgent',
+});
+
+// List and mark as read
+const { data } = await client.notifications.list();
+for (const n of data.notifications) {
+    if (n.status !== 'read') await client.notifications.markRead(n.id);
+}
+```
+
+---
+
+## Org & Team Administration
+
+Use when setting up a new org, inviting teammates, or managing roles. MUST use an `admin`-scoped API key for write operations.
+
+### Organizations
+
+```typescript
+// Get current org
+const org = await client.organizations.get();
+// { id, name, owner, numberOfMembers, createdAt }
+
+// Create a new org (multi-org: agency with client brands, platform with per-customer orgs)
+// Returns a one-time admin key — store it securely, shown only once
+const { organization, apiKey } = await client.organizations.create({ name: 'Acme Corp' });
+
+// Rename current org (owner only)
+await client.organizations.update({ name: 'Acme Corp (Rebranded)' });
+```
+
+Rate limit: `create()` capped at 5 orgs per hour per key. For multi-org governance patterns, see "Advanced: Multi-Organization Governance" above.
+
+### Members
+
+```typescript
+// Invite teammates (existing users get in-app invite; new users get email)
+const result = await client.members.invite({
+    emails: ['alice@acme.com', 'bob@acme.com'],
+    suppressEmail: false,  // true = skip invite email (useful for automation/testing)
+});
+// result.data → { invited, invitedExternal, alreadyMembers, alreadyInvited }
+
+// List current team
+const { data } = await client.members.list();
+data.members.forEach(m => console.log(`${m.email} — ${m.role}`));
+
+// Change role
+await client.members.updateRole('user_xyz', { role: 'ADMIN' }); // 'ADMIN' | 'MEMBER'
+
+// Remove member (or member removes themselves)
+await client.members.remove('user_xyz');
+
+// View pending invitations
+const pending = await client.members.listInvitations();
+```
 
 ---
 

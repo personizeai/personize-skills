@@ -251,18 +251,66 @@ CI integration via GitHub Actions auto-syncs on push.
 
 ---
 
+## Analytics
+
+Use to monitor credit burn, operation throughput, or validate a new pipeline is working.
+
+| Need | SDK Method |
+|---|---|
+| High-level org stats | `client.analytics.overview()` |
+| Memory operation metrics (latency, success rate) | `client.analytics.memory({ window: '24h' })` |
+| Historical trends | `client.analytics.memoryHistory({ metric: 'latency', granularity: 'daily' })` |
+| Credit balance and usage | `client.analytics.credits()` |
+| Operations and token usage | `client.analytics.operations({ window: '7d' })` |
+
+All analytics endpoints are read-only and require admin, member-only, or read-only scope.
+
+```typescript
+const credits = await client.analytics.credits();
+// { balance, included, used, purchased, monthly }
+```
+
+---
+
+## Notifications
+
+Admins can send targeted or broadcast in-app notifications to org members. Members can list and act on their own notifications.
+
+| Need | SDK Method | Scope |
+|---|---|---|
+| Send to specific users | `client.notifications.send(opts)` | admin |
+| Broadcast to a role group | `client.notifications.broadcast(opts)` | admin |
+| List my notifications | `client.notifications.list()` | all |
+| Unread count | `client.notifications.unreadCount()` | all |
+| Mark read / dismiss | `client.notifications.markRead(id)` / `.dismiss(id)` | admin, member |
+| Execute a callback action | `client.notifications.executeAction(id, actionId)` | admin, member |
+
+```typescript
+// Broadcast to all admins
+await client.notifications.broadcast({
+    recipientGroup: 'admins',
+    title: 'Credit alert',
+    body: 'You have used 80% of your monthly credits.',
+    priority: 'urgent',
+});
+```
+
+> **Note:** MCP does not expose notification management tools. Use the SDK directly.
+
+---
+
 ## Constraints
 
-1. **MUST** show the admin the proposed change before calling any mutating API — silent modifications erode trust
-2. **MUST** include a descriptive `historyNote` on every update — enables audit trails and rollback
-3. **MUST** check for name/topic overlap before creating a new guideline — duplicates cause conflicting governance
-4. **SHOULD** use section-level updates over full replace — reduces blast radius
-5. **MUST** verify with `smartGuidelines()` after any create/update — API success doesn't guarantee retrievability
-6. **SHOULD** preserve existing heading structure when updating — avoids unintended diffs
-7. **SHOULD** reuse existing tags before inventing new ones — inconsistent tagging fragments filtering
+1. **MUST** show the admin the proposed change before calling any mutating API -- silent modifications erode trust
+2. **MUST** include a descriptive `historyNote` on every update -- enables audit trails and rollback
+3. **MUST** check for name/topic overlap before creating a new guideline -- duplicates cause conflicting governance
+4. **SHOULD** use section-level updates over full replace -- reduces blast radius
+5. **MUST** verify with `smartGuidelines()` after any create/update -- API success doesn't guarantee retrievability
+6. **SHOULD** preserve existing heading structure when updating -- avoids unintended diffs
+7. **SHOULD** reuse existing tags before inventing new ones -- inconsistent tagging fragments filtering
 8. **MUST** write for agent consumption: explicit, unambiguous, with RFC 2119 keywords
-9. **SHOULD** limit each guideline to a single concept or policy domain — produces higher-relevance matches
-10. **MUST** preserve the admin's voice and intent — you're a writing assistant, not an editor-in-chief
+9. **SHOULD** limit each guideline to a single concept or policy domain -- produces higher-relevance matches
+10. **MUST** preserve the admin's voice and intent -- you're a writing assistant, not an editor-in-chief
 
 ---
 
