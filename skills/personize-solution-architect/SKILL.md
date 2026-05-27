@@ -34,10 +34,10 @@ Most companies face three problems that block real personalization:
 
 Personize gives the developer three capabilities, all accessible via REST API, SDK (`@personize/sdk`), and MCP (for AI agents and LLM nodes):
 
-| Capability | What It Does | Core SDK Methods | MCP Tools |
+| Capability | What It Does | Core SDK Methods (v1.1) | MCP Tools |
 |---|---|---|---|
-| **Unified Customer Memory** | Ingests structured and unstructured data from any tool via `memorizeBatch()`. AI extracts properties into per-entity profiles. Write-heavy by design -- ingest everything, recall what matters. | `memorize()`, `memorizeBatch()`, `recall()`, `smartDigest()` | `memory_store_pro`, `memory_recall_pro`, `memory_digest`, `memory_get_properties`, `memory_update_property` |
-| **Governance Layer** | Centralizes guidelines (brand voice, ICPs, compliance rules, tone) as variables. When multiple employees use multiple AI tools and agents, governance is the single source of truth that keeps them all aligned. | `smartGuidelines()`, `guidelines.list/create/update()` | `ai_smart_guidelines`, `guideline_list`, `guideline_read`, `guideline_create`, `guideline_update`, `guideline_delete` |
+| **Unified Customer Memory** | Ingests structured and unstructured data from any tool via `v1_1.memory.import()`. AI extracts properties into per-entity profiles. Write-heavy by design -- ingest everything, recall what matters. | `v1_1.memory.save({ shape })`, `v1_1.memory.import()`, `v1_1.memory.retrieve()`, `v1_1.memory.smartDigest()` | `memory_save`, `smartRecall`, `memory_digest`, `memory_get_properties`, `memory_update_property` |
+| **Governance Layer** | Centralizes guidelines (brand voice, ICPs, compliance rules, tone) as typed context docs. `v1.1` exposes a PG-backed `doc-types` registry and batched async doc save. When multiple employees use multiple AI tools and agents, governance is the single source of truth that keeps them all aligned. | `v1_1.context.save({ type })`, `v1_1.context.doctypes.list()`, `smartGuidelines()` | `ai_smart_guidelines`, `context_save`, `context_retrieve`, `guideline_list`, `guideline_read`, `guideline_create`, `guideline_update`, `guideline_delete` |
 | **Personalization Engine** | Combines memory (who is this person?) + governance (what are our rules?) to generate personalized output via multi-step `instructions[]`. | `prompt()` with `instructions[]`, `evaluate: true` | `ai_prompt` |
 
 **Personalization surfaces:**
@@ -99,8 +99,8 @@ Name these patterns when you use them. Prospects trust architects who speak prec
 
 | Pattern | What It Is | SDK/API Shape |
 |---|---|---|
-| **Event-Driven Ingest** | External system events (CRM webhooks, form submissions, support tickets) trigger `memorize()` or `memorizeBatch()`. Fire-and-forget from the source. | `POST /api/v1/memorize` or `POST /api/v1/batch-memorize` |
-| **CQRS-Style Memory** | Write path (memorize with AI extraction) is separate from read path (semantic recall, digest, search). Optimized differently. Write-heavy by design. | Write: `client.memory.memorize()` / Read: `client.memory.smartRecall()`, `client.memory.smartDigest()` |
+| **Event-Driven Ingest** | External system events (CRM webhooks, form submissions, support tickets) trigger `v1_1.memory.save()` or `v1_1.memory.import()`. Fire-and-forget from the source. | `POST /api/v1.1/memory/save` or `POST /api/v1.1/memory/import` |
+| **CQRS-Style Memory** | Write path (save with AI extraction) is separate from read path (semantic retrieve, digest, search). Optimized differently. Write-heavy by design. | Write: `client.v1_1.memory.save()` / Read: `client.v1_1.memory.retrieve()`, `client.v1_1.memory.smartDigest()` |
 | **Middleware Enrichment** | Personize sits in the request pipeline, enriching responses with personalized context before they reach the user. Express/Next.js middleware pattern. | `app.use(personizeMiddleware)` wrapping existing routes |
 | **Webhook Fan-Out** | Personize pushes events OUT via SQS->Lambda->HTTP POST (HMAC-SHA256 signed). Fire-and-forget with ~1.5s timeout. | Destination config in dashboard, receiver at your endpoint |
 | **Wrap & Enhance** | Existing function gets a personalization layer without changing its interface. Original function still works if Personize is down (graceful degradation). | Wrap `sendEmail()` with context assembly + generation before the existing call |
@@ -154,10 +154,10 @@ Personize can play one or more of these roles simultaneously. Map which are acti
 
 | Role | What It Does | Active When | Key Capabilities |
 |---|---|---|---|
-| **Memory Layer** | Source (search, recall, digest, webhooks out) + Destination (memorize, batch, upsert) | Always -- this is the foundation | `search()`, `recall()`, `smartDigest()`, `memorize()`, `memorizeBatch()`, outbound webhooks |
+| **Memory Layer** | Source (search, retrieve, digest, webhooks out) + Destination (save, import, batch) | Always -- this is the foundation | `v1_1.memory.search()`, `v1_1.memory.retrieve()`, `v1_1.memory.smartDigest()`, `v1_1.memory.save()`, `v1_1.memory.import()`, outbound webhooks |
 | **Intelligence Layer** | Reasoning, generation, analysis via multi-step AI | Generating content, analyzing data, making decisions | `prompt()` with `instructions[]`, `responses` API, `evaluate: true` |
 | **Governance Layer** | Rules, policies, guardrails that constrain all agents and employees | Any AI-generated output needs consistency | `smartGuidelines()`, `guidelines.list/create/update()` |
-| **Learning Layer** | Agents write BACK -- updating governance and memories based on outcomes | Autonomous systems that improve over time | MCP: `guideline_create`, `guideline_update`, `memory_store_pro`, `memory_update_property` |
+| **Learning Layer** | Agents write BACK -- updating governance and memories based on outcomes | Autonomous systems that improve over time | MCP: `guideline_create`, `guideline_update`, `memory_save`, `memory_update_property` |
 | **Coordination Substrate** | Workspace-based multi-agent collaboration on shared records | Multiple agents/humans working on the same entity | Workspace-tagged `memorize()` + `smartDigest()` reads |
 
 **The 4-leg data flow loop:**
@@ -417,14 +417,14 @@ const governance = await client.ai.smartGuidelines({
 
 // Layer 2: Unified Memory -- assemble cross-source context
 const [digest, relevant] = await Promise.all([
-    client.memory.smartDigest({
+    client.v1_1.memory.smartDigest({
         email: '[entity email]',
         type: 'Contact',       // or 'Company', your collection type
         token_budget: 2500,
         include_properties: true,
         include_memories: true,
     }),
-    client.memory.smartRecall({
+    client.v1_1.memory.retrieve({
         query: '[situation-specific semantic query]',
         email: '[entity email]',
         mode: 'fast',
@@ -470,7 +470,7 @@ const result = await client.ai.prompt({
 
 **By integration mode:**
 - **SDK in code:** Show the three-layer code skeleton adapted to their use case. Name the patterns: "This uses the **Event-Driven Ingest** pattern for CRM sync and the **Cron->Generate->Deliver** pattern for weekly outreach." Include error handling and rate limiting.
-- **MCP on agents:** Show the tool call sequence and name the pattern: "This is the **MCP Tool Provider** pattern -- your agent calls `memory_recall_pro` for the **CQRS read path**, then `ai_smart_guidelines` for **governance context**, then generates and calls `memory_store_pro` to close the **learning loop** (Leg 3)."
+- **MCP on agents:** Show the tool call sequence and name the pattern: "This is the **MCP Tool Provider** pattern -- your agent calls `smartRecall` for the **CQRS read path**, then `ai_smart_guidelines` for **governance context**, then generates and calls `memory_save` to close the **learning loop** (Leg 3)."
 - **Multi-agent:** Show the **Patient Chart** coordination pattern -- which agent does what, how they share state via workspaces, which MCP tools each agent needs. Draw the agent interaction diagram.
 - **No-code:** Describe the workflow as an architecture: "This is an **Event-Driven Ingest** (Leg 1) into a **Cron->Generate->Deliver** pipeline (Legs 2+4). Step 1: HubSpot deal webhook triggers memorization. Step 2: Scheduled AI node assembles three-layer context. Step 3: Generate email. Step 4: Gmail delivery."
 
@@ -704,7 +704,7 @@ Before presenting patterns, check the Situation Profile. The wiring approach cha
 
 **SDK in code** -- Use Patterns 1-5 below (wrap functions, webhook receivers, middleware, cron, queues).
 
-**MCP on agents** -- The agent IS the wire. The agent calls `memory_recall_pro`, reasons, calls `ai_prompt` or generates directly, then calls your delivery API. Wiring = making your delivery APIs accessible to the agent (as MCP tools or HTTP endpoints the agent can call).
+**MCP on agents** -- The agent IS the wire. The agent calls `smartRecall`, reasons, calls `ai_prompt` or generates directly, then calls your delivery API. Wiring = making your delivery APIs accessible to the agent (as MCP tools or HTTP endpoints the agent can call).
 
 **Multi-agent systems** -- Each agent is wired to specific capabilities. Agent A reads memory, Agent B generates content, Agent C delivers. Wiring = workspace schema + agent coordination protocol.
 
@@ -718,8 +718,8 @@ For every integration, explicitly map which legs of the data flow are active and
 
 | Leg | Direction | How to Wire | Key Endpoints / Tools |
 |---|---|---|---|
-| **Leg 1: Ingest** | External -> Personize | Webhook receivers, batch scripts, CRM sync, event streams | `memorizeBatch()`, `memorize()`, `memory_store_pro` MCP |
-| **Leg 2: Context** | Personize -> Agents/Code | SDK calls or MCP tool calls before reasoning/generation | `smartDigest()`, `recall()`, `smartGuidelines()`, `memory_recall_pro` MCP |
+| **Leg 1: Ingest** | External -> Personize | Webhook receivers, batch scripts, CRM sync, event streams | `memorizeBatch()`, `memorize()`, `memory_save` MCP |
+| **Leg 2: Context** | Personize -> Agents/Code | SDK calls or MCP tool calls before reasoning/generation | `smartDigest()`, `recall()`, `smartGuidelines()`, `smartRecall` MCP |
 | **Leg 3: Learn Back** | Agents -> Personize | After acting, store outcomes, update properties, evolve governance | `memorize()`, `memory_update_property` MCP, `guideline_update` MCP |
 | **Leg 4: Deliver** | Personize -> External | Outbound webhooks (SQS -> Lambda -> HTTP POST with HMAC-SHA256), or agent calls delivery APIs | Webhook destinations, SendGrid, Slack, Twilio, custom APIs |
 
@@ -730,11 +730,11 @@ When Personize is a tool in an external orchestrator:
 ```
 External Orchestrator (OpenClaw, LangGraph, n8n AI node, custom)
   ├── Agent receives task
-  ├── Agent calls: memory_recall_pro (Personize MCP) -- get context
+  ├── Agent calls: smartRecall (Personize MCP) -- get context
   ├── Agent calls: ai_smart_guidelines (Personize MCP) -- get rules
   ├── Agent reasons with context + rules
   ├── Agent calls: your_delivery_api -- send email / update CRM
-  ├── Agent calls: memory_store_pro (Personize MCP) -- record what was done
+  ├── Agent calls: memory_save (Personize MCP) -- record what was done
   └── Agent calls: memory_update_property (Personize MCP) -- update status
 ```
 
@@ -788,7 +788,7 @@ app.post('/webhooks/personize', async (req, res) => {
 | **API Middleware** | Personize sits between request and response | Express middleware that enriches responses with personalization |
 | **Cron -> Generate -> Deliver** | Scheduled job generates and pushes to delivery | Daily cron -> `prompt()` -> SendGrid / Slack / webhook |
 | **Event-Driven Queue** | Queue decouples event capture from personalization | SQS/BullMQ -> personalize worker -> delivery |
-| **MCP Tool Provider** | External orchestrator calls Personize tools | OpenClaw agent -> `memory_recall_pro` -> reason -> `memory_store_pro` |
+| **MCP Tool Provider** | External orchestrator calls Personize tools | OpenClaw agent -> `smartRecall` -> reason -> `memory_save` |
 | **Outbound Webhook** | Personize pushes data to external systems | Memory update triggers webhook -> your CRM sync endpoint |
 
 ### Wiring Constraints
@@ -830,8 +830,8 @@ Use this to verify a Personize integration is complete. Each section builds on t
 
 **1. Connect** -- Pick at least one integration path:
 - [ ] **SDK** installed (`@personize/sdk`) -- `client.me()` -> `GET /api/v1/me` returns org name
-- [ ] **MCP** server added to agent tools -- 17 tools available including `memory_recall_pro`, `ai_smart_guidelines`, `memory_get_properties`, `memory_update_property`, `memory_digest`
-- [ ] **MCP verified** -- agent can list tools, call `memory_recall_pro` with a test query, receive results
+- [ ] **MCP** server added to agent tools -- 17 tools available including `smartRecall`, `ai_smart_guidelines`, `memory_get_properties`, `memory_update_property`, `memory_digest`
+- [ ] **MCP verified** -- agent can list tools, call `smartRecall` with a test query, receive results
 - [ ] **Zapier** connected -- memorizing data from external apps
 - [ ] **Skills** installed -- `npx skills add personizeai/personize-skills`
 
@@ -1007,14 +1007,14 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 | Category | Method | Purpose |
 |---|---|---|
 | **Auth** | `client.me()` | Get org, user, plan, rate limits |
-| **Remember** | `client.memory.memorize(opts)` | Store single item with AI extraction |
-| **Remember** | `client.memory.memorizeBatch(opts)` | Batch store with per-property `extractMemories` |
+| **Remember** | `client.v1_1.memory.save(opts)` | Store single item with AI extraction |
+| **Remember** | `client.v1_1.memory.import(opts)` | Batch store with per-property `extractMemories` |
 | **Recall** | `client.memory.recall(opts)` | Semantic search across memories |
-| **Recall** | `client.memory.smartDigest(opts)` | Compiled context for one entity |
+| **Recall** | `client.v1_1.memory.smartDigest(opts)` | Compiled context for one entity |
 | **Recall** | `client.memory.properties(opts)` | Property values with schema descriptions and update flag |
 | **Recall** | `client.ai.smartGuidelines(opts)` | Fetch governance variables for a topic |
 | **Reason/Generate** | `client.ai.prompt(opts)` | Multi-step AI with `instructions[]` |
-| **Observe** | `client.memory.search(opts)` | Query/filter records |
+| **Observe** | `client.v1_1.memory.search(opts)` | Query/filter records |
 | **Schema** | `client.collections.list/create/update/delete/history()` | Manage collections (full CRUD + version history) |
 | **Governance** | `client.guidelines.list/create/update/delete()` | Manage governance variables |
 
@@ -1026,8 +1026,8 @@ When connecting via MCP (Claude Desktop, Cursor, ChatGPT, workflow tools, multi-
 
 | Tool | Purpose | Read/Write |
 |---|---|---|
-| `memory_store_pro` | Store content with AI extraction | Write |
-| `memory_recall_pro` | Semantic search across memories | Read |
+| `memory_save` | Store content with AI extraction | Write |
+| `smartRecall` | Semantic search across memories | Read |
 | `memory_digest` | Compiled entity context bundle (properties + memories, token-budgeted) | Read |
 | `memory_get_properties` | Read property values with schema descriptions and `update` flag | Read |
 | `memory_update_property` | Update properties: `set`, `push`, `remove`, `patch` | Write |
@@ -1153,6 +1153,8 @@ Always call `client.me()` first to get actual limits -- the response includes `p
 | `reference/prompt endpoint - instructions best practices/token-efficiency.md` | 10 rules for writing token-efficient `instructions[]` |
 | `reference/prompt endpoint - instructions best practices/prompt-checklist.md` | Quick-reference checklist for `client.ai.prompt()` |
 | `reference/platform-capabilities.md` | Full platform capability inventory beyond the three core layers -- consult when the customer's requirements go deeper (notifications, enrichment, multimodal, MCP profiles, BYOC) |
+
+> **Mental model for memory operations:** When designing how an agent will navigate Personize memory, see `reference/agent-mental-model.md` for the tab × affordance × surface matrix mapping every memory operation across MCP, SDK, HTTP, and CLI.
 | `reference/signal-open-source.md` | Personize Signal (open-source): smart notification architecture with AI-scored delivery, digest compilation, workspace collaboration. Not an installable package -- patterns and inspiration from GitHub. |
 | `recipes/*.ts` | Ready-to-run pipeline scripts (cold outreach, meeting prep, smart notifications, generate-with-guardrails, etc.) |
 | `channels/*.md` | Delivery channel templates (SendGrid, Slack, Twilio, webhook) |

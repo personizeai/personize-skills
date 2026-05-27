@@ -44,30 +44,33 @@ This skill works identically whether the LLM accesses memory via the **SDK** (co
 
 | Interface | How it works | Best for |
 |---|---|---|
-| **SDK** (`@personize/sdk`) | `client.memory.memorize()`, `client.memory.recall()`, etc. | Scripts, CI/CD, IDE agents, recipes |
-| **MCP** (Model Context Protocol) | `memory_store_pro`, `memory_recall_pro`, `ai_smart_guidelines` tools | Claude Desktop, ChatGPT, Cursor, any MCP-compatible client |
+| **SDK** (`@personize/sdk`) — v1.1 namespace | `client.v1_1.memory.save()`, `client.v1_1.memory.retrieve()`, etc. | Scripts, CI/CD, IDE agents, recipes |
+| **MCP** (Model Context Protocol) | `memory_save`, `smartRecall` / `retrieve_unified`, `ai_smart_guidelines` tools | Claude Desktop, ChatGPT, Cursor, any MCP-compatible client |
 
-**MCP tools map to SDK methods:**
+**MCP tools map to SDK methods (v1.1):**
 
-| SDK Method | MCP Tool | Purpose |
+| SDK Method (v1.1) | MCP Tool | Purpose |
 |---|---|---|
-| `client.memory.memorize(opts)` | `memory_store_pro(content, email, ...)` | Store data with AI extraction |
-| `client.memory.smartRecall(opts)` | `memory_recall_pro(query, email, ...)` | Semantic search (recommended) |
-| `client.memory.recall(opts)` | *(SDK only)* | Direct DynamoDB lookup — properties + freeform memories (`type` required, no AI) |
-| `client.memory.smartDigest(opts)` | `memory_digest(email, ...)` | Compiled entity context (properties + memories) |
-| `client.memory.search(opts)` | *(SDK only)* | Filter and export records |
-| `client.memory.memorizeBatch(opts)` | *(SDK only)* | Batch sync with per-property control |
-| `client.memory.update(opts)` | `memory_update_property(email, ...)` | Update property or freeform memory (supports conditional writes + array ops) |
-| `client.memory.bulkUpdate(opts)` | *(SDK only)* | Update multiple properties at once |
-| `client.memory.delete(opts)` | *(SDK only)* | Soft-delete memories (30-day recovery) |
-| `client.memory.deleteRecord(opts)` | *(SDK only)* | Soft-delete all memories for a record |
-| `client.memory.cancelDeletion(opts)` | *(SDK only)* | Cancel pending soft-delete |
-| `client.memory.propertyHistory(opts)` | *(SDK only)* | Query property change history |
-| `client.memory.queryProperties(opts)` | *(SDK only)* | LLM-powered structured property search |
-| `client.memory.filterByProperty(opts)` | *(SDK only)* | Deterministic property filter (no LLM) |
+| `client.v1_1.memory.save(opts)` | `memory_save(content, email, ...)` | Store data with AI extraction. Pass `shape: 'shortform' \| 'document'` (default: `'shortform'`). |
+| `client.v1_1.memory.retrieve(opts)` | `smartRecall(query, email, ...)` or `retrieve_unified` | Semantic search (recommended for agents). The simple `memory_retrieve` MCP tool is **hidden by default** — use `smartRecall`. |
+| `client.v1_1.memory.smartDigest(opts)` | `memory_digest(email, ...)` | Compiled entity context (properties + memories) |
+| `client.v1_1.memory.search(opts)` | *(SDK only)* | Filter and export records |
+| `client.v1_1.memory.saveBatch(opts)` / `import(opts)` | *(SDK only — `memory_batch_store` MCP tool is hidden by default)* | Batch sync. Use `saveBatch` for small batches; use `import` for ETL with per-property `extract` control. |
+| `client.v1_1.memory.manage.update(id, opts)` | `memory_update_property(email, ...)` | Update property or freeform memory (REST: `PATCH /memory/manage/:id`). Supports conditional writes + array ops. |
+| `client.v1_1.memory.manage.bulkUpdate(opts)` | *(SDK only)* | Update multiple properties at once |
+| `client.v1_1.memory.manage.delete(id)` | *(SDK only — REST: `DELETE /memory/manage/:id`)* | Soft-delete memories (30-day recovery) |
+| `client.v1_1.memory.manage.deleteRecord(opts)` | *(SDK only)* | Soft-delete all memories for a record |
+| `client.v1_1.memory.manage.cancelDeletion(opts)` | *(SDK only)* | Cancel pending soft-delete |
+| `client.v1_1.memory.manage.history(id)` | *(SDK only — REST: `GET /memory/manage/:id/history`)* | Query property change history |
+| `client.v1_1.memory.queryProperties(opts)` | *(SDK only)* | LLM-powered structured property search |
+| `client.v1_1.memory.filterByProperty(opts)` | *(SDK only)* | Deterministic property filter (no LLM) |
+| `client.v1_1.context.save({ type, ... })` | `context_save` | Save a typed document (guideline, playbook, reference, template, brief). See "Document save" below. |
+| `client.v1_1.context.doctypes.list()` | *(SDK / CLI)* | List PG-backed doc-type registry (`GET /context/manage/doc-types`) |
 | `client.ai.smartGuidelines(opts)` | `ai_smart_guidelines(message)` | Fetch guidelines by topic |
-| `client.memory.similar()` | `memory_find_similar` | Find records similar to a seed record |
-| `client.memory.segment()` | `memory_segment` | Bucket records into similarity tiers |
+| `client.v1_1.memory.similar()` | `memory_find_similar` | Find records similar to a seed record |
+| `client.v1_1.memory.segment()` | `memory_segment` | Bucket records into similarity tiers |
+
+> **MCP tools hidden by default in v1.1:** `memory_retrieve` (simple direct lookup) and `memory_batch_store` are no longer surfaced to agents by default. Use `smartRecall` for retrieval (it composes the direct + semantic paths) and the **`/memory/import` API / SDK `import()` / CLI `personize v1.1 memory save-batch`** for bulk ingest. Both tools are still callable for advanced sessions that explicitly enable them.
 
 ### MCP-Only Feature: Self-Memory (`about='self'`)
 
@@ -78,20 +81,30 @@ MCP tools support an `about` parameter that the SDK does not expose directly:
 
 ```
 // MCP: Store user preferences
-memory_store_pro(content="I prefer formal communication. My timezone is PST.", about="self")
+memory_save(content="I prefer formal communication. My timezone is PST.", about="self")
 
 // MCP: Recall user preferences
-memory_recall_pro(query="What are my preferences and working style?", about="self", generate_answer=true)
+smartRecall(query="What are my preferences and working style?", about="self", generate_answer=true)
 ```
 
-### Canonical API Names (v1.1)
-- `memory_save` replaces `memory_store_pro` as the canonical MCP tool name
-- `memory_retrieve` replaces `memory_recall_pro` / `smartRecall`
-- Old tool names still work — use whichever you prefer
+### v1.1 surface — what's canonical, what's deprecated
+
+| Old (v1, DEPRECATED — sunset **2026-07-15**) | New (v1.1 canonical) |
+|---|---|
+| `memory_store_pro` (MCP) | `memory_save` |
+| `memory_recall_pro` (MCP) | `smartRecall` (preferred for agents) or `retrieve_unified` |
+| `client.memory.memorize(...)` (SDK) | `client.v1_1.memory.save(...)` |
+| `client.memory.smartRecall(...)` (SDK) | `client.v1_1.memory.retrieve(...)` |
+| `client.memory.memorizeBatch(...)` (SDK) | `client.v1_1.memory.saveBatch(...)` or `client.v1_1.memory.import(...)` |
+| `POST /api/v1/memorize` (HTTP) | `POST /api/v1.1/memory/save` |
+| `POST /api/v1/smart-recall` (HTTP) | `POST /api/v1.1/memory/retrieve` |
+| `POST /api/v1/memory/update` etc. (HTTP) | `PATCH /api/v1.1/memory/manage/:id` (REST verbs on `/memory/manage/*`) |
+
+v1 endpoints continue to work and respond with RFC 8594 `Deprecation` + `Sunset` headers until 2026-07-15. After that date, only v1.1 is supported.
 
 **When reading this skill document:**
-- If you're connected via **MCP**, use the MCP tool names (`memory_store_pro`, `memory_recall_pro`, etc.)
-- If you're running via **SDK**, use the `client.memory.*` methods
+- If you're connected via **MCP**, use the v1.1 MCP tool names (`memory_save`, `smartRecall`, `memory_digest`, ...)
+- If you're running via **SDK**, use the `client.v1_1.memory.*` namespace
 - All workflows, rules, and best practices apply equally to both interfaces
 
 ---
@@ -113,23 +126,36 @@ You have 6 actions. Use whichever matches what the developer needs.
 
 ---
 
-## Action: MEMORIZE
+## Action: MEMORIZE (v1.1: `memory.save`)
 
 Store data into Personize memory. The right method depends on what you're storing and how much of it.
+
+### The `shape` discriminator (v1.1)
+
+`POST /api/v1.1/memory/save` and `client.v1_1.memory.save()` accept a `shape` field that picks the extraction pipeline:
+
+| `shape` | When to use | Required fields | Notes |
+|---|---|---|---|
+| `'shortform'` *(default — the 99% case)* | Notes, transcripts, emails, call summaries, generated outputs — any free text where you want AI to extract atoms **and** properties | `content` + at least one identifier (`email` / `website_url` / `record_id`) | Replaces the old default `memorize()` behavior. Both atoms and properties land. |
+| `'document'` | Typed doc save — guideline, playbook, reference, template, brief | `content` + `type` (`'guideline' \| 'playbook' \| 'reference' \| 'template' \| 'brief'`) | Routes through the doc registry; appears in `/context/manage` lists. Use for "save this as our pricing playbook" not for entity facts. |
+| `'freeform'` *(power-user, hidden from public docs)* | Atoms-only — you've already extracted properties yourself and just want raw memories stored | `content` + identifier | Skips the property-selection pipeline entirely. |
+
+> **Don't pass `skipDualWrite`, `skipStorage`, or `skipPropertySelection` to v1.1.** The API rejects these flags with `400 INVALID_PARAMS`. Use `shape` instead — `'freeform'` is the only public way to bypass property selection.
 
 ### Which Method to Use
 
 | Scenario | Method | Why |
 |---|---|---|
-| **One item, with AI extraction** | `memory.memorize()` | Rich text (notes, transcripts, emails) → AI extracts facts and creates vectors |
-| **Batch sync from CRM/DB** | `memory.memorizeBatch()` | Multiple records with per-property `extractMemories` control |
-| **Structured data, no AI needed** | `memory.memorizeBatch()` with `extractMemories: false` | Store exact key-value pairs (email, plan_tier, login_count) without AI overhead |
+| **One item, with AI extraction** | `client.v1_1.memory.save({ shape: 'shortform', content, email })` | Rich text (notes, transcripts, emails) → AI extracts facts and creates vectors |
+| **Batch sync from CRM/DB** | `client.v1_1.memory.saveBatch({ records })` *(small batches)* or `client.v1_1.memory.import({ source, mapping, rows })` *(ETL, per-property `extract` flag)* | Multiple records with per-property AI control |
+| **Structured data, no AI needed** | `client.v1_1.memory.import({ ..., mapping.properties[*].extract: false })` | Store exact key-value pairs without AI overhead |
+| **Save a guideline / playbook / reference doc** | `client.v1_1.memory.save({ shape: 'document', type: 'guideline', content, name })` or `client.v1_1.context.save(...)` | Typed document save — lands in `/context/manage` and is discoverable via `context_retrieve` |
 
-### The `extractMemories` Decision
+### The per-property `extract` Decision (v1.1 `/memory/import`)
 
-`extractMemories` defaults to **`false`**. You **must** set `extractMemories: true` on rich text fields to enable AI extraction and semantic search. Without it, batch-synced data is stored as structured properties only — no memories, no vector embeddings, no semantic recall.
+In `client.v1_1.memory.import(...)`, each property in `mapping.properties` accepts an `extract` boolean (v1.1 name; v1 called this `extractMemories`). It defaults to **`false`**. You **must** set `extract: true` on rich text fields to enable AI extraction and semantic search. Without it, imported data is stored as structured properties only — no memories, no vector embeddings, no semantic recall.
 
-| Data Type | `extractMemories` | Reasoning |
+| Data Type | `extract` | Reasoning |
 |---|---|---|
 | **Rich text** (notes, transcripts, emails, descriptions) | **`true`** (must set explicitly) | AI extracts facts, creates vector embeddings for semantic search |
 | **Generated content** (AI outputs you want to remember) | **`true`** (must set explicitly) | Enables the feedback loop — AI knows what it already said |
@@ -137,36 +163,44 @@ Store data into Personize memory. The right method depends on what you're storin
 | **Structured facts** (email, name, plan, dates, counts) | `false` (default) | Already structured — AI extraction wastes tokens and adds latency |
 | **Binary flags, IDs, URLs** | `false` (default) | No semantic content to extract |
 
-> **Rule of thumb:** Always set `extractMemories: true` on any field containing free-form text. If you skip it, those fields get stored as properties but produce zero memories — `smartRecall()` and `smartDigest()` won't find them.
+> **Rule of thumb:** Always set `extract: true` on any field containing free-form text. If you skip it, those fields get stored as properties but produce zero memories — `smartRecall()` and `smartDigest()` won't find them.
 
 ### Quick Example
 
 ```typescript
-// Single item — AI extraction with identity hints
-await client.memory.memorize({
+// Single item — shortform shape (default), AI extraction with identity hints
+await client.v1_1.memory.save({
+    shape: 'shortform', // default — can be omitted
     content: 'Also extract First Name, Last Name, Company Name, and Job Title if mentioned.\n\nCall with Sarah Chen (VP Eng, Initech). She mentioned they are evaluating SOC2 compliance tools. Main pain point: manual audit prep taking 2 weeks per quarter. Budget approved for Q2.',
     speaker: 'Sales Team',
     email: 'sarah.chen@initech.com',
-    enhanced: true,
     tags: ['call-notes', 'sales', 'source:manual'],
 });
 
-// Batch sync — per-property control
-await client.memory.memorizeBatch({
-    source: 'Hubspot',
+// Save a guideline as a typed document
+await client.v1_1.memory.save({
+    shape: 'document',
+    type: 'playbook',
+    name: 'Q2 SOC2 outreach playbook',
+    content: '# Playbook\n\n1. Lead with audit-prep pain...\n',
+});
+
+// Bulk ETL import — per-property `extract` flag
+await client.v1_1.memory.import({
+    source: 'HubSpot',
     mapping: {
         entityType: 'contact',
         email: 'email',
         runName: 'hubspot-contact-sync',
         properties: {
-            full_name:    { sourceField: 'firstname', collectionId: 'col_xxx', collectionName: 'Contacts', extractMemories: false },
-            job_title:    { sourceField: 'jobtitle',  collectionId: 'col_xxx', collectionName: 'Contacts', extractMemories: false },
-            last_notes:   { sourceField: 'notes',     collectionId: 'col_xxx', collectionName: 'Contacts', extractMemories: true },
+            full_name:  { sourceField: 'firstname', collectionId: 'col_xxx', collectionName: 'Contacts', extract: false },
+            job_title:  { sourceField: 'jobtitle',  collectionId: 'col_xxx', collectionName: 'Contacts', extract: false },
+            last_notes: { sourceField: 'notes',     collectionId: 'col_xxx', collectionName: 'Contacts', extract: true  },
         },
     },
     rows: crmContacts,  // array of objects from your CRM
 });
-// ⚠️ memorizeBatch() is async — records land in ~1-2 minutes (EventBridge → Lambda).
+// import() is async — records land in ~1-2 minutes (EventBridge → Lambda).
 // Verify with search() or smartDigest() after processing completes.
 ```
 
@@ -179,14 +213,13 @@ Available tiers: `basic`, `pro` (default), `pro_fast`, `ultra`. For current rate
 Tiers also control `maxProperties` (15–50), `chunkMaxWords` (2000–4000), and `minPropertyScore` (0.2–0.4). Model fallback is automatic — if the primary model fails, the system routes to the fallback.
 
 ```typescript
-await client.memory.memorize({
+await client.v1_1.memory.save({
     content: '...',
     email: 'user@co.com',
-    enhanced: true,
     tier: 'basic',       // or 'pro' (default), 'pro_fast', 'ultra'
 });
 
-await client.memory.memorizeBatch({
+await client.v1_1.memory.import({
     source: 'HubSpot',
     mapping: { ... },
     rows: contacts,
@@ -210,7 +243,7 @@ Pass `tier` to select a curated model (default). Custom `model` and `provider` r
 
 1. **MUST** include at least one tag on every `memorize()` call (e.g. `tags: ['source:hubspot', 'type:interaction', 'team:sales']`) -- because tags serve two purposes: (a) filtering, attribution, and workspace scoping, and (b) **property selection boosting** — tags that match a property definition's own `tags` array give that property a +15% score boost during extraction, making extraction context-aware. For example, `tags: ["qualification"]` boosts properties tagged `["qualification"]` like Decision Maker or Budget.
 2. **SHOULD** include a timestamp in the `content` or use the `timestamp` parameter -- because temporal ordering lets recall distinguish recent facts from stale ones.
-3. **MUST NOT** pre-process content with an LLM before calling `memorize()` with `enhanced: true` -- because double-processing wastes tokens and the extraction pipeline is optimized for raw input.
+3. **MUST NOT** pre-process content with an LLM before calling `save({ shape: 'shortform' })` -- because double-processing wastes tokens and the extraction pipeline is optimized for raw input. (`shortform` is the default; explicit `enhanced: true` from v1 is no longer accepted.)
 4. **MUST NOT** manually deduplicate before memorizing -- because the platform deduplicates at cosine 0.92 similarity and runs background consolidation; client-side dedup adds complexity with no benefit.
 5. **SHOULD** memorize generated outputs (emails, notifications, reports) after delivery -- because the feedback loop lets future recalls see what was already sent, preventing repetition.
 6. **SHOULD** use `client.collections.create/update/delete()` or the web app for schema changes -- because collections define the extraction schema and ad-hoc creation risks inconsistency.
@@ -265,7 +298,7 @@ Building a generation prompt?               → smartGuidelines() + smartDigest(
 
 ```typescript
 // Semantic search — find specific facts (recommended)
-const results = await client.memory.smartRecall({
+const results = await client.v1_1.memory.retrieve({
     query: 'what pain points did this contact mention?',
     email: 'sarah.chen@initech.com',
     type: 'Contact',
@@ -275,7 +308,7 @@ const results = await client.memory.smartRecall({
 });
 
 // Fast recall — skip reflection, ~500ms response
-const fast = await client.memory.smartRecall({
+const fast = await client.v1_1.memory.retrieve({
     query: 'what do we know about this contact?',
     email: 'sarah.chen@initech.com',
     type: 'Contact',
@@ -283,7 +316,7 @@ const fast = await client.memory.smartRecall({
 });
 
 // Entity digest — compiled context for one person
-const digest = await client.memory.smartDigest({
+const digest = await client.v1_1.memory.smartDigest({
     email: 'sarah.chen@initech.com',
     type: 'Contact',
     token_budget: 2000,
@@ -293,7 +326,7 @@ const digest = await client.memory.smartDigest({
 // digest.data.compiledContext → ready-to-inject markdown
 
 // Entity digest via custom key (e.g. LinkedIn URL, student number)
-const linkedinDigest = await client.memory.smartDigest({
+const linkedinDigest = await client.v1_1.memory.smartDigest({
     customKeyName: 'linkedin_url',
     customKeyValue: 'sarah-chen-12345',
     token_budget: 2000,
@@ -301,7 +334,7 @@ const linkedinDigest = await client.memory.smartDigest({
 // Works with any customKeyName used during memorize
 
 // Filtered export — find all enterprise contacts
-const exported = await client.memory.search({
+const exported = await client.v1_1.memory.search({
     type: 'Contact',
     returnRecords: true,
     pageSize: 50,
@@ -316,13 +349,13 @@ const exported = await client.memory.search({
 // --- Advanced search patterns ---
 
 // Key-only lookup: find by CRM key without property conditions
-const byEmail = await client.memory.search({
+const byEmail = await client.v1_1.memory.search({
     email: 'sarah@acme.com',
     returnRecords: true,
 });
 
 // Custom key lookup
-const student = await client.memory.search({
+const student = await client.v1_1.memory.search({
     type: 'Student',
     customKeyName: 'studentNumber',
     customKeyValue: 'S-2024-1234',
@@ -330,14 +363,14 @@ const student = await client.memory.search({
 });
 
 // Secondary key: find Students by email (even though primary key is studentNumber)
-const studentByEmail = await client.memory.search({
+const studentByEmail = await client.v1_1.memory.search({
     type: 'Student',
     email: 'alice@university.edu',
     returnRecords: true,
 });
 
 // Cross-type: find ALL records with this email across ALL entity types
-const allTypes = await client.memory.search({
+const allTypes = await client.v1_1.memory.search({
     email: 'john@acme.com',
     returnRecords: true,
 });
@@ -356,7 +389,7 @@ const allTypes = await client.memory.search({
 
 **When you don't have the primary key** but have a stored property value (like a LinkedIn URL), use a property condition filter instead:
 ```typescript
-const byLinkedIn = await client.memory.search({
+const byLinkedIn = await client.v1_1.memory.search({
     type: 'Contact',
     returnRecords: true,
     groups: [{ conditions: [{ property: 'linkedin_url', operator: 'EQ', value: 'https://linkedin.com/in/johndoe' }] }],
@@ -380,8 +413,8 @@ Memory gives you everything about ONE entity. But agents often need context from
 ```typescript
 // When working on a contact, also pull their company context
 const [contactDigest, companyDigest] = await Promise.all([
-    client.memory.smartDigest({ email: 'sarah@acme.com', type: 'Contact', token_budget: 1500 }),
-    client.memory.smartDigest({ website_url: 'https://acme.com', type: 'Company', token_budget: 1000 }),
+    client.v1_1.memory.smartDigest({ email: 'sarah@acme.com', type: 'Contact', token_budget: 1500 }),
+    client.v1_1.memory.smartDigest({ website_url: 'https://acme.com', type: 'Company', token_budget: 1000 }),
 ]);
 // Now you know Sarah AND you know Acme — funding stage, tech stack, team size, etc.
 ```
@@ -411,7 +444,7 @@ async function assembleContext(email: string, task: string): Promise<string> {
     }
 
     // 2. Entity context — everything about this person
-    const digest = await client.memory.smartDigest({
+    const digest = await client.v1_1.memory.smartDigest({
         email,
         type: 'Contact',
         token_budget: 2000,
@@ -423,7 +456,7 @@ async function assembleContext(email: string, task: string): Promise<string> {
     }
 
     // 3. Task-specific facts — semantic search
-    const recalled = await client.memory.smartRecall({
+    const recalled = await client.v1_1.memory.retrieve({
         query: task,
         email,
         type: 'Contact',
@@ -484,18 +517,18 @@ Use these operations when the developer needs to directly modify, delete, or que
 | Delete with recovery option | `delete` / `delete-record` (soft-delete, 30-day recovery) |
 | Undo a deletion | `cancel-deletion` |
 
-### Public API Endpoints (`/api/v1/memory/...`)
+### Public API Endpoints (`/api/v1.1/memory/manage/...`)
 
-All require `sk_live_` API key.
+All require `sk_live_` API key. v1.1 uses REST verbs on a `/memory/manage/:id` collection. (v1 `POST /memory/update` etc. still work but emit `Deprecation` / `Sunset: 2026-07-15` headers.)
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /memory/update` | Update single property or freeform memory |
-| `POST /memory/bulk-update` | Update multiple properties |
-| `POST /memory/delete` | Soft-delete memories |
-| `POST /memory/delete-record` | Soft-delete all memories for a record |
-| `POST /memory/cancel-deletion` | Cancel pending deletion (30-day window) |
-| `POST /memory/property-history` | Query property change history |
+| `PATCH /memory/manage/:id` | Update single property or freeform memory |
+| `PATCH /memory/manage` | Bulk-update multiple properties on one record |
+| `DELETE /memory/manage/:id` | Soft-delete a memory |
+| `DELETE /memory/manage` | Soft-delete all memories for a record (pass identifier in body) |
+| `POST /memory/manage/cancel-deletion` | Cancel pending deletion (30-day window) |
+| `GET /memory/manage/:id/history` | Query property change history |
 | `POST /memory/query-properties` | LLM-powered structured search |
 | `POST /memory/filter-by-property` | Deterministic property filter (no LLM, no token cost) |
 
@@ -504,7 +537,7 @@ All require `sk_live_` API key.
 Pass `expectedVersion` on update/bulk-update to prevent concurrent overwrites:
 
 ```typescript
-await client.memory.update({
+await client.v1_1.memory.manage.update({
   recordId: 'rec-123',
   propertyName: 'deal_stage',
   propertyValue: 'negotiation',
@@ -518,19 +551,19 @@ Mutate array-typed properties without read-modify-write races:
 
 ```typescript
 // Push items (with dedup)
-await client.memory.update({
+await client.v1_1.memory.manage.update({
   recordId, propertyName: 'tags',
   arrayPush: { items: ['vip'], unique: true },
 });
 
 // Remove items by value
-await client.memory.update({
+await client.v1_1.memory.manage.update({
   recordId, propertyName: 'tags',
   arrayRemove: { items: ['trial'] },
 });
 
 // Patch matching objects in-place
-await client.memory.update({
+await client.v1_1.memory.manage.update({
   recordId, propertyName: 'tasks',
   arrayPatch: { match: { taskId: 'abc' }, set: { status: 'done' } },
 });
@@ -541,7 +574,7 @@ await client.memory.update({
 Deterministic structured filter — no tokens, no latency:
 
 ```typescript
-const result = await client.memory.filterByProperty({
+const result = await client.v1_1.memory.filterByProperty({
   conditions: [
     { propertyName: 'status', operator: 'equals', value: 'active' },
     { propertyName: 'score', operator: 'gt', value: 50 },
@@ -559,7 +592,7 @@ Operators: `equals`, `notEquals`, `contains`, `gt`, `lt`, `gte`, `lte`, `exists`
 
 ```typescript
 // Update a single property
-const result = await client.memory.update({
+const result = await client.v1_1.memory.manage.update({
   recordId: 'rec-123',
   type: 'contact',
   propertyName: 'company_name',
@@ -571,7 +604,7 @@ const result = await client.memory.update({
 ### Bulk Update
 
 ```typescript
-const result = await client.memory.bulkUpdate({
+const result = await client.v1_1.memory.manage.bulkUpdate({
   recordId: 'rec-123',
   type: 'contact',
   updates: [
@@ -586,7 +619,7 @@ const result = await client.memory.bulkUpdate({
 ### Property History
 
 ```typescript
-const history = await client.memory.propertyHistory({
+const history = await client.v1_1.memory.manage.history({
   recordId: 'rec-123',
   propertyName: 'deal_stage',  // optional — omit for all properties
   limit: 20,
@@ -597,7 +630,7 @@ const history = await client.memory.propertyHistory({
 ### Query Properties (LLM-powered)
 
 ```typescript
-const matches = await client.memory.queryProperties({
+const matches = await client.v1_1.memory.queryProperties({
   propertyName: 'pain_points',
   query: 'concerns about compliance or security',
   type: 'Contact',
@@ -612,13 +645,13 @@ All deletes are soft-deletes with a 30-day recovery window. During this window, 
 
 ```typescript
 // Soft-delete a record
-await client.memory.deleteRecord({
+await client.v1_1.memory.manage.deleteRecord({
   recordId: 'rec-123',
   type: 'contact',
 });
 
 // Undo within 30 days
-await client.memory.cancelDeletion({
+await client.v1_1.memory.manage.cancelDeletion({
   recordId: 'rec-123',
   type: 'contact',
 });
@@ -634,7 +667,7 @@ All mutations fire webhook events: `memory.property.updated`, `memory.properties
 
 **When to use:** User wants to find lookalikes, related records, "find more like this", or records connected through shared properties/memories.
 
-**SDK:** `client.memory.similar({ seed: { email }, dimensions, topK })`
+**SDK:** `client.v1_1.memory.similar({ seed: { email }, dimensions, topK })`
 **MCP:** `memory_find_similar`
 **CLI:** `personize memory similar --email <email>`
 
@@ -653,7 +686,7 @@ All mutations fire webhook events: `memory.property.updated`, `memory.properties
 **Example:**
 ```typescript
 // Find 10 records most similar to john@acme.com
-const result = await client.memory.similar({
+const result = await client.v1_1.memory.similar({
     seed: { email: 'john@acme.com' },
     topK: 10,
     dimensions: 'hybrid',
@@ -672,7 +705,7 @@ See `reference/similar.md` for full parameter and response reference.
 
 **When to use:** User wants to bucket, tier, or segment records relative to a seed record or text description.
 
-**SDK:** `client.memory.segment({ seed: { email } | { text }, maxPerTier })`
+**SDK:** `client.v1_1.memory.segment({ seed: { email } | { text }, maxPerTier })`
 **MCP:** `memory_segment`
 **CLI:** `personize memory segment --email <email>` or `--text "description"`
 
@@ -688,7 +721,7 @@ See `reference/similar.md` for full parameter and response reference.
 **Example:**
 ```typescript
 // Segment all records relative to an ICP description
-const result = await client.memory.segment({
+const result = await client.v1_1.memory.segment({
     seed: { text: 'Enterprise SaaS CTO interested in AI automation' },
     maxPerTier: 20,
 });
@@ -710,64 +743,89 @@ import { Personize } from '@personize/sdk';
 const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 ```
 
-### Memorize Methods
+### Memorize Methods (v1.1)
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `memory.memorize(opts)` | `POST /api/v1/memorize` | Store single item with AI extraction |
-| `memory.memorizeBatch(opts)` | `POST /api/v1/batch-memorize` | Batch sync with per-property `extractMemories` control |
+| `v1_1.memory.save(opts)` | `POST /api/v1.1/memory/save` | Store single item with AI extraction. Pass `shape: 'shortform' \| 'document' \| 'freeform'`. |
+| `v1_1.memory.saveBatch(opts)` | `POST /api/v1.1/memory/save/batch` | Small-batch sync (up to ~100 records) |
+| `v1_1.memory.import(opts)` | `POST /api/v1.1/memory/import` | ETL bulk ingest with per-property `extract` control |
 
-### Recall Methods
+### Recall Methods (v1.1)
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `memory.smartRecall(opts)` | `POST /api/v1/smart-recall` | Semantic search with reflection + answer gen (recommended) |
-| `memory.recall(opts)` | `POST /api/v1/recall` | Direct DynamoDB lookup — properties + freeform memories (`type` required, no AI) |
-| `memory.smartDigest(opts)` | `POST /api/v1/smart-memory-digest` | Compiled entity context (properties + memories) |
-| `memory.search(opts)` | `POST /api/v1/search` | Filter and export records |
-| `ai.smartGuidelines(opts)` | `POST /api/v1/ai/smart-guidelines` | Fetch governance variables by topic |
+| `v1_1.memory.retrieve(opts)` | `POST /api/v1.1/memory/retrieve` | Semantic search with reflection + answer gen (recommended). MCP: `smartRecall`. |
+| `v1_1.memory.smartDigest(opts)` | `POST /api/v1.1/memory/digest` | Compiled entity context (properties + memories) |
+| `v1_1.memory.search(opts)` | `POST /api/v1.1/memory/search` | Filter and export records |
+| `ai.smartGuidelines(opts)` | `POST /api/v1.1/ai/smart-guidelines` | Fetch governance variables by topic |
 
 ### Similarity Methods
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `memory.similar(opts)` | `POST /api/v1/similar` | Find records similar to a seed record |
-| `memory.segment(opts)` | `POST /api/v1/segment` | Bucket all records into similarity tiers |
+| `v1_1.memory.similar(opts)` | `POST /api/v1.1/memory/similar` | Find records similar to a seed record |
+| `v1_1.memory.segment(opts)` | `POST /api/v1.1/memory/segment` | Bucket all records into similarity tiers |
 
-### CRUD Methods
+### CRUD Methods (v1.1 — REST verbs on `/memory/manage/*`)
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `memory.update(opts)` | `POST /api/v1/memory/update` | Update single property or freeform memory. Supports `expectedVersion` + array ops |
-| `memory.bulkUpdate(opts)` | `POST /api/v1/memory/bulk-update` | Update multiple properties on a record |
-| `memory.delete(opts)` | `POST /api/v1/memory/delete` | Soft-delete memories (30-day recovery) |
-| `memory.deleteRecord(opts)` | `POST /api/v1/memory/delete-record` | Soft-delete all memories for a record |
-| `memory.cancelDeletion(opts)` | `POST /api/v1/memory/cancel-deletion` | Cancel pending deletion within 30-day window |
-| `memory.propertyHistory(opts)` | `POST /api/v1/memory/property-history` | Query property change history |
-| `memory.queryProperties(opts)` | `POST /api/v1/memory/query-properties` | LLM-powered structured search across property values |
-| `memory.filterByProperty(opts)` | `POST /api/v1/memory/filter-by-property` | Deterministic property filter (no LLM, no token cost) |
+| `v1_1.memory.manage.update(id, opts)` | `PATCH /api/v1.1/memory/manage/:id` | Update single property or freeform memory. Supports `expectedVersion` + array ops |
+| `v1_1.memory.manage.bulkUpdate(opts)` | `PATCH /api/v1.1/memory/manage` | Update multiple properties on a record |
+| `v1_1.memory.manage.delete(id)` | `DELETE /api/v1.1/memory/manage/:id` | Soft-delete a memory (30-day recovery) |
+| `v1_1.memory.manage.deleteRecord(opts)` | `DELETE /api/v1.1/memory/manage` | Soft-delete all memories for a record |
+| `v1_1.memory.manage.cancelDeletion(opts)` | `POST /api/v1.1/memory/manage/cancel-deletion` | Cancel pending deletion within 30-day window |
+| `v1_1.memory.manage.history(id)` | `GET /api/v1.1/memory/manage/:id/history` | Query property change history |
+| `v1_1.memory.queryProperties(opts)` | `POST /api/v1.1/memory/query-properties` | LLM-powered structured search across property values |
+| `v1_1.memory.filterByProperty(opts)` | `POST /api/v1.1/memory/filter-by-property` | Deterministic property filter (no LLM, no token cost) |
 
-### Key Type Signatures
+### Doc-Type Registry (v1.1, new)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `v1_1.context.doctypes.list()` | `GET /api/v1.1/context/manage/doc-types` | List PG-backed doc-type registry |
+| `v1_1.context.doctypes.create(opts)` | `POST /api/v1.1/context/manage/doc-types` | Create a custom doc type (admin) |
+| `v1_1.context.doctypes.update(id, opts)` | `PATCH /api/v1.1/context/manage/doc-types/:id` | Update a doc type (admin) |
+| `v1_1.context.doctypes.delete(id)` | `DELETE /api/v1.1/context/manage/doc-types/:id` | Delete a doc type (admin) |
+
+### Async Bulk Doc Save (v1.1, new)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `v1_1.context.save.batch(opts)` | `POST /api/v1.1/context/save/batch` | Submit a batch of docs for async save (1-24h SLA). Returns `{ jobId }`. |
+| `v1_1.context.save.batch.status(jobId)` | `GET /api/v1.1/context/save/batch/:jobId` | Poll job status (or subscribe to the webhook the job fires on completion) |
+
+> **v1 endpoints still respond** with RFC 8594 `Deprecation: true` + `Sunset: 2026-07-15` headers. Migrate when convenient; the table above is the canonical surface going forward.
+
+### Key Type Signatures (v1.1)
 
 ```typescript
-// memorize() — single item
-interface MemorizeProOptions {
-    content: string;           // The text to memorize
+// memory.save() — single item
+interface MemorySaveOptions {
+    shape?: 'shortform' | 'document' | 'freeform'; // default: 'shortform'
+    content: string;           // The text to save
     speaker?: string;          // Who said/wrote it
     timestamp?: string;        // When it happened
     email?: string;            // Match to contact by email
     website_url?: string;      // Match to company by website
     record_id?: string;        // Match to record by ID
-    enhanced?: boolean;        // Enable AI extraction (default: false)
     tags?: string[];           // Categorization tags
-    max_properties?: number;   // Max properties to extract
-    schema?: Record<string, unknown>; // Extraction schema hint
+    max_properties?: number;   // Max properties to extract (shortform only)
+    schema?: Record<string, unknown>; // Extraction schema hint (shortform only)
     extractionPrompt?: string;       // Guide what extraction focuses on (max 500 chars)
     actionId?: string;         // Target collection ID
+
+    // Required when shape === 'document'
+    type?: 'guideline' | 'playbook' | 'reference' | 'template' | 'brief';
+    name?: string;             // Doc display name (shape: 'document')
+
+    // NOTE: skipDualWrite, skipStorage, skipPropertySelection are REJECTED in v1.1.
+    // Use `shape` to control extraction behavior instead.
 }
 
-// memorizeBatch() — batch sync
-interface BatchMemorizeOptions {
+// memory.import() — ETL bulk sync
+interface ImportOptions {
     source: string;            // Source system label ('Hubspot', 'Salesforce')
     mapping: {
         entityType: string;    // 'contact', 'company'
@@ -778,7 +836,7 @@ interface BatchMemorizeOptions {
             sourceField: string;       // Source field name in row data
             collectionId: string;      // Target collection ID
             collectionName: string;    // Target collection name
-            extractMemories?: boolean; // AI extraction for this property
+            extract?: boolean;         // AI extraction for this property (v1.1 name; v1 was `extractMemories`)
         }>;
     };
     rows: Record<string, unknown>[]; // Source data rows
@@ -962,10 +1020,9 @@ await client.entityTypes.update('act_xxx', { status: 'Active' });
 After every SEND decision, Signal memorizes what was sent:
 
 ```typescript
-await client.memory.memorize({
+await client.v1_1.memory.save({
     content: `[SIGNAL] Sent "${subject}" via ${channel} (score: ${score}). ${reasoning}`,
     email,
-    enhanced: true,
     tags: ['signal:sent', `signal:channel:${channel}`, `signal:type:${eventType}`],
 });
 ```
@@ -984,7 +1041,7 @@ On the **next evaluation** for the same entity, the engine recalls recent `signa
 
 ```typescript
 // What notifications has Signal sent to this contact?
-const sent = await client.memory.smartRecall({
+const sent = await client.v1_1.memory.retrieve({
     query: 'notifications sent by signal',
     email: 'jane@acme.com',
     type: 'Contact',
@@ -993,7 +1050,7 @@ const sent = await client.memory.smartRecall({
 });
 
 // What's pending in the digest queue?
-const pending = await client.memory.smartRecall({
+const pending = await client.v1_1.memory.retrieve({
     query: 'deferred notifications pending digest',
     email: 'jane@acme.com',
     type: 'Contact',

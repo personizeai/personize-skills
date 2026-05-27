@@ -9,7 +9,7 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 
 ## Get Record Properties
 
-**SDK:** `client.memory.properties(opts)` | **API:** `POST /api/v1/properties`
+**SDK:** `client.v1_1.memory.filterByProperty(opts)` | **API:** `POST /api/v1.1/memory/filter-by-property`
 
 Fetches property values for a record, joined with collection schema descriptions and the `update` flag.
 
@@ -37,7 +37,7 @@ Each returned property includes:
 - `collectionName` — which collection the property belongs to
 
 ```typescript
-const result = await client.memory.properties({
+const result = await client.v1_1.memory.filterByProperty({
   email: 'john@acme.com',
   propertyNames: ['Tasks', 'Lifecycle Stage'],
   nonEmpty: true,
@@ -50,7 +50,7 @@ for (const prop of result.data.properties) {
 
 ## Update Property
 
-**SDK:** `client.memory.update(opts)` | **API:** `POST /api/v1/memory/update`
+**SDK:** `client.v1_1.memory.manage.update(opts)` | **API:** `PATCH /api/v1.1/memory/manage/:id`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -72,7 +72,7 @@ for (const prop of result.data.properties) {
 
 ```typescript
 // SDK example — update property
-await client.memory.update({
+await client.v1_1.memory.manage.update({
   recordId: 'rec-123',
   propertyName: 'deal_stage',
   propertyValue: 'negotiation',
@@ -80,18 +80,18 @@ await client.memory.update({
 });
 
 // SDK example — array push with dedup
-await client.memory.update({
+await client.v1_1.memory.manage.update({
   recordId: 'rec-123',
   propertyName: 'tags',
   arrayPush: { items: ['vip', 'enterprise'], unique: true },
 });
 ```
 
-> **Change history is automatic.** Every property update writes a searchable change summary to the vector store. Use `client.memory.smartRecall({ query: "what changed recently?", prefer_recent: true, recency_half_life_days: 7 })` to find recent changes.
+> **Change history is automatic.** Every property update writes a searchable change summary to the vector store. Use `client.v1_1.memory.retrieve({ query: "what changed recently?", prefer_recent: true, recency_half_life_days: 7 })` to find recent changes.
 
 ## Update Freeform Memory
 
-**SDK:** `client.memory.update(opts)` (with `memoryId` + `text`) | **API:** `POST /api/v1/memory/update`
+**SDK:** `client.v1_1.memory.manage.update(opts)` (with `memoryId` + `text`) | **API:** `PATCH /api/v1.1/memory/manage/:id`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -101,7 +101,7 @@ await client.memory.update({
 
 ```typescript
 // SDK example — edit freeform memory text
-await client.memory.update({
+await client.v1_1.memory.manage.update({
   recordId: 'rec-123',
   memoryId: 'mem-uuid-456',
   text: 'Updated memory content here',
@@ -110,7 +110,7 @@ await client.memory.update({
 
 ## Bulk Update
 
-**SDK:** `client.memory.bulkUpdate(opts)` | **API:** `POST /api/v1/memory/bulk-update`
+**SDK:** `client.v1_1.memory.manage.bulkUpdate(opts)` | **API:** `PATCH /api/v1.1/memory/manage`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -121,7 +121,7 @@ await client.memory.update({
 
 ```typescript
 // SDK example — bulk update
-await client.memory.bulkUpdate({
+await client.v1_1.memory.manage.bulkUpdate({
   recordId: 'rec-123',
   updates: [
     { propertyName: 'company_name', propertyValue: 'Acme Corp' },
@@ -133,7 +133,7 @@ await client.memory.bulkUpdate({
 
 ## Property History
 
-**SDK:** `client.memory.propertyHistory(opts)` | **API:** `POST /api/v1/memory/property-history`
+**SDK:** `client.v1_1.memory.manage.history(opts)` | **API:** `GET /api/v1.1/memory/manage/:id/history`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -146,7 +146,7 @@ await client.memory.bulkUpdate({
 
 ```typescript
 // SDK example — property history
-const history = await client.memory.propertyHistory({
+const history = await client.v1_1.memory.manage.history({
   recordId: 'rec-123',
   propertyName: 'deal_stage',
   limit: 20,
@@ -156,7 +156,7 @@ const history = await client.memory.propertyHistory({
 
 ## Query Properties (LLM-powered)
 
-**SDK:** `client.memory.queryProperties(opts)` | **API:** `POST /api/v1/memory/query-properties`
+**SDK:** `client.v1_1.memory.queryProperties(opts)` | **API:** `POST /api/v1.1/memory/query-properties`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -168,7 +168,7 @@ const history = await client.memory.propertyHistory({
 
 ```typescript
 // SDK example — query properties with LLM
-const matches = await client.memory.queryProperties({
+const matches = await client.v1_1.memory.queryProperties({
   propertyName: 'pain_points',
   query: 'concerns about compliance or security',
   type: 'Contact',
@@ -178,13 +178,13 @@ const matches = await client.memory.queryProperties({
 
 ## Delete (Soft-Delete)
 
-**SDK:** `client.memory.delete(opts)` / `client.memory.deleteRecord(opts)` | **API:** `POST /api/v1/memory/delete` / `POST /api/v1/memory/delete-record`
+**SDK:** `client.memory.delete(opts)` / `client.v1_1.memory.manage.deleteRecord(opts)` | **API:** `DELETE /api/v1.1/memory/manage/:id` / `DELETE /api/v1.1/memory/manage/:id-record`
 
 30-day recovery window. Items marked with `pendingDeletion: true`.
 
 ```typescript
 // SDK example — soft-delete a record
-await client.memory.deleteRecord({ recordId: 'rec-123', type: 'contact' });
+await client.v1_1.memory.manage.deleteRecord({ recordId: 'rec-123', type: 'contact' });
 
 // SDK example — delete specific memories
 await client.memory.delete({ ids: ['mem-uuid-1', 'mem-uuid-2'] });
@@ -192,7 +192,7 @@ await client.memory.delete({ ids: ['mem-uuid-1', 'mem-uuid-2'] });
 
 ## Cancel Deletion
 
-**SDK:** `client.memory.cancelDeletion(opts)` | **API:** `POST /api/v1/memory/cancel-deletion`
+**SDK:** `client.v1_1.memory.manage.cancelDeletion(opts)` | **API:** `POST /api/v1.1/memory/manage/cancel-deletion`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -203,12 +203,12 @@ Returns 409 if 30-day window has expired and data is permanently deleted.
 
 ```typescript
 // SDK example — cancel deletion
-await client.memory.cancelDeletion({ recordId: 'rec-123', type: 'contact' });
+await client.v1_1.memory.manage.cancelDeletion({ recordId: 'rec-123', type: 'contact' });
 ```
 
 ## Filter By Property (No LLM)
 
-**SDK:** `client.memory.filterByProperty(opts)` | **API:** `POST /api/v1/memory/filter-by-property`
+**SDK:** `client.v1_1.memory.filterByProperty(opts)` | **API:** `POST /api/v1.1/memory/filter-by-property`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -224,7 +224,7 @@ await client.memory.cancelDeletion({ recordId: 'rec-123', type: 'contact' });
 
 ```typescript
 // SDK example — filter by property
-const result = await client.memory.filterByProperty({
+const result = await client.v1_1.memory.filterByProperty({
   conditions: [
     { propertyName: 'status', operator: 'equals', value: 'active' },
     { propertyName: 'score', operator: 'gt', value: 50 },

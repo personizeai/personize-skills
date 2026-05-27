@@ -22,14 +22,14 @@ How each memory endpoint behaves when you pass different combinations of `email`
 
 | Endpoint | Route | Mechanism | Required |
 |----------|-------|-----------|----------|
-| `memorize` | `POST /api/v1/memorize` | AI extraction → Lambda → vector store + database write | `content` + at least one CRM key |
-| `recall` | `POST /api/v1/recall` | DynamoDB Snapshot exact key lookup | `type` + at least one CRM key |
-| `smartRecall` | `POST /api/v1/smart-recall` | vector similarity search + reranking + reflection | `query` only |
-| `smartDigest` | `POST /api/v1/smart-memory-digest` | DynamoDB Snapshot + Freeform memories, token-budgeted | at least one CRM key |
+| `memorize` | `POST /api/v1.1/memory/save` | AI extraction → Lambda → vector store + database write | `content` + at least one CRM key |
+| `recall` | `GET /api/v1.1/memory/manage/:id (or smartRecall)` | DynamoDB Snapshot exact key lookup | `type` + at least one CRM key |
+| `smartRecall` | `POST /api/v1.1/memory/retrieve` | vector similarity search + reranking + reflection | `query` only |
+| `smartDigest` | `POST /api/v1.1/memory/digest` | DynamoDB Snapshot + Freeform memories, token-budgeted | at least one CRM key |
 
 ---
 
-## memorize — `POST /api/v1/memorize`
+## memorize — `POST /api/v1.1/memory/save`
 
 **What it does:** Runs AI extraction on `content`, writes structured property values to the vector store + database, and stores free-form memories.
 
@@ -93,7 +93,7 @@ How each memory endpoint behaves when you pass different combinations of `email`
 
 ---
 
-## recall — `POST /api/v1/recall`
+## recall — `GET /api/v1.1/memory/manage/:id (or smartRecall)`
 
 **What it does:** Direct DynamoDB Snapshot key lookup. Constructs composite key `{type}#{recordId}` and does an exact `GetItem`. No vector search. Also fetches from Freeform memories table.
 
@@ -143,7 +143,7 @@ How each memory endpoint behaves when you pass different combinations of `email`
 
 ---
 
-## smartRecall — `POST /api/v1/smart-recall`
+## smartRecall — `POST /api/v1.1/memory/retrieve`
 
 **What it does:** Embeds `query`, runs vector similarity search, applies filters, reranks, optionally runs reflection loops. CRM keys scope the search; without them it searches all org data.
 
@@ -209,7 +209,7 @@ How each memory endpoint behaves when you pass different combinations of `email`
 
 ---
 
-## smartDigest — `POST /api/v1/smart-memory-digest`
+## smartDigest — `POST /api/v1.1/memory/digest`
 
 **What it does:** Fetches the DynamoDB Snapshot (structured properties) + Freeform memories table entries for an entity, compiles them into a token-budgeted markdown block ready for prompt injection.
 
@@ -289,13 +289,13 @@ This means:
 ### Contact lookup
 ```typescript
 // Discover: find relevant memories about any contact
-await client.memory.smartRecall({
+await client.v1_1.memory.retrieve({
     query: "background on John Charter",
     email: "john@acme.com",   // scopes to this contact
 });
 
 // Fetch full context before outreach
-await client.memory.smartDigest({
+await client.v1_1.memory.smartDigest({
     email: "john@acme.com",
     type: "Contact",
     token_budget: 2000,
@@ -311,7 +311,7 @@ await client.memory.recall({
 ### Org-wide discovery
 ```typescript
 // Find anything across all contacts/companies
-await client.memory.smartRecall({
+await client.v1_1.memory.retrieve({
     query: "people we met at SaaStr 2025",
     // no CRM keys = full org search
 });
@@ -320,7 +320,7 @@ await client.memory.smartRecall({
 ### Store a memory
 ```typescript
 // Always provide at least one CRM key
-await client.memory.memorize({
+await client.v1_1.memory.save({
     content: "John Charter is the VP of Sales at TechFlow. Met at SaaStr.",
     email: "john@acme.com",
     type: "Contact",

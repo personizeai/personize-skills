@@ -1,6 +1,6 @@
 ---
 name: personize
-description: "Complete Personize platform reference -- memory, governance, analytics, notifications, organizations, MCP servers, destinations, and more. Use this skill for ANY Personize-related task: storing/retrieving knowledge, managing guidelines, monitoring usage, sending notifications, configuring the platform, or building AI agent pipelines."
+description: "Complete Personize platform reference -- memory, governance, analytics, notifications, organizations, MCP servers, destinations, schedules, CRM passthrough (HubSpot/Salesforce), and more. Use this skill for ANY Personize-related task: storing/retrieving knowledge, managing guidelines, monitoring usage, sending notifications, configuring the platform, building AI agent pipelines, scheduling recurring prompts or notifications (cron/rate/one-time), or calling HubSpot/Salesforce REST APIs directly via the org's managed connection. Also triggers when users want to automate a recurring prompt (e.g. 'every morning, score this lead'), set a one-time reminder, manage HubSpot or Salesforce data (contacts, deals, tasks, notes, SOQL) without managing OAuth credentials, or list/edit/cancel existing schedules via the SDK, REST API, or schedule_* / hubspot.* / salesforce.* MCP tools."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "1.0", "homepage": "https://personize.ai"}
@@ -226,6 +226,7 @@ const [guidelines, digest, recall] = await Promise.all([
 | Delete guideline | `client.guidelines.delete(id)` | `guideline_delete` | Free |
 | Guideline history | `client.guidelines.history(id)` | -- | Free |
 | Smart Guidelines | `client.ai.smartGuidelines(opts)` | `ai_smart_guidelines` | 0.1-0.5 cr |
+| **Retrieve (new canonical)** | **`client.context.retrieve(opts)`** | **`context_retrieve`** | **0.1-0.5 cr** |
 | Smart Update | `client.context.save(opts)` | `context_save` | Tiered |
 | List attachments | `client.guidelines.listAttachments(id)` | `guideline_attachment_list` | Free |
 | Read attachment | `client.guidelines.getAttachmentContent(id, attachId)` | `guideline_attachment_read` | Free |
@@ -238,6 +239,30 @@ const [guidelines, digest, recall] = await Promise.all([
 |------|-----|---------|------|------|
 | `fast` | Embedding-only routing | ~200ms | 0.1 cr | Real-time agents, loops, high-volume |
 | `deep` | LLM selects + composes | ~3s | 0.5 cr | First call, complex queries |
+
+### `context.retrieve` — Match Modes
+
+`client.context.retrieve()` / `context_retrieve` (MCP) / `POST /api/v1/context/retrieve` supports a `match` parameter:
+
+| `match` | Behavior | When |
+|---------|----------|------|
+| `balanced` (default) | Standard scoring, flat result list | Most cases |
+| `strict` | Abstains if confidence is low; `alwaysOn` docs always included | Auto-injecting guidelines into system prompts |
+| `broad` | Hierarchical results (doc → sections), high recall, respects `topK` | Research, surfacing related content |
+
+```typescript
+// Strict — safe for auto-injection (returns [] if nothing confident enough)
+await client.context.retrieve({ message: 'cold email tone', match: 'strict' });
+
+// Broad — hierarchical, high recall, limit to 30 sections
+await client.context.retrieve({ message: 'email standards', match: 'broad', topK: 30 });
+
+// autoInferFilters — LLM classifies the query and injects types/tags automatically (~5s extra)
+await client.context.retrieve({ message: 'anything relevant to our onboarding', autoInferFilters: true });
+
+// Tag filtering with tagMode
+await client.context.retrieve({ message: 'outreach email', tags: ['voice:outreach', 'playbook:sales'], tagMode: 'all' });
+```
 
 ### Update Modes
 
@@ -345,6 +370,12 @@ await client.notifications.send({
 | RAG delete docs | `client.rag.deleteDocuments(opts)` | -- | Free |
 | RAG delete project | `client.rag.deleteProject(opts)` | -- | Free |
 | Evaluate memorization | `client.evaluate.memorizationAccuracy(opts)` | -- | Tiered |
+| Schedule recurring/one-time task | `client.schedules.create(opts)` | `schedule_create` | Free (fires cost ~5cr each) |
+| List schedules | `client.schedules.list({recordId?})` | `schedule_list` | Free |
+| Get schedule | `client.schedules.get(id)` | `schedule_get` | Free |
+| Update / pause schedule | `client.schedules.update(id, patch)` | `schedule_update` | Free |
+| Delete schedule | `client.schedules.delete(id)` | `schedule_delete` | Free |
+| List schedule executions | `client.schedules.executions(id)` | `schedule_executions` | Free |
 
 ### Generation Tiers (Responses, Chat Completions, Prompt)
 
@@ -356,16 +387,27 @@ await client.notifications.send({
 
 ### BYOK (Bring Your Own Key)
 
-Supported providers: `openai`, `anthropic`, `google`, `deepseek`, `xai`, `openrouter`.
+Supported providers: `openai`, `anthropic`, `google`, `deepseek`, `xai`, `openrouter`, **`bedrock`**.
 
 ```typescript
+// Standard BYOK — your own API key
 const result = await client.responses.create({
     model: 'claude-sonnet-4-20250514',
     provider: 'anthropic',
     llm_api_key: process.env.ANTHROPIC_API_KEY,
     steps: [{ prompt: 'Analyze this sales pipeline...' }],
 });
+
+// Bedrock IAM — no API key needed when Bedrock is enabled in the deployment
+const result = await client.responses.create({
+    model: 'anthropic.claude-sonnet-4-20250514-v1:0',
+    provider: 'bedrock',
+    // no llm_api_key — uses the deployment's IAM role
+    steps: [{ prompt: 'Analyze this sales pipeline...' }],
+});
 ```
+
+**Bedrock notes:** `provider: 'bedrock'` requires Bedrock to be enabled in your Personize deployment (`BEDROCK_ENABLED`). On BYOC deployments this is configured via Terraform. The API returns HTTP 400 `bedrock_not_enabled` if Bedrock is not available in the deployment.
 
 ### Workflow: Multi-Step Orchestration with Responses
 
@@ -419,6 +461,35 @@ const result = await client.responses.create({
 });
 ```
 
+### Workflow: Schedule a Recurring Prompt
+
+Schedules run any `/api/v1/prompt` body on a cron, rate, or one-time trigger. Results flow out via wired destinations on `prompt.completed` — schedules don't return results synchronously.
+
+> **API path:** `/api/v1/schedules` (v1 only — v1.1 does not yet expose schedules). Tested against `@personize/sdk@0.12.0` and `@personize/cli@0.5.0`. The `/api/v1/*` sunset (2026-07-15) does not apply to schedules.
+
+```typescript
+await client.schedules.create({
+    name: `weekly-checkin-${recordId}`,        // kebab-case, unique per org
+    taskType: 'run_prompt',
+    taskPayload: {
+        prompt: 'Draft a friendly check-in email based on the latest activity.',
+        memorize: { recordId, type: 'Contact' },
+        governedMemory: true,
+        outputs: [{ name: 'subject' }, { name: 'body', required: true }],
+        tier: 'pro',
+    },
+    recurring: true,
+    pattern: 'cron(0 8 ? * TUE *)',            // or 'rate(1 day)'
+    timezone: 'UTC',
+});
+```
+
+Use `taskType: 'send_notification'` for in-app/email reminders (no LLM call). One-time fires set `runAt` instead of `pattern`. Filter `schedules.list({ recordId })` to find what's running for a contact.
+
+Common server errors: `SCHEDULE_CAP_EXCEEDED` (plan limit), `INSUFFICIENT_CREDITS` (can't fund 7 days of fires), `DUPLICATE_NAME` (names unique per-org).
+
+→ Full reference: `reference/schedules.md` (recurrence patterns, filters, recipes, gotchas).
+
 ### Workflow: OpenAI-Compatible Drop-In
 
 ```typescript
@@ -434,6 +505,54 @@ const result = await client.chat.completions.create({
 });
 console.log(result.choices[0].message.content);
 ```
+
+---
+
+## CRM Direct Access (HubSpot & Salesforce)
+
+Call HubSpot and Salesforce REST APIs directly via the org's Personize-managed OAuth connection — your scripts never see provider tokens. One Personize key, both CRMs.
+
+> **API path:** `/api/v1/crm/{provider}/passthrough` (v1 only — v1.1 does not yet expose CRM). Tested against `@personize/sdk@0.12.0` and `@personize/cli@0.5.0`. The `/api/v1/*` sunset (2026-07-15) does not apply to CRM passthrough.
+
+| What | SDK Method | Provider |
+|------|-----------|----------|
+| List/search/get contacts | `client.hubspot.contacts.list/get/searchByEmail/create/update()` | HubSpot |
+| List deals | `client.hubspot.deals.list()` | HubSpot |
+| Create task / note | `client.hubspot.tasks.create()`, `client.hubspot.notes.create()` | HubSpot |
+| Raw HubSpot REST call | `client.hubspot.request({ method, path, body })` | HubSpot |
+| SOQL query (auto-paginated) | `client.salesforce.queryAll<T>(soql)` | Salesforce |
+| SObject CRUD | `client.salesforce.sobject('Lead').create/get/update/upsert()` | Salesforce |
+| Raw Salesforce REST call | `client.salesforce.request({ method, path, body })` | Salesforce |
+
+```typescript
+// Sync recent HubSpot contacts → Personize memory
+const contacts = (await client.hubspot.contacts.list({ limit: 100 })).body.results;
+await client.memory.memorizeBatch({
+    records: contacts.map(c => ({
+        email: c.properties.email,
+        data: { text: `${c.properties.firstname} ${c.properties.lastname} at ${c.properties.company}` },
+    })),
+});
+
+// SOQL example
+for await (const acct of client.salesforce.queryAll<{ Id: string; Name: string }>(
+    'SELECT Id, Name FROM Account WHERE Industry = \'Technology\''
+)) {
+    console.log(acct.Name);
+}
+```
+
+**Setup:** Connect HubSpot/Salesforce once at **personize.ai → Integrations → Connect**. After that, the SDK key (`sk_live_...`) is all you need — Personize resolves and refreshes OAuth tokens server-side.
+
+**Path allowlist (SSRF protection):**
+- HubSpot: `/crm/`, `/marketing/`, `/cms/`, `/automation/`, `/files/`, `/communication-preferences/`, `/properties/`, `/owners/`, `/oauth/`
+- Salesforce: `/services/data/`, `/services/apexrest/`
+
+**Response shape:** Every call returns `{ status, headers, body, meta: { provider, durationMs, rateLimit? } }`. Personize always returns HTTP 200 when the upstream call completes — inspect `result.status` (typed wrappers) or `result.body.status` for the provider's outcome.
+
+**Common error codes:** `connection_not_found` (connect in dashboard), `connection_disconnected` (reconnect), `invalid_path` (use allowlisted path), `rate_limited` (back off, check `Retry-After`).
+
+→ Full reference (typed wrappers, CLI, delta sync, all error codes): `reference/crm-passthrough.md`.
 
 ---
 
@@ -501,6 +620,12 @@ Complete mapping of every MCP tool to its SDK method.
 | `notification_broadcast` | `client.notifications.broadcast()` | Notifications |
 | `notification_list` | `client.notifications.list()` | Notifications |
 | `notification_unread_count` | `client.notifications.unreadCount()` | Notifications |
+| `schedule_create` | `client.schedules.create()` | Scheduling |
+| `schedule_list` | `client.schedules.list()` | Scheduling |
+| `schedule_get` | `client.schedules.get()` | Scheduling |
+| `schedule_update` | `client.schedules.update()` | Scheduling |
+| `schedule_delete` | `client.schedules.delete()` | Scheduling |
+| `schedule_executions` | `client.schedules.executions()` | Scheduling |
 | `personize_context` | -- (bootstrapping) | System |
 | `personize_skill` | -- (skill loader) | System |
 | `list_organizations` | -- (org switcher) | System |

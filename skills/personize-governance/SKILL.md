@@ -101,12 +101,84 @@ The unified API rename introduces cleaner canonical routes alongside the stable 
 | `POST /context/retrieve` | `POST /ai/smart-docs` | AI-powered doc routing (type-filtered) |
 | `POST /context/save` | `POST /smart-update` | AI-powered doc evolution |
 | `GET/POST /context/manage` | `GET/POST /agentdocs` | List and create context docs |
-| `context_retrieve` (MCP) | `ai_smart_docs` | Canonical MCP tool name |
+| `context_retrieve` (MCP) | `ai_smart_docs` | Canonical MCP tool name. Supports `match='strict'` (high-confidence only, for guidelines you'll act on without verification) and `match='broad'` + `topK` (hierarchical doc->sections, for surfacing related content broadly). |
 | `context_save` (MCP) | `governance_smart_update` | Canonical MCP tool name |
 | `client.context.retrieve()` (SDK) | `client.ai.smartDocs()` | Canonical SDK method |
 | `client.context.save()` (SDK) | `client.guidelines.smartUpdate()` | Canonical SDK method |
 
 All old routes and tool names remain as stable aliases (`/agentdocs/*`, `agentdocs_*`, `client.agentdocs.*`).
+
+---
+
+### `context.retrieve` — Match Mode and topK
+
+The `match` parameter controls the precision-vs-breadth trade-off for every retrieval call:
+
+| `match` | Behavior | When to use |
+|---------|----------|-------------|
+| `balanced` (default) | Standard semantic scoring, flat result list | Most cases |
+| `strict` | Applies abstention: returns nothing if best candidate scores below confidence threshold. `alwaysOn` guidelines are always included regardless. | When you will act on the result without human review — e.g. injecting guidelines directly into a system prompt |
+| `broad` | Returns a hierarchical response grouped by document (doc → sections). Higher recall, lower precision. Respects `topK`. | Surfacing related content for summarization, research, or display |
+
+`topK` (integer 1–100, default 20): limits the number of sections returned. Only takes effect when `match: 'broad'`.
+
+**Other useful parameters:**
+- `autoInferFilters: true` — LLM classifies the query and injects types/tags automatically. Adds ~5s. Useful for open-ended queries; skip in agent hot paths.
+- `tagMode: 'any' | 'all'` — controls how multiple `tags` combine (default `any`).
+- `excludeTags: string[]` — exclude docs with these tags.
+- `minScore: number` — cosine similarity floor (0–1). Default ~0.4. Use 0.2 for broad exploration, 0.7 for strict relevance.
+- `tier: 'basic' | 'pro' | 'ultra'` — model tier for deep-mode routing (default `pro`).
+- `sessionId: string` — deduplicate content across sequential calls in the same session.
+
+```typescript
+// Default — balanced scoring, flat list
+const result = await client.context.retrieve({ message: 'cold email tone' });
+
+// Strict — abstains if nothing is confident enough (safe for auto-injection)
+const result = await client.context.retrieve({
+    message: 'cold email tone',
+    match: 'strict',
+});
+// result.data.selection will be [] if no guideline met the confidence bar
+// alwaysOn guidelines are still included regardless of score
+
+// Broad — hierarchical, high recall (good for surfacing related content)
+const result = await client.context.retrieve({
+    message: 'everything about our email standards',
+    match: 'broad',
+    topK: 30,  // return up to 30 sections across all matching docs
+});
+// result.data.selection[i].sections[] contains section-level content
+
+// autoInferFilters — LLM auto-classifies query intent and narrows types/tags
+const result = await client.context.retrieve({
+    message: 'anything about our onboarding process',
+    autoInferFilters: true,
+});
+
+// Tag filtering with tagMode
+const result = await client.context.retrieve({
+    message: 'outreach email standards',
+    tags: ['voice:outreach', 'playbook:sales'],
+    tagMode: 'all',  // both tags must match
+});
+```
+
+**REST / CLI equivalents:**
+```bash
+# CLI
+personize context-docs retrieve "cold email tone" --match strict
+personize context-docs retrieve "email standards" --match broad --top-k 30
+personize context-docs retrieve "onboarding" --infer
+personize context-docs retrieve "outreach email" --tags "voice:outreach,playbook:sales" --tag-mode all
+
+# REST
+POST /api/v1/context/retrieve
+{ "message": "cold email tone", "match": "strict" }
+{ "message": "email standards", "match": "broad", "topK": 30 }
+{ "message": "onboarding", "autoInferFilters": true }
+{ "message": "outreach email", "tags": ["voice:outreach"], "tagMode": "all" }
+```
 
 ---
 
