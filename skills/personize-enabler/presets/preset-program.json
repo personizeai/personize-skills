@@ -1,0 +1,18 @@
+{
+  "$description": "Collection preset for coordinated programs (campaigns, care plans, enrollment drives, renewal programs). Deploy via collection_create, then customize properties for your domain.",
+  "collectionName": "Programs",
+  "entityType": "program",
+  "definition": "Coordinated execution units with their own rules, enrollment, metrics, and lifecycle. Each record is one program instance.",
+  "properties": [
+    { "propertyName": "Program ID", "systemName": "program_id", "type": "text", "description": "Stable identifier for this program (e.g., 'fintech-ctos-q2', 'care-plan-diabetes-2026')" },
+    { "propertyName": "Status", "systemName": "status", "type": "options", "options": ["Draft", "Active", "Paused", "Archived"], "description": "Current lifecycle state. Only Active programs execute." },
+    { "propertyName": "Target Criteria", "systemName": "target_criteria", "type": "text", "description": "Who qualifies for enrollment. Natural language description of eligibility." },
+    { "propertyName": "Governance Overrides", "systemName": "governance_overrides", "type": "text", "description": "Program-specific rules that layer on top of org governance defaults." },
+    { "propertyName": "Daily Capacity", "systemName": "daily_capacity", "type": "number", "description": "Hard cap on actions per day for this program." },
+    { "propertyName": "Cadence", "systemName": "cadence", "type": "text", "description": "Sequence definition: steps, timing gaps, channels per step." },
+    { "propertyName": "Owner", "systemName": "owner", "type": "text", "description": "Responsible person or role for this program." },
+    { "propertyName": "Enrolled Count", "systemName": "enrolled_count", "type": "number", "description": "Total entities enrolled. Zero-cost counter via properties." },
+    { "propertyName": "Success Count", "systemName": "success_count", "type": "number", "description": "Completions, conversions, or positive outcomes." },
+    { "propertyName": "Started At", "systemName": "started_at", "type": "date", "description": "When this program was first activated." }
+  ]
+}

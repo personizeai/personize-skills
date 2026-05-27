@@ -1,0 +1,15 @@
+{
+  "name": "Product User",
+  "entityType": "Contact",
+  "description": "Track product usage and engagement for user success",
+  "properties": [
+    {"name": "Email", "type": "email", "description": "User's email address"},
+    {"name": "Plan", "type": "select", "description": "Subscription plan", "options": ["Free","Starter","Pro","Enterprise"]},
+    {"name": "Signup Date", "type": "date", "description": "When they signed up"},
+    {"name": "Monthly Active Days", "type": "number", "description": "Days active in current month"},
+    {"name": "Feature Adoption", "type": "multi-select", "description": "Features actively used"},
+    {"name": "Health Score", "type": "rating", "description": "Engagement health 1-5"},
+    {"name": "Churn Risk", "type": "select", "description": "Predicted churn risk", "options": ["Low","Medium","High"]},
+    {"name": "Last Activity", "type": "date", "description": "Most recent product activity"}
+  ]
+}

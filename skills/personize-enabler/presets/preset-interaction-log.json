@@ -1,0 +1,18 @@
+{
+  "$description": "Collection preset for interaction ledgers (outreach logs, visit logs, communication logs). Deploy via collection_create. Each record is one interaction, not one entity.",
+  "collectionName": "Interaction Log",
+  "entityType": "interaction",
+  "definition": "Every touchpoint recorded for attribution, learning, and audit. Each record is one interaction linked to an entity and program.",
+  "properties": [
+    { "propertyName": "Entity Reference", "systemName": "entity_ref", "type": "text", "description": "Email or ID of the entity this interaction is about." },
+    { "propertyName": "Parent Reference", "systemName": "parent_ref", "type": "text", "description": "Company, household, or org this entity belongs to." },
+    { "propertyName": "Program ID", "systemName": "program_id", "type": "text", "description": "Which program triggered this interaction (for attribution)." },
+    { "propertyName": "Channel", "systemName": "channel", "type": "options", "options": ["Email", "Phone", "SMS", "LinkedIn", "Chat", "In-Person", "Webhook"], "description": "Communication channel used." },
+    { "propertyName": "Direction", "systemName": "direction", "type": "options", "options": ["Outbound", "Inbound"], "description": "Who initiated this interaction." },
+    { "propertyName": "Content Summary", "systemName": "content_summary", "type": "text", "description": "What was communicated (subject + brief body)." },
+    { "propertyName": "Message ID", "systemName": "message_id", "type": "text", "description": "Channel-specific ID for threading replies to originals." },
+    { "propertyName": "Outcome", "systemName": "outcome", "type": "options", "options": ["Sent", "Delivered", "Opened", "Replied", "Bounced", "Converted", "No Response"], "description": "Result of this interaction." },
+    { "propertyName": "Variant", "systemName": "variant", "type": "text", "description": "A/B test variant if applicable (e.g., 'A', 'B', 'control')." },
+    { "propertyName": "Sequence Step", "systemName": "sequence_step", "type": "number", "description": "Which step in the journey this interaction represents." }
+  ]
+}

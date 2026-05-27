@@ -1,0 +1,131 @@
+[
+  {
+    "name": "Sales Contact",
+    "entityType": "Contact",
+    "description": "Track sales prospects and customers with relationship intelligence for personalized outreach and pipeline management",
+    "properties": [
+      { "name": "Full Name", "type": "text", "description": "Contact's full name" },
+      { "name": "Email", "type": "email", "description": "Primary email address" },
+      { "name": "Job Title", "type": "text", "description": "Current role and title" },
+      { "name": "Company Domain", "type": "url", "description": "Company website domain for cross-entity linking" },
+      { "name": "Department", "type": "select", "description": "Department (Engineering, Sales, Marketing, Operations, Executive, Finance, Legal)", "options": ["Engineering", "Sales", "Marketing", "Operations", "Executive", "Finance", "Legal"] },
+      { "name": "Decision Maker", "type": "boolean", "description": "Is this person a budget or purchase decision authority?" },
+      { "name": "Lead Stage", "type": "select", "description": "Current pipeline stage", "options": ["Lead", "Qualified", "Meeting Booked", "Proposal", "Negotiation", "Closed Won", "Closed Lost"] },
+      { "name": "Lead Source", "type": "select", "description": "How this contact entered the pipeline", "options": ["Inbound", "Outbound", "Referral", "Event", "Content", "LinkedIn"] },
+      { "name": "Last Contacted", "type": "date", "description": "Date of most recent outreach or interaction" },
+      { "name": "Champion Score", "type": "number", "description": "0-100 strength of internal champion status" }
+    ]
+  },
+  {
+    "name": "Company",
+    "entityType": "Company",
+    "description": "Account-level intelligence for B2B sales, customer success, and expansion tracking",
+    "properties": [
+      { "name": "Company Name", "type": "text", "description": "Organization name" },
+      { "name": "Website", "type": "url", "description": "Primary website URL" },
+      { "name": "Industry", "type": "select", "description": "Primary industry vertical", "options": ["SaaS", "Healthcare", "Financial Services", "E-Commerce", "Manufacturing", "Professional Services", "Education", "Real Estate", "Other"] },
+      { "name": "Employee Count", "type": "select", "description": "Company size band", "options": ["1-10", "11-50", "51-200", "201-1000", "1001-5000", "5000+"] },
+      { "name": "Plan Tier", "type": "select", "description": "Current subscription or engagement tier", "options": ["Trial", "Starter", "Growth", "Enterprise"] },
+      { "name": "Health Score", "type": "number", "description": "0-100 account health composite score" },
+      { "name": "Contract End Date", "type": "date", "description": "Current contract or subscription renewal date" },
+      { "name": "Expansion Signals", "type": "text", "description": "AI-detected signals indicating upsell or expansion potential" },
+      { "name": "Tech Stack", "type": "array", "description": "Key tools and platforms in use at this account" }
+    ]
+  },
+  {
+    "name": "Support Ticket",
+    "entityType": "Ticket",
+    "description": "Customer support request tracking with sentiment and resolution intelligence",
+    "properties": [
+      { "name": "Ticket ID", "type": "text", "description": "Unique identifier from support system" },
+      { "name": "Customer Email", "type": "email", "description": "Email of the customer who submitted the ticket" },
+      { "name": "Subject", "type": "text", "description": "Short summary of the issue" },
+      { "name": "Category", "type": "select", "description": "Issue category", "options": ["Bug", "Feature Request", "Billing", "Account Access", "Onboarding", "Performance", "Integration", "Other"] },
+      { "name": "Priority", "type": "select", "description": "Ticket urgency level", "options": ["Low", "Medium", "High", "Critical"] },
+      { "name": "Status", "type": "select", "description": "Current resolution status", "options": ["Open", "In Progress", "Waiting on Customer", "Resolved", "Closed"] },
+      { "name": "Sentiment", "type": "select", "description": "AI-detected customer sentiment", "options": ["Positive", "Neutral", "Frustrated", "Urgent"] },
+      { "name": "Resolution Date", "type": "date", "description": "Date ticket was resolved" },
+      { "name": "CSAT Score", "type": "rating", "description": "Customer satisfaction score after resolution (1-5)" }
+    ]
+  },
+  {
+    "name": "Product User",
+    "entityType": "ProductUser",
+    "description": "Usage intelligence for SaaS and app products -- feature adoption, engagement depth, and expansion signals",
+    "properties": [
+      { "name": "Email", "type": "email", "description": "User email address" },
+      { "name": "Features Used", "type": "array", "description": "Feature keys or names the user has adopted" },
+      { "name": "Usage Frequency", "type": "select", "description": "How often the user is active in the product", "options": ["Daily", "Weekly", "Monthly", "Inactive"] },
+      { "name": "Power User", "type": "boolean", "description": "True if the user is in the top engagement tier" },
+      { "name": "API Calls (30d)", "type": "number", "description": "API calls made in the last 30 days (for developer/API products)" },
+      { "name": "Integration Count", "type": "number", "description": "Number of connected integrations or third-party tools" },
+      { "name": "Onboarding Complete", "type": "boolean", "description": "Has the user completed the core onboarding flow?" },
+      { "name": "Last Active", "type": "date", "description": "Most recent product activity date" }
+    ]
+  },
+  {
+    "name": "Candidate",
+    "entityType": "Candidate",
+    "description": "Recruiting pipeline tracking with skills, preferences, and relationship intelligence for personalized outreach",
+    "properties": [
+      { "name": "Full Name", "type": "text", "description": "Candidate's full name" },
+      { "name": "Email", "type": "email", "description": "Primary email address" },
+      { "name": "LinkedIn URL", "type": "url", "description": "LinkedIn profile URL" },
+      { "name": "Primary Skills", "type": "array", "description": "Top skills (technical and functional)" },
+      { "name": "Years Experience", "type": "number", "description": "Total years of relevant professional experience" },
+      { "name": "Desired Role", "type": "text", "description": "Target role title or function" },
+      { "name": "Work Preference", "type": "select", "description": "Preferred work arrangement", "options": ["Remote", "Hybrid", "Onsite", "Flexible"] },
+      { "name": "Interview Stage", "type": "select", "description": "Current stage in the recruiting pipeline", "options": ["Sourced", "Contacted", "Screened", "Interviewing", "Offer", "Placed", "Rejected", "On Hold"] },
+      { "name": "Availability Date", "type": "date", "description": "Earliest available start date" },
+      { "name": "Source Channel", "type": "select", "description": "How this candidate entered the pipeline", "options": ["LinkedIn", "Referral", "Inbound", "Event", "Campus", "Database"] }
+    ]
+  },
+  {
+    "name": "Patient",
+    "entityType": "Patient",
+    "description": "Patient engagement tracking for healthcare platforms -- engagement, care plan status, and communication preferences (never raw PHI)",
+    "properties": [
+      { "name": "Patient ID", "type": "text", "description": "Internal patient identifier (never SSN or MRN)" },
+      { "name": "Email", "type": "email", "description": "Contact email for portal and communications" },
+      { "name": "Age Group", "type": "select", "description": "Age band for communication calibration", "options": ["18-34", "35-54", "55-64", "65+"] },
+      { "name": "Care Plan Status", "type": "select", "description": "Current care plan adherence status", "options": ["Active", "On Track", "At Risk", "Lapsed", "Completed"] },
+      { "name": "Preferred Communication", "type": "select", "description": "Patient's preferred outreach channel", "options": ["Secure Portal", "SMS", "Email", "Phone"] },
+      { "name": "Health Literacy Level", "type": "select", "description": "Reading level for content generation", "options": ["Basic", "Intermediate", "Advanced"] },
+      { "name": "Language", "type": "text", "description": "Primary language for communications" },
+      { "name": "Engagement Score", "type": "number", "description": "0-100 composite engagement score across portal, appointments, and messaging" },
+      { "name": "Next Appointment", "type": "date", "description": "Upcoming scheduled visit" }
+    ]
+  },
+  {
+    "name": "E-Commerce Customer",
+    "entityType": "Customer",
+    "description": "Shopper profile for DTC and retail -- purchase history, loyalty, and preference intelligence for personalized marketing",
+    "properties": [
+      { "name": "Email", "type": "email", "description": "Primary email and identity key" },
+      { "name": "Full Name", "type": "text", "description": "Customer's full name" },
+      { "name": "Loyalty Tier", "type": "select", "description": "Current loyalty program tier", "options": ["None", "Bronze", "Silver", "Gold", "Platinum", "VIP"] },
+      { "name": "Purchase Count", "type": "number", "description": "Total completed orders" },
+      { "name": "Lifetime Value Band", "type": "select", "description": "LTV tier for personalization investment", "options": ["Low", "Mid", "High", "VIP"] },
+      { "name": "Preferred Categories", "type": "array", "description": "Product categories with repeat purchases" },
+      { "name": "Price Sensitivity", "type": "select", "description": "Inferred price preference from purchase patterns", "options": ["Budget", "Value", "Premium", "Luxury"] },
+      { "name": "Last Purchase Date", "type": "date", "description": "Most recent completed order date" },
+      { "name": "Return Rate", "type": "percent", "description": "Percentage of orders that included a return" }
+    ]
+  },
+  {
+    "name": "SaaS Account",
+    "entityType": "Account",
+    "description": "B2B SaaS account record combining contract, health, and relationship data for CS and expansion workflows",
+    "properties": [
+      { "name": "Account Name", "type": "text", "description": "Company or organization name" },
+      { "name": "Domain", "type": "url", "description": "Primary domain for cross-entity linking with contacts" },
+      { "name": "Plan Tier", "type": "select", "description": "Subscription plan", "options": ["Trial", "Starter", "Growth", "Professional", "Enterprise"] },
+      { "name": "ARR Band", "type": "select", "description": "Annual recurring revenue range -- never exact amounts", "options": ["<$5K", "$5K-$25K", "$25K-$100K", "$100K-$500K", "$500K+"] },
+      { "name": "Health Score", "type": "number", "description": "0-100 account health composite (usage + engagement + support sentiment)" },
+      { "name": "Contract End Date", "type": "date", "description": "Current contract renewal date" },
+      { "name": "CSM Owner", "type": "text", "description": "Assigned customer success manager" },
+      { "name": "Expansion Potential", "type": "select", "description": "Assessed expansion opportunity level", "options": ["None", "Low", "Medium", "High"] },
+      { "name": "Risk Level", "type": "select", "description": "Churn or downgrade risk assessment", "options": ["Low", "Medium", "High", "Critical"] }
+    ]
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "name": "Sales Contact",
+  "entityType": "Contact",
+  "description": "Track sales prospects through the pipeline",
+  "properties": [
+    {"name": "Full Name", "type": "text", "description": "Contact's full name"},
+    {"name": "Email", "type": "email", "description": "Primary email address"},
+    {"name": "Company", "type": "text", "description": "Company name"},
+    {"name": "Title", "type": "text", "description": "Job title or role"},
+    {"name": "Deal Stage", "type": "select", "description": "Pipeline stage", "options": ["Prospect","Qualified","Meeting Set","Proposal","Negotiation","Closed Won","Closed Lost"]},
+    {"name": "Budget", "type": "currency", "description": "Estimated deal budget in USD"},
+    {"name": "Timeline", "type": "text", "description": "Expected decision timeline"},
+    {"name": "Pain Points", "type": "rich-text", "description": "Key challenges and needs"},
+    {"name": "Next Steps", "type": "text", "description": "Agreed next action"}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Support Ticket",
+  "entityType": "Contact",
+  "description": "Track customer support issues and resolution",
+  "properties": [
+    {"name": "Customer Email", "type": "email", "description": "Customer's email"},
+    {"name": "Issue Summary", "type": "text", "description": "Brief issue description"},
+    {"name": "Priority", "type": "select", "description": "Issue priority", "options": ["Low","Medium","High","Critical"]},
+    {"name": "Status", "type": "select", "description": "Resolution status", "options": ["Open","In Progress","Waiting on Customer","Resolved","Closed"]},
+    {"name": "Category", "type": "select", "description": "Issue category", "options": ["Bug","Feature Request","How-To","Billing","Integration"]},
+    {"name": "Resolution", "type": "rich-text", "description": "How the issue was resolved"},
+    {"name": "Satisfaction", "type": "rating", "description": "Customer satisfaction score 1-5"}
+  ]
+}

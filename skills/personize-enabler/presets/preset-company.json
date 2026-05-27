@@ -1,0 +1,15 @@
+{
+  "name": "Company",
+  "entityType": "Company",
+  "description": "Track companies and accounts",
+  "properties": [
+    {"name": "Company Name", "type": "text", "description": "Official company name"},
+    {"name": "Website", "type": "url", "description": "Company website URL"},
+    {"name": "Industry", "type": "select", "description": "Primary industry", "options": ["SaaS","Healthcare","Financial Services","Ecommerce","Education","Manufacturing","Other"]},
+    {"name": "Employee Count", "type": "number", "description": "Number of employees"},
+    {"name": "Annual Revenue", "type": "currency", "description": "Annual revenue in USD"},
+    {"name": "Tech Stack", "type": "multi-select", "description": "Key technologies used"},
+    {"name": "Decision Makers", "type": "rich-text", "description": "Key people and their roles"},
+    {"name": "Account Status", "type": "select", "description": "Relationship status", "options": ["Prospect","Active","Customer","Churned","Partner"]}
+  ]
+}
