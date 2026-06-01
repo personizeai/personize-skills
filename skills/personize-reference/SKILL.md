@@ -80,6 +80,24 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Upload attachment | guideline_attachment_upload | -- | -- | POST /api/v1/guidelines/:id/attachments |
 | Delete attachment | guideline_attachment_delete | client.guidelines.deleteAttachment() | -- | DELETE /api/v1/guidelines/:id/attachments/:attId |
 
+### Async Bulk Context Save (v1.1)
+
+For seeding many context docs at once (initial corpus import, GitOps sync), use the async batch surface. Returns an `eventId` to poll — actual upserts happen in a background state machine.
+
+| Operation | MCP Tool | SDK Method | API |
+|-----------|----------|------------|-----|
+| Bulk save (async) | -- | client.v1_1.context.saveBatch({ documents, defaults? }) | POST /api/v1.1/context/save/batch |
+| Validate batch (dry-run) | -- | client.v1_1.context.validateSaveBatch({ documents, defaults? }) | POST /api/v1.1/context/save/batch/validate |
+| Poll batch status | -- | client.v1_1.context.getSaveBatchStatus(eventId) | GET /api/v1.1/context/save/batch/:eventId/status |
+
+**Request shape:** `{ defaults?: Partial<ContextSaveBatchDocument>, documents: ContextSaveBatchDocument[] }`. Each `ContextSaveBatchDocument` = `{ id?, name?, externalId?, value, type?, aiExtraction?, tags?, categories?, recordIds? }`. Top-level `defaults` apply to every doc unless overridden — useful for bulk imports where all docs share a `type` or `tags`.
+
+**Response shape:** `{ success, data: { eventId, trackingId, status: 'received'|'processing'|'completed'|'partial'|'failed', receivedAt, organizationId, stateMachineStarted, estimatedCompletionWindow, itemCount } }`. Poll the status endpoint until `status` is terminal.
+
+**Gaps to be aware of:** No MCP tool yet (`context_save_batch` is not exposed); no CLI command yet (only `personize memory save-batch` exists for the memory equivalent). For now, use the SDK method or call the REST endpoint directly. The single-doc `context_save` MCP tool + `client.context.create()` SDK method are still the right path for one-off saves.
+
+**When to use:** seeding 10+ context docs (org policies, playbooks, brand-voice rules); GitOps-style sync where a CI pipeline pushes a folder of `.md` files into context; initial import of an existing knowledge base. For 1-9 docs, use the synchronous `context.create()` / `context_save` — the per-doc latency is fine and you avoid the polling round-trip.
+
 ## Workspace Operations Reference
 
 | Operation | MCP Tool | SDK | Notes |
@@ -281,4 +299,4 @@ Key return shapes:
 
 ## Go Deeper
 
-Need operational patterns? Ask about `personize-agent-core`. Need to design a system? Ask about `personize-architect`. Need a ready-to-run script? Ask about `personize-enabler`.
+Need operational patterns? Ask about `personize-agent-core`. Need to design a system? Ask about `personize-solution-architect`. Need a ready-to-run script? Ask about `personize-enabler`.

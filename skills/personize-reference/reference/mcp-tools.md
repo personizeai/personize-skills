@@ -6,6 +6,8 @@
 |------|-------------|
 | `memory_save` | Save memories (was memory_store_pro) |
 | `memory_retrieve` | Retrieve memories (was memory_recall_pro / smartRecall) |
+| `retrieve_unified` | **agent2_0 only** — unified retrieval replacing 6 legacy tools. Modes (what you're doing): `scout`, `brief`, `expand`, `filter`, `fetch`. Sources (where to look — toggle each): `properties`, `memories`, `documents`, `graph`, `external`. |
+| `retrieve_feedback` | **agent2_0 only** — retrieve user-private feedback and preferences |
 | `context_retrieve` | Find relevant docs (was ai_smart_docs / agentdocs_retrieve) |
 | `context_save` | Evolve docs with AI (was governance_smart_update / agentdocs_save) |
 | `context_manage_create` | Create context doc (was guideline_create / agentdocs_manage_create) |
@@ -38,10 +40,112 @@
 
 | Profile | Description |
 |---------|-------------|
-| agent | Memory read/write + SmartContext (read-only). Default. |
+| **agent2_0** | **5-tool surface: `retrieve_unified`, `retrieve_feedback`, `memory_save`, `personize_cookbook`, `personize_md`. Consolidated for agentic workflows. Use this for new integrations.** |
+| agent | Memory read/write + SmartContext (read-only). Legacy full-surface profile. |
 | agent-readonly | Memory read + SmartContext. Zero mutations. |
 | governance | Governance CRUD + SmartContext. No memory tools. |
 | developer | Everything. Full platform access for IDE/chat. |
+
+---
+
+## agent2_0 — Unified Retrieval
+
+### `retrieve_unified`
+**Profile:** agent2_0 only
+**Endpoint:** `POST /api/v1.1/memory/retrieve` (API-key) / `POST /api/v1/retrieve` (gateway). Server-gated by `FEATURE_UNIFIED_RETRIEVE_V1`; older servers return 404.
+
+Single retrieval tool replacing `memory_search`, `memory_filter_by_property`, `memory_retrieve`, `memory_find_similar`, `memory_get_properties`, `context_retrieve`, and `memory_segment`.
+
+**Mental model: `mode` × `sources`.** `mode` is *what you're doing*; `sources` is *where to look*. They compose independently.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| mode | enum | no (default `scout`) | One of `scout`, `brief`, `expand`, `filter`, `fetch`. See mode table. |
+| record | object | conditional | Target record. One of: `{id}`, `{ids[]}` (max 50), `{email}`, `{websiteUrl}`, `{name, parent?}`, `{phone}`, `{customKey:{name,value}}`. Used by scout/brief/expand. |
+| message | string | conditional | The user's question. Required for `mode='brief'`. Also used by external-RAG search and intent classification. |
+| continueFrom | uuid | conditional | Required for `mode='expand'`. Session ID from `response.state.sessionId` of a prior scout/brief/expand call. |
+| filters | object | conditional | For `mode='filter'`. Shape: `{ groups: [{ logic: 'AND'|'OR', conditions: [{property, operator, value}] }], page, pageSize, sortOrder, countOnly, listAll, crmFilter }`. 17 operators: `EQ`, `NEQ`, `CONTAINS`, `NOT_CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `GT`, `GTE`, `LT`, `LTE`, `BETWEEN`, `NOT_BETWEEN`, `IN`, `NOT_IN`, `IS_SET`, `IS_NOT_SET`, `IS_EMPTY`, `EXISTS`, `NOT_EXISTS`. |
+| fetch | object | conditional | For `mode='fetch'`. Sub-keys: `memoryIds[]` (max 100), `documentIds[]`, `edgeIds[]`, `attachmentIds[]`, `propertyNames: [{recordId, names[]}]` (max 20), `propertyHistory: [{recordId, propertyName, limit?, since?, until?}]`. Combine any sub-types in one call. |
+| sources | object | no | Toggle each source on/off: `{ properties, memories, documents, graph, external }`. Defaults vary per mode (see below). |
+| intent | object | no | `{ raw, bucket, perSource: { memories:{limit,offset}, documents:{limit,offset,types[],tags[]}, graph:{limit,offset}, external:{connectionNames[],topK} } }`. `intent.raw` drives `suggestedNext`. `perSource` caps each source independently — e.g. `documents.types: ['guideline','playbook']` narrows to specific doc types; `external.connectionNames: ['pinecone-prod']` targets specific external RAGs. |
+| budget | object | no | `{ totalTokens (≤50K), allocation: {source: weight 0-1} }`. Token cap for brief synthesis. Defaults: properties=0.1, memories=0.35, documents=0.3, graph=0.05, external=0.2. Empty sources auto-redistribute. |
+| chatHistory | array | no | Last 6 turns passed to brief synthesizer for multi-turn context. Caller redacts PII. |
+| sessionId | uuid | no | Reuse an existing session. Most callers don't set this — scout/brief auto-create sessions. |
+| resetEvery | int | no | After this many `expand` calls, session offsets reset to 0 (default 10). 0 = never. |
+| synthesize | bool \| `'deferred'` | no | Brief mode only. `'deferred'` returns scout immediately (202); poll `GET /api/v1.1/memory/retrieve/:retrievalId/synthesis` for the answer. |
+| qualityTier | enum | no | Brief mode only: `basic`, `pro`, `ultra`. |
+
+**Modes** (what you're doing):
+
+| Mode | Replaces | Use when |
+|------|----------|----------|
+| `scout` (default) | `memory_retrieve` + `memory_search` + `memory_find_similar` | Cheap multi-source aggregation. "What do we know about sarah@acme-corp.io?" |
+| `brief` | *(new)* | LLM-synthesized natural-language answer over retrieved context. "What's John's budget? Give me the answer." |
+| `expand` | *(new)* | Paginate a prior scout/brief session via `continueFrom`. "Tell me more from where I left off." |
+| `filter` | `memory_filter_by_property` + `memory_segment` | Deterministic SQL-like queries (17 operators, AND/OR groups, pagination). "All CTOs in healthcare > 100." |
+| `fetch` | `memory_get_properties` + direct ID lookups | When you already have IDs (memory/doc/edge/attachment) or specific property names on a record. |
+
+**Sources** (where to look — independent on/off toggles):
+
+| Source | Default behavior | What it returns |
+|---|---|---|
+| `sources.properties` | on for scout/filter | Structured fields on matching records (with schema descriptions) |
+| `sources.memories` | on for scout/brief | Freeform semantic memories |
+| `sources.documents` | on for scout/brief | Context docs (guideline / playbook / reference / template / brief) |
+| `sources.graph` | on for scout | Relation edges (works_at, reports_to, participated_in, ...) |
+| `sources.external` | off (opt-in) | Customer's external RAG (Pinecone / Weaviate / Qdrant). Use `intent.perSource.external.connectionNames` to target specific connections. |
+
+**Defaults per mode:** scout = all sources on. brief = all on except graph. filter = properties only. fetch = nothing automatically (you specify in `fetch`).
+
+**RGAS loop for agent2_0 — call `retrieve_unified` TWICE per turn when both memory and governance are needed.** Same tool, same mode, different `sources` toggles:
+
+1. **Recall (memory):**
+   ```
+   retrieve_unified(mode='scout', record={email: '...'})
+   ```
+2. **Govern (documents only):**
+   ```
+   retrieve_unified(
+       mode='scout',
+       message='<task description>',
+       sources={documents: true, memories: false},
+       intent={perSource: {documents: {types: ['guideline', 'playbook']}}}
+   )
+   ```
+
+**Common patterns:**
+
+| You want… | Call |
+|---|---|
+| "What do we know about John?" | `retrieve_unified(mode='scout', record={email: 'john@acme.com'})` |
+| LLM-synthesized answer | `retrieve_unified(mode='brief', message='What's his budget?', record={email: 'john@acme.com'})` |
+| Governance for a task | `retrieve_unified(mode='scout', message='<task>', sources={documents: true, memories: false}, intent={perSource: {documents: {types: ['guideline','playbook']}}})` |
+| Graph traversal | `retrieve_unified(mode='scout', record={id: '...'}, sources={graph: true})` |
+| Property values on a record | `retrieve_unified(mode='fetch', fetch={propertyNames: [{recordId: '...', names: ['Status','Budget']}]})` |
+| Deterministic filter | `retrieve_unified(mode='filter', filters={groups: [{conditions: [{property: 'title', operator: 'CONTAINS', value: 'CTO'}]}]})` |
+| Paginate prior session | `retrieve_unified(mode='expand', continueFrom=<state.sessionId>)` |
+| Multi-source incl. external RAG | `retrieve_unified(mode='brief', message=..., record={email:...}, sources={memories:true, documents:true, external:true}, intent={perSource:{external:{connectionNames:['pinecone-prod']}}})` |
+
+**Pagination loop:**
+1. Call `mode='scout'` or `'brief'` → response includes `state.sessionId`.
+2. Call `mode='expand', continueFrom=<state.sessionId>` → auto-advances offset, returns next page.
+3. Repeat until `state.exhausted.memories=true` (or whichever source you care about).
+4. After `resetEvery` calls (default 10), session auto-resets and the next call starts from the beginning.
+
+When to paginate (don't paginate reflexively — adds cost and latency):
+- Task says "all / everything / full history / comprehensive" AND `state.exhausted.memories=false` → expand once more.
+- Simple lookups ("what's John's title?") → 25 items is enough, don't expand.
+
+---
+
+### `retrieve_feedback`
+**Profile:** agent2_0 only
+
+Retrieve user-private feedback and preference memories (self-scoped). Equivalent to `memory_retrieve(about='self')` on the legacy surface.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| query | string | no | Natural language query to narrow feedback |
 
 ---
 

@@ -14,6 +14,51 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 
 ---
 
+## agent2_0 Profile — 5-Tool Surface Override
+
+If you are on the `agent2_0` MCP profile, you have exactly 5 tools: `retrieve_unified`, `retrieve_feedback`, `memory_save`, `personize_cookbook`, `personize_md`. The sections below describe the full legacy surface — this section is your authoritative override.
+
+### Bootstrap (agent2_0)
+MUST call `personize_md` first — it returns org identity, collections schema, guidelines index, routing rules, session phase, and any handoffs. This replaces both `personize_skill` and `personize_context` in a single call. MUST then call `retrieve_feedback` to recall self-private preferences from prior sessions.
+
+### Core Loop (agent2_0) — Recall → Govern → Act → Store
+
+| Step | What | Call |
+|---|---|---|
+| Recall | What do we know about the entities involved? | `retrieve_unified(mode='scout', email=...)` or `mode='filter'` for lists |
+| Govern | What rules apply to this task? | `retrieve_unified(mode='scout', message='...', sources={documents:true, memories:false}, intent={perSource:{documents:{types:['guideline','playbook']}}})` |
+| Act | Generate, decide, execute | — |
+| Store (record) | What happened to this record? | `memory_save(email=..., content=...)` or `properties={...}` |
+| Store (org-level) | Generalizable learning or updated policy | `memory_save(shape='document', type='guideline')` — no record key |
+
+**Calling retrieve_unified twice per turn is correct and expected.** First call is memory-intent (scout/filter); second is governance-intent (contexts). Do not skip the governance call.
+
+### Write Decision (agent2_0)
+
+| Situation | Call |
+|---|---|
+| Structured field update (title, status, score) | `memory_save(email=..., properties={ field: value })` — content optional |
+| Narrative document (call summary, deal brief) | `memory_save(email=..., shape='document', content='...')` |
+| Both shapes for same record | Call `memory_save` **TWICE** on the same key — once for properties, once for document |
+| Org-level learning / policy update | `memory_save(shape='document', type='guideline')` with **no** email/website_url key |
+
+Org-level documents (no record key) are readable by all agents and teammates via `retrieve_unified` with `sources={documents:true}`.
+
+### Retrieval Strategy (agent2_0)
+
+Scout first (topK≈5), assess gaps, then follow up with targeted calls:
+1. `retrieve_unified(mode='scout', website_url='acme.io')` — company overview
+2. `retrieve_unified(mode='filter', filters=[...])` — contacts, deals, or segments
+3. `retrieve_unified(mode='scout', message='policy for this scenario', sources={documents:true, memories:false}, intent={perSource:{documents:{types:['guideline','playbook']}}})` — governance
+4. `retrieve_unified(mode='scout', record={id:...}, sources={graph:true})` — relationship traversal if needed
+5. `retrieve_unified(mode='expand', continueFrom=<sessionId>)` — deepen a prior session
+
+Full account brief typically needs 3 calls. Never pre-fetch everything speculatively.
+
+For scale operations (5+ records, bulk import, sync, dedup): call `personize_cookbook` first for a proven recipe. Never hand-loop 50 individual saves.
+
+---
+
 ## Bootstrap -- First Thing Every Session
 
 MUST call `personize_skill` first -- it loads platform guidance (how to use Personize correctly). Without it, you are guessing at tool behavior and will make mistakes. THEN call `personize_context` -- it reveals org, collections, and capabilities. MUST recall self-memory (`about:"self"`) for previous learnings. SHOULD check workspace for pending tasks. SHOULD check `ai_smart_guidelines` for current rules. Use `session_id` to link queries -- pronouns resolve to previous results within 5-min TTL.
@@ -35,7 +80,7 @@ Before building, classify the project:
 
 **SIMPLE** (just storing + recalling data): collections + properties + basic governance. Agent-core is sufficient.
 
-**PRODUCTION** (coordinated actions, sequences, multiple entity types, external channels): MUST load `personize-architect` for design patterns. Ask `personize_skill`: "design patterns for [project description]."
+**PRODUCTION** (coordinated actions, sequences, multiple entity types, external channels): MUST load `personize-solution-architect` for design patterns. Ask `personize_skill`: "design patterns for [project description]."
 
 Signals that it's PRODUCTION: multiple entity types that interact (contacts + companies, patients + providers), sequences or journeys (follow-ups, onboarding, care plans), multiple agents or roles handling different stages, external channel delivery (email, SMS, Slack), need to track what was sent and measure what worked.
 
@@ -218,4 +263,4 @@ SHOULD prefer fast mode by default -- 80% of queries need no synthesis. Batch fo
 
 ## Go Deeper
 
-Exact API parameters or error codes? Load `personize-reference`. Ready-to-run scripts? Load `personize-enabler`. Schema design or integration planning? Load `personize-architect`.
+Exact API parameters or error codes? Load `personize-reference`. Ready-to-run scripts? Load `personize-enabler`. Schema design or integration planning? Load `personize-solution-architect`.

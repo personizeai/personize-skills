@@ -108,5 +108,5 @@ MUST test with `--dry-run` after any customization before going live.
 ## Go Deeper
 
 Need the thinking pattern for how to approach a task? Ask about `personize-agent-core`.
-Need to design the schema before deploying a preset? Ask about `personize-architect`.
+Need to design the schema before deploying a preset? Ask about `personize-solution-architect`.
 Need exact API parameters or error codes? Ask about `personize-reference`.

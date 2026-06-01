@@ -1,0 +1,477 @@
+{
+  "$schema": "Per-org relation_types seed examples. Each `set` represents one domain pattern. Pick a set during onboarding, customize the labels/descriptions/examples to match the org's mental model, then POST each type via `personize v1.1 memory relation-types create --type-name <typeName> --category <category> [...]` (or `client.v1_1.memory.createRelationType`). Use `batch-create` with a JSON file when seeding a full set at once -- the file format matches the per-set `types[]` array below.",
+  "$constraints": {
+    "typeName": "regex ^[a-z][a-z0-9_]{2,40}$ -- lowercase only, may include digits and underscore, NO hyphens or spaces",
+    "category": "one of: biographical | role | activity | mention | generic",
+    "isSingleValued": "true when only ONE edge of this type should exist per (from, type) -- auto-ends prior edges. Use for 'current_role', 'reports_to', etc.",
+    "isSymmetric": "true when the relationship is bidirectional (e.g. 'colleague_of'). When true, inverseType is conventionally the same name.",
+    "inverseType": "typeName that points back. When user A 'reports_to' user B, B 'manages' A. Inverse must exist in the same org or be a system built-in.",
+    "defaultWeight": "0..1 -- edge strength used by graph traversal and retrieval scoring",
+    "allowedFromTypes / allowedToTypes": "entity-type names (collection slugs) that constrain which records can be endpoints",
+    "examples": "<= 10 short phrases (<= 240 chars each); fed into the LLM edge-inference prompt so it knows how to recognize this relation in unstructured text"
+  },
+  "$builtins_to_check": [
+    "Run `personize v1.1 memory relation-types list --no-include-system` to see which built-ins already cover your needs before creating org-level rows."
+  ],
+  "sets": [
+    {
+      "name": "B2B Account-Contact Graph",
+      "description": "Foundational role + biographical relations linking people to companies, deals, and reporting structures for B2B sales and CS",
+      "types": [
+        {
+          "typeName": "works_at",
+          "displayLabel": "Works At",
+          "description": "Person currently employed by company. Single-valued: when a person's employer changes, the prior edge auto-ends.",
+          "category": "role",
+          "isSingleValued": true,
+          "isSymmetric": false,
+          "inverseType": "employs",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["company"],
+          "examples": [
+            "Jane Doe works at Acme Corp",
+            "joined Acme as Head of Engineering",
+            "currently a PM at Acme"
+          ]
+        },
+        {
+          "typeName": "employs",
+          "displayLabel": "Employs",
+          "description": "Company that currently employs a person. Inverse of works_at.",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "works_at",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["company"],
+          "allowedToTypes": ["contact", "person"],
+          "examples": [
+            "Acme employs Jane Doe",
+            "their VP Eng joined from a competitor"
+          ]
+        },
+        {
+          "typeName": "reports_to",
+          "displayLabel": "Reports To",
+          "description": "Direct-report relationship between two people inside an org. Single-valued.",
+          "category": "role",
+          "isSingleValued": true,
+          "isSymmetric": false,
+          "inverseType": "manages",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["contact", "person"],
+          "examples": [
+            "Jane reports to John, the VP Engineering",
+            "her manager is Priya"
+          ]
+        },
+        {
+          "typeName": "manages",
+          "displayLabel": "Manages",
+          "description": "Person manages another person (inverse of reports_to).",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "reports_to",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["contact", "person"],
+          "examples": [
+            "John manages a team of 6 engineers"
+          ]
+        },
+        {
+          "typeName": "champion_for",
+          "displayLabel": "Champion For",
+          "description": "Person is an internal champion driving adoption / advocacy for our product at a specific account.",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "championed_by",
+          "defaultWeight": 0.9,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["company", "account"],
+          "examples": [
+            "Sarah has been our champion since the pilot",
+            "she's the one pushing this internally"
+          ]
+        },
+        {
+          "typeName": "championed_by",
+          "displayLabel": "Championed By",
+          "description": "Account has an internal champion (inverse of champion_for).",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "champion_for",
+          "defaultWeight": 0.9,
+          "allowedFromTypes": ["company", "account"],
+          "allowedToTypes": ["contact", "person"],
+          "examples": []
+        },
+        {
+          "typeName": "decision_maker_for",
+          "displayLabel": "Decision Maker For",
+          "description": "Person has budget or sign-off authority on a deal or account.",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.95,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["deal", "company"],
+          "examples": [
+            "she owns the budget",
+            "final decision goes to the CFO"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sales Activity",
+      "description": "Activity edges connecting people and accounts to meetings, emails, calls, and engagement signals",
+      "types": [
+        {
+          "typeName": "attended_meeting",
+          "displayLabel": "Attended Meeting",
+          "description": "Person attended a meeting. Used to thread call/meeting context onto an account's timeline.",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.7,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["meeting", "event"],
+          "examples": [
+            "Jane joined the discovery call on Tuesday",
+            "attendees included Jane and her team"
+          ]
+        },
+        {
+          "typeName": "engaged_with",
+          "displayLabel": "Engaged With",
+          "description": "Person engaged with a piece of content (open, click, view). Generic activity edge.",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.4,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["email", "page", "asset"],
+          "examples": [
+            "opened our pricing page twice last week",
+            "clicked the demo CTA"
+          ]
+        },
+        {
+          "typeName": "responded_to",
+          "displayLabel": "Responded To",
+          "description": "Person replied to an outbound email or message.",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.8,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["email", "message"],
+          "examples": [
+            "she replied within an hour",
+            "responded asking for pricing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Deal / Opportunity Graph",
+      "description": "Relations for opportunity lifecycle -- pre-deal, in-deal, post-close",
+      "types": [
+        {
+          "typeName": "associated_with_deal",
+          "displayLabel": "Associated With Deal",
+          "description": "Person or company is part of an open opportunity.",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.85,
+          "allowedFromTypes": ["contact", "person", "company"],
+          "allowedToTypes": ["deal", "opportunity"],
+          "examples": [
+            "she's on the Q3 expansion deal",
+            "the Acme renewal involves three contacts"
+          ]
+        },
+        {
+          "typeName": "competing_with",
+          "displayLabel": "Competing With",
+          "description": "Deal is in a competitive evaluation against a named competitor.",
+          "category": "mention",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.9,
+          "allowedFromTypes": ["deal", "opportunity"],
+          "allowedToTypes": ["competitor"],
+          "examples": [
+            "evaluating us vs Competitor X",
+            "they shortlisted both us and the incumbent"
+          ]
+        },
+        {
+          "typeName": "blocked_by",
+          "displayLabel": "Blocked By",
+          "description": "Deal is gated on a specific blocker (legal, security, budget). Used for forecasting risk.",
+          "category": "mention",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.85,
+          "allowedFromTypes": ["deal", "opportunity"],
+          "allowedToTypes": ["blocker", "risk"],
+          "examples": [
+            "waiting on infosec review",
+            "blocked on the MSA redlines"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer Success Graph",
+      "description": "Relations for account health, expansion, and risk signals over the post-sale lifecycle",
+      "types": [
+        {
+          "typeName": "owns_account",
+          "displayLabel": "Owns Account",
+          "description": "CSM or AE is the assigned owner for an account. Single-valued per (csm, account).",
+          "category": "role",
+          "isSingleValued": true,
+          "isSymmetric": false,
+          "inverseType": "owned_by",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["user", "employee"],
+          "allowedToTypes": ["company", "account"],
+          "examples": [
+            "Maya is the CSM on the Acme account",
+            "account ownership transferred to Priya"
+          ]
+        },
+        {
+          "typeName": "owned_by",
+          "displayLabel": "Owned By",
+          "description": "Account is owned by a CSM or AE (inverse of owns_account).",
+          "category": "role",
+          "isSingleValued": true,
+          "isSymmetric": false,
+          "inverseType": "owns_account",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["company", "account"],
+          "allowedToTypes": ["user", "employee"],
+          "examples": []
+        },
+        {
+          "typeName": "uses_feature",
+          "displayLabel": "Uses Feature",
+          "description": "Account / user has adopted a specific product feature. Drives expansion playbooks.",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.7,
+          "allowedFromTypes": ["company", "account", "user"],
+          "allowedToTypes": ["feature"],
+          "examples": [
+            "their team uses our API daily",
+            "adopted the new dashboard last quarter"
+          ]
+        },
+        {
+          "typeName": "raised_ticket",
+          "displayLabel": "Raised Ticket",
+          "description": "Person / account raised a support ticket. Joins support context onto the timeline.",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.6,
+          "allowedFromTypes": ["contact", "company"],
+          "allowedToTypes": ["ticket"],
+          "examples": [
+            "opened a P1 ticket about the API outage",
+            "filed three tickets last week"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Content / Knowledge Graph",
+      "description": "Relations linking documents, topics, and people for governed content generation and knowledge retrieval",
+      "types": [
+        {
+          "typeName": "authored",
+          "displayLabel": "Authored",
+          "description": "Person wrote a document, post, or asset.",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "authored_by",
+          "defaultWeight": 0.9,
+          "allowedFromTypes": ["contact", "person", "user"],
+          "allowedToTypes": ["document", "post", "asset"],
+          "examples": [
+            "Sarah wrote the launch announcement",
+            "authored by the product team"
+          ]
+        },
+        {
+          "typeName": "authored_by",
+          "displayLabel": "Authored By",
+          "description": "Document was written by a person (inverse of authored).",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "authored",
+          "defaultWeight": 0.9,
+          "allowedFromTypes": ["document", "post", "asset"],
+          "allowedToTypes": ["contact", "person", "user"],
+          "examples": []
+        },
+        {
+          "typeName": "covers_topic",
+          "displayLabel": "Covers Topic",
+          "description": "Document discusses or addresses a specific topic / theme.",
+          "category": "mention",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.7,
+          "allowedFromTypes": ["document", "post"],
+          "allowedToTypes": ["topic", "theme"],
+          "examples": [
+            "the article covers GDPR compliance in depth",
+            "post is about our pricing changes"
+          ]
+        },
+        {
+          "typeName": "references",
+          "displayLabel": "References",
+          "description": "Document explicitly cites or links to another document. Drives backlink graphs.",
+          "category": "mention",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "referenced_by",
+          "defaultWeight": 0.5,
+          "allowedFromTypes": ["document"],
+          "allowedToTypes": ["document"],
+          "examples": [
+            "the spec references our security whitepaper",
+            "cites the 2024 product update"
+          ]
+        },
+        {
+          "typeName": "referenced_by",
+          "displayLabel": "Referenced By",
+          "description": "Document is cited by another document (inverse of references).",
+          "category": "mention",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "references",
+          "defaultWeight": 0.5,
+          "allowedFromTypes": ["document"],
+          "allowedToTypes": ["document"],
+          "examples": []
+        }
+      ]
+    },
+    {
+      "name": "People Graph (Symmetric / Social)",
+      "description": "Symmetric / bidirectional relations between people: peer connections, co-attendance, shared workspaces",
+      "types": [
+        {
+          "typeName": "colleague_of",
+          "displayLabel": "Colleague Of",
+          "description": "Two people work at the same company at the same time. Symmetric -- inferred from concurrent works_at edges.",
+          "category": "biographical",
+          "isSingleValued": false,
+          "isSymmetric": true,
+          "inverseType": "colleague_of",
+          "defaultWeight": 0.6,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["contact", "person"],
+          "examples": [
+            "they're on the same team at Acme",
+            "both work in the engineering org"
+          ]
+        },
+        {
+          "typeName": "co_attended",
+          "displayLabel": "Co-Attended",
+          "description": "Two people attended the same meeting or event. Symmetric.",
+          "category": "activity",
+          "isSingleValued": false,
+          "isSymmetric": true,
+          "inverseType": "co_attended",
+          "defaultWeight": 0.5,
+          "allowedFromTypes": ["contact", "person"],
+          "allowedToTypes": ["contact", "person"],
+          "examples": [
+            "both joined the kickoff call",
+            "saw them at the same conference"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Healthcare Care-Coordination",
+      "description": "Patient-provider-condition graph for care coordination platforms. Always paired with HIPAA-aware governance.",
+      "types": [
+        {
+          "typeName": "treats_patient",
+          "displayLabel": "Treats Patient",
+          "description": "Clinician or care team is the active provider for a patient.",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "treated_by",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["clinician", "care_team"],
+          "allowedToTypes": ["patient"],
+          "examples": [
+            "Dr. Lee is the primary care physician",
+            "assigned care team includes a nutritionist"
+          ]
+        },
+        {
+          "typeName": "treated_by",
+          "displayLabel": "Treated By",
+          "description": "Patient is under the care of a clinician (inverse of treats_patient).",
+          "category": "role",
+          "isSingleValued": false,
+          "isSymmetric": false,
+          "inverseType": "treats_patient",
+          "defaultWeight": 1.0,
+          "allowedFromTypes": ["patient"],
+          "allowedToTypes": ["clinician", "care_team"],
+          "examples": []
+        },
+        {
+          "typeName": "follows_care_plan",
+          "displayLabel": "Follows Care Plan",
+          "description": "Patient is enrolled in a specific care plan or protocol. Single-valued: enrolling in a new plan ends the prior edge.",
+          "category": "role",
+          "isSingleValued": true,
+          "isSymmetric": false,
+          "inverseType": null,
+          "defaultWeight": 0.95,
+          "allowedFromTypes": ["patient"],
+          "allowedToTypes": ["care_plan", "protocol"],
+          "examples": [
+            "enrolled in the diabetes management program",
+            "started the post-op recovery plan"
+          ]
+        }
+      ]
+    }
+  ]
+}

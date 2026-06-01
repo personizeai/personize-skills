@@ -118,6 +118,20 @@
 
 > Guidelines endpoints (`/api/v1/guidelines/*`) remain available as stable aliases. `/api/v1/agentdocs/*` paths also remain as stable aliases for all `/api/v1/context/*` routes.
 
+### Async Bulk Context Save (v1.1 only)
+
+For seeding many context docs at once. Returns an `eventId` immediately; upserts run in a background state machine. v1-only equivalent does NOT exist — these endpoints are v1.1-exclusive.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1.1/context/save/batch` | Submit async bulk save. Body: `{ defaults?: Partial<ContextSaveBatchDocument>, documents: ContextSaveBatchDocument[] }`. Returns `{ eventId, trackingId, status, estimatedCompletionWindow, itemCount }` |
+| POST | `/api/v1.1/context/save/batch/validate` | Dry-run validation of a save-batch payload — same body, no side effects |
+| GET | `/api/v1.1/context/save/batch/:eventId/status` | Poll batch status: `received` → `processing` → `completed` \| `partial` \| `failed` |
+
+**`ContextSaveBatchDocument` shape:** `{ id?, name?, externalId?, value, type?, aiExtraction?, tags?, categories?, recordIds? }`. The top-level `defaults` field applies to every document unless that document overrides the field — useful for bulk imports where all docs share a `type` (`playbook`, `guideline`, etc.) or tag set.
+
+**When to use:** seeding 10+ docs in one shot — initial corpus import, GitOps sync of `.md` files into context, knowledge-base migration. For 1–9 docs, the synchronous `POST /api/v1/context` is simpler — no eventId polling.
+
 ---
 
 ## Collection Endpoints

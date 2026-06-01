@@ -1,7 +1,0 @@
-{
-  "webName": "personize-agent-workspace",
-  "exclude": [
-    "recipes/trigger-dev-bridge.ts",
-    "recipes/workspace-digest.ts"
-  ]
-}

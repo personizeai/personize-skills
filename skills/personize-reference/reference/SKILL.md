@@ -225,4 +225,4 @@ Key return shapes:
 
 ## Go Deeper
 
-Need operational patterns? Ask about `personize-agent-core`. Need to design a system? Ask about `personize-architect`. Need a ready-to-run script? Ask about `personize-enabler`.
+Need operational patterns? Ask about `personize-agent-core`. Need to design a system? Ask about `personize-solution-architect`. Need a ready-to-run script? Ask about `personize-enabler`.

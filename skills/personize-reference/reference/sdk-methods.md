@@ -92,7 +92,27 @@ await client.smartRecallUnified({
 
 ## client.memory
 
-### `memory.memorize(options: MemorizeOptions)`
+### `memory.save(options: MemorySaveOptions)` — canonical v1.1 write
+Store content with AI extraction (atoms + structured properties). Aliased under `client.v1_1.memory.save` with full shape discriminator.
+```ts
+await client.memory.save({
+  content: 'Maya joined Orbit Climb as Director of Eng. She comes from Hyperion.',
+  email: 'maya@orbitclimb.io',
+  type: 'Contact',
+
+  // Opt-in graph inference (defaults are all OFF — no behavior change if omitted):
+  collectionGraph: true,  // Channel B: edges from extracted structured properties (async, billed)
+  smartGraph: true,       // Channel C: edges from free-text memories via LLM (async, billed per input token)
+  relations: [            // Channel A: caller-declared edges (sync, free)
+    { relationType: 'works_at',
+      toIdentity: { kind: 'websiteUrl', value: 'orbitclimb.io' },
+      toEntityType: 'company' },
+  ],
+});
+```
+Graph fields are independent and combinable. See `Docs/memorize-graph-guide.md` for channel semantics, stub-creation rules, and pricing. The v1.1 surface (`client.v1_1.memory.save`) accepts the same three fields on `SaveRequest`.
+
+### `memory.memorize(options: MemorizeOptions)` — deprecated, use `memory.save`
 Store content with AI extraction. Extracts structured properties and freeform memories.
 ```ts
 await client.memory.memorize({
@@ -103,6 +123,10 @@ await client.memory.memorize({
   collectionNames: ['Contact Properties'],
   extractionPrompt: 'Focus on budget and timeline',
   max_properties: 10,
+  // Graph fields are also supported here for backward-compat:
+  collectionGraph: true,
+  smartGraph: true,
+  relations: [/* DeclaredRelation[] */],
 });
 ```
 
@@ -397,6 +421,51 @@ Delete an attachment from a context doc.
 | `context.listAttachments(docId)` | `GET /api/v1/context/:id/attachments` |
 | `context.getAttachment(docId, attachmentId)` | `GET /api/v1/context/:id/attachments/:attachmentId` |
 | `context.deleteAttachment(docId, attachmentId)` | `DELETE /api/v1/context/:id/attachments/:attachmentId` |
+
+### Async bulk save (`client.v1_1.context.saveBatch`)
+
+v1.1-only namespace for seeding many context docs at once. Returns an `eventId`; actual upserts happen in a background state machine.
+
+```ts
+// Validate first (dry-run)
+const check = await client.v1_1.context.validateSaveBatch({
+    defaults: { type: 'playbook', tags: ['onboarding'] },
+    documents: [
+        { name: 'Cold outreach playbook', value: '...' },
+        { name: 'Reply handling playbook', value: '...' },
+        { name: 'Demo follow-up playbook', value: '...' },
+    ],
+});
+
+// Submit
+const submit = await client.v1_1.context.saveBatch({
+    defaults: { type: 'playbook', tags: ['onboarding'] },
+    documents: [ /* same shape */ ],
+});
+const { eventId } = submit.data!;
+
+// Poll until terminal
+let status: string;
+do {
+    await new Promise(r => setTimeout(r, 2000));
+    const poll = await client.v1_1.context.getSaveBatchStatus(eventId);
+    status = (poll as any).data?.status;
+} while (status === 'received' || status === 'processing');
+```
+
+**`ContextSaveBatchDocument` shape:** `{ id?, name?, externalId?, value, type?, aiExtraction?, tags?, categories?, recordIds? }`. Top-level `defaults` applies to every doc unless overridden — saves keystrokes when 100 docs share a `type` and tag set.
+
+**`ContextSaveBatchResponse`:** `{ success, data: { eventId, trackingId, status: 'received'|'processing'|'completed'|'partial'|'failed', receivedAt, organizationId, stateMachineStarted, estimatedCompletionWindow, itemCount } }`.
+
+**REST endpoints:**
+
+| SDK Method | REST Endpoint |
+|---|---|
+| `v1_1.context.saveBatch(req)` | `POST /api/v1.1/context/save/batch` |
+| `v1_1.context.validateSaveBatch(req)` | `POST /api/v1.1/context/save/batch/validate` |
+| `v1_1.context.getSaveBatchStatus(eventId)` | `GET /api/v1.1/context/save/batch/:eventId/status` |
+
+**No MCP tool or CLI command yet** — only the SDK + REST surface. For single-doc saves, the synchronous `client.context.create()` / `context_save` MCP tool / `personize context-docs create` CLI are still the right path.
 
 ---
 

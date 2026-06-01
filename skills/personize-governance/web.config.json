@@ -1,9 +1,0 @@
-{
-  "webName": "personize-governance",
-  "exclude": [
-    "sync.ts",
-    "github-action.yml",
-    "recipes/",
-    "reference/team-setup.md"
-  ]
-}

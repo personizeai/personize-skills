@@ -1,0 +1,378 @@
+{
+  "$schema": "Curated org_tag_vocabulary seed examples. Each `set` represents one industry / department. Pick a set during onboarding, customize the descriptions to match the org's mental model, then POST each tag via `personize v1.1 context tags create --type-name <canonical_tag> --label <label> --description <description>` (or `client.v1_1.context.createTag`). The 'description' MUST follow the 'Use for: X. Not for: Y.' pattern -- it is injected into the LLM section-selector prompt to reject plausible-but-wrong docs that happen to share a tag.",
+  "$constraints": {
+    "canonical_tag": "regex ^[a-z][a-z0-9_-]{1,59}$ -- lowercase only, may include digits, _, -, no spaces",
+    "label": "1-80 chars human-readable display name",
+    "description": "<= 150 chars recommended; format: 'Use for: X. Not for: Y.'",
+    "aliases": "<= 20 entries, each follows same regex as canonical_tag; used for snap-time exact matching"
+  },
+  "$builtins_already_seeded": [
+    "compliance", "pricing", "support", "onboarding",
+    "outreach", "discovery", "reporting", "general"
+  ],
+  "sets": [
+    {
+      "name": "B2B Sales",
+      "description": "Outbound prospecting, opportunity management, and sales playbooks for B2B revenue teams",
+      "tags": [
+        {
+          "canonical_tag": "icp",
+          "label": "ICP",
+          "description": "Use for: Ideal Customer Profile definitions, qualification criteria, target segment rules. Not for: individual account research or contact-level notes.",
+          "aliases": ["ideal-customer-profile", "target-profile"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "cold-email",
+          "label": "Cold Email",
+          "description": "Use for: cold outbound email templates, sequences, subject-line guidelines. Not for: replies, nurture content, or in-account expansion emails.",
+          "aliases": ["cold-outreach", "cold-email-template"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "discovery-call",
+          "label": "Discovery Call",
+          "description": "Use for: discovery call agendas, qualification questions, BANT/MEDDIC frameworks. Not for: post-demo follow-up or proposal docs.",
+          "aliases": ["disco-call", "qualification-call"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "demo-script",
+          "label": "Demo Script",
+          "description": "Use for: product demo flows, talking points, feature highlight scripts. Not for: technical product documentation or training material.",
+          "aliases": ["demo-flow", "product-demo"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "objection-handling",
+          "label": "Objection Handling",
+          "description": "Use for: scripted responses to common buyer objections (price, competitor, timing, authority). Not for: post-loss analysis.",
+          "aliases": ["rebuttal", "objection-response"],
+          "sort_order": 50
+        },
+        {
+          "canonical_tag": "proposal",
+          "label": "Proposal",
+          "description": "Use for: proposal templates, SOW structures, MSA boilerplate. Not for: signed contracts or executed orders.",
+          "aliases": ["sow", "statement-of-work"],
+          "sort_order": 60
+        },
+        {
+          "canonical_tag": "competitor-positioning",
+          "label": "Competitor Positioning",
+          "description": "Use for: competitor battlecards, differentiation talking points, head-to-head comparisons. Not for: general market research.",
+          "aliases": ["battlecard", "competitive-intel"],
+          "sort_order": 70
+        },
+        {
+          "canonical_tag": "deal-stage-criteria",
+          "label": "Deal Stage Criteria",
+          "description": "Use for: stage-gate exit criteria for the sales pipeline (e.g. what makes a deal SQL vs SAL). Not for: forecast methodology.",
+          "aliases": ["stage-gate", "pipeline-criteria"],
+          "sort_order": 80
+        }
+      ]
+    },
+    {
+      "name": "Customer Success",
+      "description": "Health scoring, QBRs, renewals, expansion, and proactive churn-prevention playbooks",
+      "tags": [
+        {
+          "canonical_tag": "health-score",
+          "label": "Health Score",
+          "description": "Use for: account health scoring rubrics, signal weightings, health-grade definitions. Not for: per-account health reports.",
+          "aliases": ["health-grade", "health-rubric"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "qbr",
+          "label": "QBR",
+          "description": "Use for: Quarterly Business Review templates, agendas, post-QBR follow-up workflows. Not for: per-account QBR decks.",
+          "aliases": ["quarterly-business-review", "ebr"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "renewal-playbook",
+          "label": "Renewal Playbook",
+          "description": "Use for: renewal timeline, escalation paths, retention playbooks. Not for: pricing or contract negotiation.",
+          "aliases": ["renewal-process", "retention"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "expansion",
+          "label": "Expansion",
+          "description": "Use for: upsell triggers, cross-sell motions, expansion-revenue plays. Not for: new-logo prospecting.",
+          "aliases": ["upsell", "cross-sell", "land-and-expand"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "churn-risk",
+          "label": "Churn Risk",
+          "description": "Use for: churn-risk signals, detection playbooks, escalation runbooks. Not for: post-mortem on lost accounts.",
+          "aliases": ["at-risk", "retention-risk"],
+          "sort_order": 50
+        },
+        {
+          "canonical_tag": "csat",
+          "label": "CSAT",
+          "description": "Use for: customer satisfaction survey design, NPS methodology, CES analysis. Not for: support ticket triage.",
+          "aliases": ["nps", "ces", "satisfaction"],
+          "sort_order": 60
+        }
+      ]
+    },
+    {
+      "name": "Marketing",
+      "description": "Brand voice, demand-gen, content strategy, and lifecycle marketing playbooks",
+      "tags": [
+        {
+          "canonical_tag": "brand-voice",
+          "label": "Brand Voice",
+          "description": "Use for: tone-of-voice rules, terminology lists, do/don't word lists. Not for: visual identity or design guidelines.",
+          "aliases": ["tone-of-voice", "voice"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "demand-gen",
+          "label": "Demand Generation",
+          "description": "Use for: paid acquisition playbooks, landing-page conversion patterns, campaign briefs. Not for: organic SEO or content marketing strategy.",
+          "aliases": ["paid-acquisition", "performance-marketing"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "content-strategy",
+          "label": "Content Strategy",
+          "description": "Use for: editorial calendars, topic clusters, content-funnel mapping. Not for: individual blog posts or content pieces.",
+          "aliases": ["editorial", "content-plan"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "lifecycle",
+          "label": "Lifecycle Marketing",
+          "description": "Use for: lifecycle email sequences, behavioral triggers, nurture playbooks. Not for: one-off broadcast campaigns.",
+          "aliases": ["lifecycle-marketing", "drip"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "abm",
+          "label": "ABM",
+          "description": "Use for: account-based marketing playbooks, target-account selection, ABM campaign briefs. Not for: high-volume MQL acquisition.",
+          "aliases": ["account-based-marketing", "1-to-1-marketing"],
+          "sort_order": 50
+        },
+        {
+          "canonical_tag": "webinar",
+          "label": "Webinar",
+          "description": "Use for: webinar production checklists, registration funnels, post-event follow-up. Not for: on-demand video library.",
+          "aliases": ["online-event", "virtual-event"],
+          "sort_order": 60
+        }
+      ]
+    },
+    {
+      "name": "Healthcare",
+      "description": "HIPAA-aware patient engagement, care coordination, and clinical communication patterns",
+      "tags": [
+        {
+          "canonical_tag": "hipaa",
+          "label": "HIPAA",
+          "description": "Use for: HIPAA compliance rules, PHI handling, BAA workflows. Not for: general security or GDPR-only guidance.",
+          "aliases": ["phi", "hipaa-compliance"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "care-plan",
+          "label": "Care Plan",
+          "description": "Use for: care-plan templates, adherence workflows, milestone tracking. Not for: clinical assessment forms.",
+          "aliases": ["treatment-plan", "care-coordination"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "patient-outreach",
+          "label": "Patient Outreach",
+          "description": "Use for: appointment reminders, follow-up scripts, adherence nudges. Not for: marketing campaigns to non-patients.",
+          "aliases": ["patient-communication", "patient-engagement"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "clinical-content",
+          "label": "Clinical Content",
+          "description": "Use for: patient education content, clinical FAQs, plain-language medical explainers. Not for: physician-to-physician clinical decision support.",
+          "aliases": ["patient-education", "health-literacy"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "telehealth",
+          "label": "Telehealth",
+          "description": "Use for: virtual-visit workflows, pre-visit checklists, technical-readiness scripts. Not for: in-person clinical operations.",
+          "aliases": ["virtual-care", "telemedicine"],
+          "sort_order": 50
+        }
+      ]
+    },
+    {
+      "name": "Recruiting / Talent",
+      "description": "Sourcing, candidate engagement, interview structure, and offer-stage playbooks",
+      "tags": [
+        {
+          "canonical_tag": "sourcing",
+          "label": "Sourcing",
+          "description": "Use for: candidate sourcing playbooks, LinkedIn search strategies, Boolean queries. Not for: post-interview follow-up.",
+          "aliases": ["candidate-sourcing", "talent-search"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "interview-rubric",
+          "label": "Interview Rubric",
+          "description": "Use for: structured interview scorecards, competency rubrics, debrief templates. Not for: take-home assignments.",
+          "aliases": ["scorecard", "interview-scorecard"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "candidate-outreach",
+          "label": "Candidate Outreach",
+          "description": "Use for: passive-candidate email templates, InMail sequences. Not for: post-offer or onboarding messaging.",
+          "aliases": ["recruiter-email", "candidate-email"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "offer-stage",
+          "label": "Offer Stage",
+          "description": "Use for: offer letters, comp-conversation scripts, counter-offer handling. Not for: pre-interview screening.",
+          "aliases": ["offer-letter", "compensation-talk"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "deib",
+          "label": "DEIB",
+          "description": "Use for: diversity-equity-inclusion-belonging hiring guidelines, inclusive-language rules. Not for: post-hire training programs.",
+          "aliases": ["diversity", "inclusive-hiring"],
+          "sort_order": 50
+        }
+      ]
+    },
+    {
+      "name": "E-Commerce",
+      "description": "Product merchandising, lifecycle messaging, and post-purchase customer-experience playbooks",
+      "tags": [
+        {
+          "canonical_tag": "product-listing",
+          "label": "Product Listing",
+          "description": "Use for: PLP/PDP copy guidelines, attribute taxonomies, image-spec rules. Not for: catalog data quality or PIM workflows.",
+          "aliases": ["pdp", "plp", "product-copy"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "cart-abandonment",
+          "label": "Cart Abandonment",
+          "description": "Use for: cart-abandonment recovery sequences, retargeting templates. Not for: post-purchase re-engagement.",
+          "aliases": ["abandoned-cart"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "post-purchase",
+          "label": "Post-Purchase",
+          "description": "Use for: post-purchase email, review-request workflows, replenishment reminders. Not for: pre-purchase nurture or cart recovery.",
+          "aliases": ["post-purchase-email", "review-request"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "loyalty",
+          "label": "Loyalty",
+          "description": "Use for: loyalty-program tier rules, points mechanics, reward-redemption flows. Not for: one-off promotional discounts.",
+          "aliases": ["rewards", "loyalty-program"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "promo",
+          "label": "Promotion",
+          "description": "Use for: promotional pricing rules, BOGO mechanics, sitewide-sale playbooks. Not for: long-term pricing strategy.",
+          "aliases": ["promotion", "discount", "sale"],
+          "sort_order": 50
+        }
+      ]
+    },
+    {
+      "name": "SaaS Product",
+      "description": "Product-led-growth, in-app experience, release notes, and developer-relations content patterns",
+      "tags": [
+        {
+          "canonical_tag": "plg",
+          "label": "PLG",
+          "description": "Use for: product-led-growth playbooks, self-serve activation flows, freemium-to-paid conversion patterns. Not for: enterprise sales.",
+          "aliases": ["product-led-growth", "self-serve"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "in-app-message",
+          "label": "In-App Message",
+          "description": "Use for: in-app tooltip copy, banner notices, empty-state messaging. Not for: external email or push notifications.",
+          "aliases": ["in-app", "tooltip"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "release-notes",
+          "label": "Release Notes",
+          "description": "Use for: customer-facing changelog entries, feature-announcement copy. Not for: internal engineering changelogs.",
+          "aliases": ["changelog", "feature-announcement"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "api-docs",
+          "label": "API Docs",
+          "description": "Use for: API reference structure, code-sample style guides, SDK quickstart patterns. Not for: internal architecture docs.",
+          "aliases": ["api-reference", "developer-docs"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "devrel",
+          "label": "DevRel",
+          "description": "Use for: developer-relations content patterns, community engagement playbooks, OSS contribution guides. Not for: internal developer experience.",
+          "aliases": ["developer-relations", "dx"],
+          "sort_order": 50
+        }
+      ]
+    },
+    {
+      "name": "Operations / Internal",
+      "description": "Internal SOPs, vendor management, security policy, and people-ops content patterns",
+      "tags": [
+        {
+          "canonical_tag": "sop",
+          "label": "SOP",
+          "description": "Use for: standard-operating-procedure documents, step-by-step runbooks. Not for: high-level strategy docs.",
+          "aliases": ["standard-operating-procedure", "runbook"],
+          "sort_order": 10
+        },
+        {
+          "canonical_tag": "vendor",
+          "label": "Vendor Management",
+          "description": "Use for: vendor evaluation criteria, procurement workflows, RFP templates. Not for: customer-facing contracts.",
+          "aliases": ["procurement", "vendor-mgmt"],
+          "sort_order": 20
+        },
+        {
+          "canonical_tag": "infosec",
+          "label": "InfoSec",
+          "description": "Use for: information-security policies, access-control rules, incident-response runbooks. Not for: compliance auditing.",
+          "aliases": ["security", "information-security"],
+          "sort_order": 30
+        },
+        {
+          "canonical_tag": "people-ops",
+          "label": "People Operations",
+          "description": "Use for: HR policies, performance-review templates, internal-comms guidelines. Not for: external recruiting.",
+          "aliases": ["hr", "human-resources"],
+          "sort_order": 40
+        },
+        {
+          "canonical_tag": "okr",
+          "label": "OKR",
+          "description": "Use for: OKR-setting frameworks, quarterly planning templates. Not for: per-team execution plans.",
+          "aliases": ["objectives-key-results", "quarterly-planning"],
+          "sort_order": 50
+        }
+      ]
+    }
+  ]
+}
