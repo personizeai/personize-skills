@@ -1,0 +1,7 @@
+{
+  "webName": "personize-entity-memory",
+  "exclude": [
+    "deploy/",
+    "reference/schema-display-types.md"
+  ]
+}

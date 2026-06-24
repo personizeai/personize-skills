@@ -1,0 +1,15 @@
+services:
+  - type: cron
+    name: personize-sync
+    runtime: node
+    schedule: "0 2 * * *"  # Daily at 2 AM UTC
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/sync.js
+    envVars:
+      - key: PERSONIZE_SECRET_KEY
+        sync: false  # entered manually in Render dashboard
+      # Add source-specific env vars here:
+      # - key: HUBSPOT_ACCESS_TOKEN
+      #   sync: false
+      # - key: SF_USERNAME
+      #   sync: false
