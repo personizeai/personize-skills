@@ -10,7 +10,7 @@ Call `analytics_overview` from any skill or `GET /api/v1/usage/current` directly
 Default to fast mode — it costs 1 credit vs 2 for deep. Use batch memorize for bulk ingestion (same 1 credit per item, lower per-call overhead). Avoid deep recall unless synthesis quality is required.
 
 **Q: What operations are free?**
-Guidelines CRUD (`guideline_create`, `guideline_update`, `guideline_delete`, `guideline_get`), workspace property reads, `smart_guidelines` retrieval, and key management operations do not cost credits.
+Guidelines CRUD (`context_save`, `guideline_update`, `guideline_delete`, `guideline_get`), workspace property reads, `smart_guidelines` retrieval, and key management operations do not cost credits.
 
 **Q: Does batch memorize cost more per item?**
 No — batch costs the same 1 credit per item as single memorize. The advantage of batch is lower per-call overhead and shared extraction context, not a credit discount.

@@ -4,7 +4,7 @@
 
 | Question | Answer | Go To |
 |----------|--------|-------|
-| **Does it describe how to behave?** (rules, policies, criteria, standards, playbooks, tone) | Yes → **Guideline** (`guideline_create`) | STOP -- do not continue to the collection tree |
+| **Does it describe how to behave?** (rules, policies, criteria, standards, playbooks, tone) | Yes → **Guideline** (`context_save`, type:'guideline') | STOP -- do not continue to the collection tree |
 | **Does it describe a thing with identity?** (person, company, deal, ticket) | Yes → Continue below | ↓ |
 
 ## Collection Decision Tree (only for data entities)
@@ -34,7 +34,7 @@ MUST use `select`/`multi-select` when values are enumerable -- storing "Active" 
 
 ## Type Reference
 
-**Guidelines:** ICP criteria, email standards, sales playbooks, compliance policies, brand voice, send limits, opt-out rules -- anything that governs agent behavior. Created via `guideline_create`. Delivered to agents via `ai_smart_guidelines`.
+**Guidelines:** ICP criteria, email standards, sales playbooks, compliance policies, brand voice, send limits, opt-out rules -- anything that governs agent behavior. Created via `context_save` (type:'guideline'). Delivered to agents via `ai_smart_guidelines`.
 **Collections:** Contacts, Companies, Products, Tickets, Projects, Campaigns -- anything with identity. Created via `collection_create`.
 **Properties:** Structured fields on a collection (name, email, deal_stage, budget)
 **Workspace:** Coordination layer on a record (tasks, issues, notes, context)

@@ -1,7 +1,7 @@
 # Governance FAQ
 
 **Q: How do I create a guideline?**
-Call `guideline_create` with `name`, `value`, and optional `tags`. The name is a short identifier, value is the full policy text, and tags control when the guideline surfaces in SmartContext queries.
+Call `context_save` with `name`, `value`, and optional `tags`. The name is a short identifier, value is the full policy text, and tags control when the guideline surfaces in SmartContext queries.
 
 **Q: What is smart-update and when should I use it?**
 `smart-update` uses AI to intelligently merge your changes with the existing guideline value rather than overwriting it. Use it when updating a guideline that has evolved organically and you want to preserve context while adding new rules.
@@ -19,7 +19,7 @@ Attachments are files linked to a guideline (e.g. a pricing sheet, an SOP). They
 Context Docs is the unified concept. Guidelines are one type of Context Doc (enforceable rules). Other types: playbooks (step-by-step processes), references (background info), templates (output scaffolds), briefs (account context). Use `/api/v1/context` for all types, `/api/v1/guidelines` for guidelines only.
 
 ### How do I create a playbook?
-`POST /api/v1/context` with `type: "playbook"`. CLI: `personize context-docs create --type playbook --name "Name" --file sop.md`. MCP: `guideline_create({ ..., contextDocType: "playbook" })`.
+`POST /api/v1/context` with `type: "playbook"`. CLI: `personize context-docs create --type playbook --name "Name" --file sop.md`. MCP: `context_save({ ..., contextDocType: "playbook" })`.
 
 ### Will smart_guidelines return playbooks?
 No. `smart_guidelines` / `ai_smart_guidelines` returns only guidelines. Use `smart_docs` / `ai_smart_docs` for all types or filter with the `types` parameter.

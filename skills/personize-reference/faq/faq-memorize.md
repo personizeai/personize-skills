@@ -1,7 +1,7 @@
 # Memorize FAQ
 
-**Q: How does AI extraction work with memory_store_pro?**
-AI extraction is always on with `memory_store_pro` — it extracts structured properties and freeform memories from any content you store. For direct property writes without AI extraction (e.g., code-managed CRM fields), use `memory_update_property` instead.
+**Q: How does AI extraction work with memory_save?**
+AI extraction is always on with `memory_save` — it extracts structured properties and freeform memories from any content you store. For direct property writes without AI extraction (e.g., code-managed CRM fields), use `memory_update_property` instead.
 
 **Q: Which identity key should I use?**
 Use `email` for contacts/people, `website_url` for companies/organizations, and `record_id` when you have a direct Personize ID. Only one key is needed per call; Personize merges records automatically.

@@ -75,6 +75,8 @@ How to use: download ZIP, extract, import JSON into n8n, configure the Personize
 
 ## Collection Presets -- Starter Schemas
 
+These `presets/*.json` schemas are for post-kit customization. First provision the org with a kit (`client.kits.install({ kitId })` or the `kits_install` MCP tool; built-in kits: `personize-starter`, `engineering-memory`), then customize or extend it with these presets. To author your own kit, see the kit-authoring guide: `Docs/setup-kits/kit-authoring-guide.md`.
+
 Pre-designed schemas with 8-12 properties, ready to deploy via `client.collections.create(preset)` or the `collection_create` MCP tool.
 
 - **preset-sales-contact.json** -- name, email, company, title, deal stage, ARR, last contact, notes
@@ -86,7 +88,7 @@ SHOULD customize before deploying -- add, remove, or rename properties to match 
 
 ## Governance Templates -- Starter Guidelines
 
-Ready-to-use guideline bodies deployable via `guideline_create`. Written in MUST/SHOULD/MAY format that SmartContext understands.
+Ready-to-use guideline bodies deployable via `context_save`. Written in MUST/SHOULD/MAY format that SmartContext understands.
 
 - **template-brand-voice.md** -- tone rules, vocabulary list, dos/don'ts, rewrites
 - **template-icp.md** -- three-tier qualification (Tier 1/2/3), firmographic and behavioral signals

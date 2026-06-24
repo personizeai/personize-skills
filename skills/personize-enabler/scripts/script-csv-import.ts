@@ -2,7 +2,8 @@
  * script-csv-import.ts
  *
  * Import a CSV file into Personize memory with field mapping and chunked batching.
- * Each row is mapped to a Personize entity and memorized via memorizeBatch().
+ * Each row is mapped to a Personize entity and written via memory.upsert() --
+ * CSV rows are known structured field values, so no AI extraction is needed.
  *
  * Usage:
  *   npx ts-node script-csv-import.ts \
@@ -110,19 +111,25 @@ function buildRecord(
     if (row[csvCol] !== undefined) mapped[targetField] = row[csvCol];
   }
 
-  // Build freeform content from unmapped columns
+  // Known structured field values -> properties. upsert sets these directly with no
+  // AI extraction. email/website_url are identity keys (not properties); everything
+  // else mapped becomes a property, and any unmapped columns are captured as properties
+  // keyed by their column name so nothing is silently dropped.
+  const properties: Record<string, string> = {};
+  for (const [field, value] of Object.entries(mapped)) {
+    if (field === 'email' || field === 'websiteUrl' || field === 'content') continue;
+    if (value) properties[field] = value;
+  }
   const mappedCols = new Set(Object.keys(mapping));
-  const extra = Object.entries(row)
-    .filter(([k]) => !mappedCols.has(k) && row[k])
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('\n');
-
-  const contentParts = [mapped['content'] || '', extra].filter(Boolean);
+  for (const [col, value] of Object.entries(row)) {
+    if (!mappedCols.has(col) && value && !(col in properties)) properties[col] = value;
+  }
 
   return {
     email:      mapped['email']      || undefined,
     websiteUrl: mapped['websiteUrl'] || undefined,
-    content:    contentParts.join('\n') || `Row data: ${JSON.stringify(row)}`,
+    properties,
+    ...(mapped['content'] ? { content: mapped['content'] } : {}),
     tags:       ['csv-import'],
     ...(collectionId ? { collectionId } : {}),
   };
@@ -196,7 +203,7 @@ async function main() {
 
     try {
       await withRetry(() =>
-        client.memory.memorizeBatch({
+        client.memory.upsert({
           records,
           tier,
           source: 'csv-import',

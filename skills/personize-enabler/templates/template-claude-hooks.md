@@ -81,7 +81,7 @@ Checks email against opt-out list before any memory store on a contact.
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "mcp__personize__memory_store_pro",
+        "matcher": "mcp__personize__memory_save",
         "command": "node scripts/hooks/opt-out-check.js"
       }
     ]
@@ -118,7 +118,7 @@ Marks STATUS.md as stale after workspace changes. Agent regenerates on next sess
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "mcp__personize__memory_store_pro|mcp__personize__memory_update_property",
+        "matcher": "mcp__personize__memory_save|mcp__personize__memory_update_property",
         "command": "node scripts/hooks/mark-stale.js"
       }
     ]

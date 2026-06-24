@@ -1,6 +1,6 @@
 ---
 name: personize-solution-architect
-description: "How to design, build, evaluate, and evolve Personize integrations — including the advanced multi-step `instructions[]` patterns those integrations run. Covers situation assessment, entity modeling, property design for extraction quality, integration topology, workspace design, governance architecture, scaling, schema evolution, smart update for AI-powered guideline and schema evolution, evaluation and optimization of extraction and recall quality, infrastructure management (entity types, MCPs, destinations), project lifecycle, deployment patterns, and authoring advanced multi-step prompt patterns (conditional branching by tier, multi-source reconciliation, compliance-gated generation, persona fanout, bounded research with source triangulation, few-shot calibrated classification, checklist-gated workflows, self-reflective refinement loops). Use when designing solutions, creating schemas, planning integrations, evaluating extraction quality, updating or evolving guidelines, improving system performance, or debugging instruction chains that silently fail, produce inconsistent confidence outputs, loop indefinitely, or write bad data to records."
+description: "Design, build, evaluate, and evolve Personize integrations and the multi-step instructions[] prompts they run. Use when planning a Personize solution; designing collections, entities, properties, or governance guidelines; choosing an integration mode (SDK/MCP/CLI/API/no-code); installing or authoring a setup kit; modeling memory as a business domain; weighing compaction vs RAG or raw-query cost; designing graph relations or workspaces; evaluating extraction or recall quality; or debugging multi-step prompt chains that fail, loop, or write bad data."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk or Personize MCP server and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://personize.ai"}
@@ -8,19 +8,52 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 
 # personize-solution-architect
 
-**Description:** How to design, build, evaluate, and evolve Personize integrations — including the advanced multi-step `instructions[]` patterns those integrations run. Covers situation assessment, entity modeling, property design for extraction quality, integration topology, workspace design, governance architecture, scaling, schema evolution, smart update for AI-powered guideline and schema evolution, evaluation and optimization of extraction and recall quality, infrastructure management (entity types, MCPs, destinations), project lifecycle, deployment patterns, and authoring advanced multi-step prompt patterns (conditional branching by tier, multi-source reconciliation, compliance-gated generation, persona fanout, bounded research with source triangulation, few-shot calibrated classification, checklist-gated workflows, self-reflective refinement loops). Use when designing solutions, creating schemas, planning integrations, evaluating extraction quality, updating or evolving guidelines, improving system performance, or debugging instruction chains that silently fail, produce inconsistent confidence outputs, loop indefinitely, or write bad data to records.
+How to design, build, evaluate, and evolve Personize integrations -- from situation assessment and entity/property modeling through governance, kits, scaling, schema evolution, and the multi-step `instructions[]` prompts those integrations run. **Architects propose options with trade-offs; humans decide.**
 
 **Tags:** `personize:skill`, `personize:skill:architect`, `personize:skill:planning`, `personize:skill:architecture`, `personize:skill:schema`, `personize:skill:evaluation`, `personize:skill:quality`, `personize:skill:prompt-patterns`
 
 ---
 
-## Situation Assessment -- The 5 Dimensions
+## Memory as a Model of Your Business -- Lead With This
 
-Before designing anything, assess five dimensions. **Entity complexity:** how many types, nested relationships? **Data volume:** hundreds (script), thousands (batch), millions (streaming). **Integration depth:** standalone, CRM-connected, or multi-system. **Autonomy level:** human-in-loop, supervised, or fully autonomous. **Compliance:** PII handling, audit trails, retention, deletion rights.
+The mental model under every Personize design, and the first thing to convey to a technical stakeholder: **agent memory is to AI agents what the relational model was to software -- the discipline of modeling a domain so the machine can use it.** But the consumer changed. The reader is no longer a deterministic query planner; it is a stochastic reasoner with a small, costly context window and native fluency in unstructured data. So the objective flips from "normalize for storage" to "deliver the most task-relevant signal per token."
+
+**Three layers, one substrate** -- a good design uses all three:
+- **Sub-symbolic (vector):** "what is relevant?" -- semantic recall; cannot do exact match, negation, or aggregation.
+- **Symbolic (properties):** "which actually qualify?" -- typed filters, ordering, aggregation, governance.
+- **Graph (relations):** "what is connected?" -- traversal across entities.
+
+**One write, multiple representations.** A single memorize call embeds the raw text for semantic recall AND projects it into the schema in the same pass, where each property's `description` IS the extraction prompt. Designing the descriptions = designing what the org's AI notices and remembers.
+
+**The core design decision is the boundary:** what to crystallize into a typed property (high-frequency, filter-on, governance-critical, aggregatable) vs. leave as prose/memory (nuance, narrative, the "why"). Quality saturates around ~7 well-chosen memories per entity -- the constraint is curation, not capacity.
+
+**This is also the opportunity lens.** When a design pumps raw records or N API calls into every prompt, or RAG-chunks a whole corpus into context, it pays linearly in tokens and hands the agent unfiltered signal. Personize compacts once at write time and serves a small ranked payload per call. Signals to model it in Personize: raw-data-in-prompt, re-derivation across runs/agents, or RAG that cannot filter/aggregate. Because memory is a shared substrate, the same model lets you fan out many subagents (one per record) without each re-deriving what the last knew.
+
+→ Full treatment, with the relational→agent mapping and the engineering-memory worked example: [`memory-as-business-model.md`](./reference/memory-as-business-model.md). Source framing: [relational-schemas-to-agent-memory](https://hamedtaheri.com/articles/relational-schemas-to-agent-memory/).
+
+## Discovery & Opportunity Engineering -- The Front Half
+
+Before you can design, you must discover. This is the consultative engagement an agent runs *instead of* weeks of manual SE work: go into the customer's world, find where Personize fits, and propose it. MUST run it in order:
+
+1. **Research** the prospect (site, LinkedIn, job posts, integrations page) → a Prospect Intelligence Brief, so you validate instead of interrogate.
+2. **Validate** with discovery questions, 2-3 at a time: product, channels, data landscape, personalization gap, **retrieval economics**, stack.
+3. **Read the codebase** (when shared) → an 8-step repo recon (data models, CRM/event/outbound integration points, decision branches, identity, batch/cron), each mapped to a Personize capability in an **Opportunity Inventory** table.
+4. **Map** each data source to its destination: `memory.upsert` (structured) / `saveBatch` (content) / `context_save` (guideline) / workspace / graph.
+5. **Assess** the 6 dimensions (below), then **propose 2-3 options with trade-offs**.
+
+→ Full framework incl. the repo-reading methodology + Opportunity Inventory: [`discover.md`](./reference/discover.md). Is Personize even the right fit (two-lens, build-vs-buy, point-tool breakpoints, BYOC signal)? [`strategic-fit.md`](./reference/strategic-fit.md). Turn discovery into a consultative proposal (architecture options, memory-model sketch, roadmap): [`propose.md`](./reference/propose.md).
+
+Three decisions the proposal MUST answer: **cost** ([`cost-optimization.md`](./reference/cost-optimization.md) -- tier / recall / compaction / batch / BYOK levers), **deployment** ([`deployment-mode.md`](./reference/deployment-mode.md) -- SaaS vs private/BYOC), and **enablement** ([`enablement.md`](./reference/enablement.md) -- rolling it out to all employees + their AI agents).
+
+## Situation Assessment -- The 6 Dimensions
+
+Before designing anything, assess six dimensions. **Entity complexity:** how many types, nested relationships? **Data volume:** hundreds (script), thousands (batch), millions (streaming). **Integration depth:** standalone, CRM-connected, or multi-system. **Autonomy level:** human-in-loop, supervised, or fully autonomous (the human→human-agent→agent-agent progression). **Compliance:** PII handling, audit trails, retention, deletion rights. **Retrieval economics:** is the current design feeding raw records, N API calls, or RAG-chunked corpus into every prompt? That is the compaction opportunity -- Personize serves a small ranked payload per call instead (see *Memory as a Model of Your Business* above).
 
 After assessment, MUST propose 2-3 options with trade-offs before building -- because architects propose, humans decide. Each option: approach, complexity, cost profile, what it trades away.
 
 **For onboarding an existing corpus** (user has data and asks "how do I get it in?"): load [`audit-and-plan.md`](./reference/audit-and-plan.md) — the four-phase playbook (audit → decide destination per data type → sequence the import → verify) covers the concrete questions you must answer before any code: how many records, how many entity types, how much unstructured content, and what becomes a collection vs. context doc vs. workspace property. Includes the batch-sizing decision table (per-record / batch / async-batch by volume) and credit-budget rule of thumb.
+
+**For a vertical starting point** (domain entities, properties, governance, relations): load the matching industry playbook — [`industry-saas.md`](./reference/industry-saas.md), [`industry-healthcare.md`](./reference/industry-healthcare.md), [`industry-recruiting.md`](./reference/industry-recruiting.md), [`industry-ecommerce.md`](./reference/industry-ecommerce.md), or [`industries-other.md`](./reference/industries-other.md). Adapt a domain-specific schema + rules rather than designing from scratch.
 
 **For cost estimation** before committing to a tier or batch strategy: load [`cost-simulator.md`](./reference/cost-simulator.md) — text-based simulator with the same model as the website's savings calculator. Inputs: records, pages per record, monthly recall volume, LLM tier. Outputs: raw-LLM cost vs. Personize cost vs. savings %.
 
@@ -31,7 +64,7 @@ After assessment, MUST propose 2-3 options with trade-offs before building -- be
 MUST understand this distinction before creating anything:
 
 - **Collections** = data containers for entities with identity keys. Contacts, companies, deals, tickets, products. Created via `collection_create`. Each record is an instance of the entity (one contact, one company). Properties are structured fields extracted from content.
-- **Guidelines** = behavioral rules, policies, and governance for how agents act. ICP criteria, email writing standards, sales playbooks, compliance policies, brand voice. Created via `guideline_create`. Written in MUST/SHOULD/MAY format. Routed by SmartContext to agents when relevant.
+- **Guidelines** = behavioral rules, policies, and governance for how agents act. ICP criteria, email writing standards, sales playbooks, compliance policies, brand voice. Created via `context_save({ type: 'guideline' })` (MCP/SDK; the underlying tool is also exposed as `context_manage_create`). Written in MUST/SHOULD/MAY format. Routed by SmartContext to agents when relevant.
 
 **The test:** Does it describe a *thing with an identity* (person, company, deal)? → Collection. Does it describe *how to behave* (rules, criteria, standards, policies)? → Guideline.
 
@@ -76,6 +109,8 @@ When to add workspace: multi-agent coordination, task tracking, agent-human hand
 
 Role-based overlays: research agent writes findings, review agent approves, notification agent alerts humans. MUST include `status` -- because every coordination pattern needs state tracking.
 
+**Naming convention (canonical):** property names are **Title Case** on the API (`Status`, `Pending Tasks`, `Notes`, `Context`); array properties (`Pending Tasks`, `Notes`, `Updates`, `Issues`, `Decisions`) are **append-only** (push, don't replace). See `personize-agent-core` "Platform Gotchas" for the exact write rules.
+
 ## Governance Architecture -- Rules That Scale
 
 Three-layer stack: platform skills (`personize:skill`, immutable) -> org guidelines (`skill:org`, admin-managed) -> role-specific (`skill:role:*`, team-scoped).
@@ -84,9 +119,33 @@ Guidelines MUST have one concern each -- because each routes independently in Sm
 
 Constraint hierarchy: **MUST** > **SHOULD** > **MAY**. Every constraint needs a rationale clause. SHOULD cross-reference by backtick name instead of duplicating rules -- because duplication causes drift. Header naming drives SmartContext routing: use domain keywords ("## Cold Email Tone" not "## Section 3").
 
+## Kits -- Provision a Domain's Memory Model in One Install
+
+A **kit** is a portable, declarative bundle (a `kit.json` manifest + markdown content) that provisions an org's entire modeling layer at once: entity types, collections (property schemas), document types + tag vocabulary, guidelines, and relation types. It is **pure data, no executable code** -- safe to author, review, and share (partner / open-source).
+
+**Why kits exist:** `createOrganization()` no longer seeds content -- new orgs are **empty**. All provisioning happens by installing a kit. This decouples "make an org" from "set up an org" and lets you ship reusable domain setups. A kit is the deliverable form of the **Memory as a Model of Your Business** section above: draw a domain's entities + properties + governance + relations once, and every install starts with that model instead of a blank database.
+
+**Install** (async -- returns `installId`, then poll status):
+- MCP: `kits_list` → `kits_install({ kitId })` → `kits_get_status({ installId })`
+- SDK: `client.kits.list()` / `client.kits.install({ kitId })` / `client.kits.getInstallStatus({ installId })`
+- CLI: `personize kits list | install <id> | status <installId>`
+- API: `GET /api/v1/kits`, `POST /api/v1/kits { kitId }` or `{ manifest }` → `202 { installId }`, then `GET /api/v1/kits/:installId`
+
+**Built-in kits:** `personize-starter` (Contact + Company + Standard Profile + Shared Workspace + base guideline -- the old default seeding, repackaged). `engineering-memory` (module / initiative / contributor / decision / incident / release / monitor / dependency for multi-developer + AI-agent teams).
+
+**Customize -- two distinct moves:**
+1. **Author / fork (before install):** copy `personize-starter`, change `id`/`name`/`version`, tune property `description`s (the biggest extraction-quality lever), swap guideline markdown, `requires` another kit to layer on top. Ship as a repo-catalog kit or an inline supplied manifest.
+2. **Per-org (after install):** customers edit entity types, properties, and guidelines. A re-install **never clobbers** customer edits unless that resource is `upsertAllowed: true` AND the kit `version` is newer (semver). Re-install is first-wins and idempotent.
+
+SHOULD layer, not replace -- assume the starter's Contact/Company exist (install or `requires` them) and add domain-specific resources on top. MUST treat each property `description` as an extraction prompt, not a comment.
+
+→ Full authoring + API + customization guide: `Docs/setup-kits/kit-authoring-guide.md`.
+
 ## Scaling Patterns
 
->10 items MUST use `memorizeBatch` -- because sequential calls waste credits and risk rate limits. Each batch item can specify its own `tier`, `schema`, `max_properties`. Batch returns `eventId`; poll `GET /api/v1/events/{eventId}` for status.
+>10 items MUST batch -- sequential calls waste credits and risk rate limits. Pick by write shape:
+- **Structured create/upsert** (you have known field values): `memory.upsert()` -- `POST /api/v1.1/memory/upsert`, MCP `memory_upsert`, CLI `personize memory upsert`. Single or batch; sets properties directly without re-extraction. This is the canonical create/upsert path.
+- **Content → AI extraction** at volume: `memory.save()` / `memory.saveBatch()` (v1.1). The legacy `memorizeBatch` still works but is **deprecated toward `memory.upsert()`**; each item can specify its own `tier`, `schema`, `max_properties`, and batch returns an `eventId` you poll via `GET /api/v1/events/{eventId}`.
 
 Tier selection: `basic` for structured data, `pro` for rich text (default), `ultra` for complex content. Check plan limits via `GET /api/v1/me`. SHOULD plan rate budget before large operations.
 
@@ -106,26 +165,29 @@ MUST NOT delete properties that agents or pipelines depend on without coordinati
 
 **Optimization loop:** evaluate -> identify weak descriptions -> adjust -> re-extract -> re-evaluate. SHOULD define accuracy threshold before starting -- because without a target, optimization never converges.
 
+→ Build evals **first** (baseline before you build), the 4 eval types (extraction / recall / governance routing / end-to-end), metrics, and a runnable harness: [`evaluating-solutions.md`](./reference/evaluating-solutions.md) (+ `personize-enabler` `script-eval-solution.ts`).
+
 ## Deployment Patterns
 
 **Ad-hoc script:** TypeScript with `@personize/sdk`, run with `npx tsx`. For prototyping and one-time ops. **Durable pipeline (Trigger.dev):** recurring or long-running operations with retries and durability. **No-code (n8n):** visual workflow automation, import generated JSON. **CI/CD governance-as-code:** guidelines as markdown in git, sync on push. **Signal:** context-aware notifications that decide IF, WHAT, WHEN, HOW to notify.
 
 SHOULD start with scripts, graduate to pipelines when proven -- because premature infrastructure wastes effort on unvalidated designs.
 
-## Project Lifecycle -- Understand Plan Build Test Operate
+## The Solution Lifecycle -- Discover to Enable
 
-When given a project: MUST follow the lifecycle phases.
+When given a project, MUST follow the lifecycle. Each phase has a home in this skill -- this is the spine that ties the front half (discovery) to the back half (design, build, operate):
 
-1. **UNDERSTAND:** Interview the human. Research the domain. Document goals and constraints. Write project brief to system workspace (`system:{project-slug}`).
-2. **PLAN:** Design collections, governance, integrations, scripts. Propose 2-3 options with trade-offs. Present the plan. MUST get human approval before building.
-3. **BUILD:** Create in order -- entity types → collections → governance → scripts → webhooks/MCPs → workspace. Checkpoint each step. Offer customization at each stage.
-4. **TEST:** Dry-run everything. Show sample outputs. Verify extraction quality. MUST get human approval before going live.
-5. **OPERATE:** Monitor, execute scheduled tasks, respond to human requests. Read system workspace on every session start.
-6. **EVOLVE:** Optimize based on learnings, handle change requests, schema evolution.
+1. **Discover** -- research the prospect, validate, read the codebase, build the Opportunity Inventory → [`discover.md`](./reference/discover.md)
+2. **Assess** -- strategic fit (two-lens, build-vs-buy, BYOC signal) + the 6-dimension Situation Assessment (above) → [`strategic-fit.md`](./reference/strategic-fit.md)
+3. **Design** -- memory model, property schema, governance, integration topology → [`memory-as-business-model.md`](./reference/memory-as-business-model.md), [`schema-design-guide.md`](./reference/schema-design-guide.md), [`governance-authoring.md`](./reference/governance-authoring.md)
+4. **Review & Propose** -- harden the design + ask the questions to improve it, then package the recommendation (2-3 options, cost, deployment) for human approval → [`design-review.md`](./reference/design-review.md), [`propose.md`](./reference/propose.md), [`cost-optimization.md`](./reference/cost-optimization.md), [`deployment-mode.md`](./reference/deployment-mode.md). MUST get approval before building.
+5. **Build** -- provision the empty org by installing a kit, then entity types → collections → governance → scripts/webhooks → workspace. Checkpoint each step.
+6. **Evaluate** -- build evals FIRST; verify extraction, recall, and governance routing before go-live → [`evaluating-solutions.md`](./reference/evaluating-solutions.md). MUST get approval before going live.
+7. **Operate & Scale** -- run, monitor, fleet-dispatch at volume, observability → [`production-patterns.md`](./reference/production-patterns.md)
+8. **Evolve** -- learning loop, smart update, schema evolution from evidence → [`cheat-smart-update.md`](./reference/cheat-smart-update.md)
+9. **Enable** -- roll out to all employees + their AI agents (MCP profiles, governance, adoption stages) → [`enablement.md`](./reference/enablement.md)
 
-For EXISTING projects: read system workspace first, check pending tasks, determine mode (task execution, human request, or optimization).
-
-Agent notes guideline: create `{project}:agent-notes` to store agent learnings, human preferences, edge cases. Updated after every significant session.
+Write the project brief to the system workspace (`system:{project-slug}`). For EXISTING projects: read it first, check pending tasks, determine mode (task execution, human request, or optimization). Keep `{project}:agent-notes` for accumulated learnings, human preferences, and edge cases -- update after every significant session.
 
 ## Infrastructure Management -- Entity Types MCPs Destinations
 
@@ -185,6 +247,7 @@ When building production systems (not just storing/recalling data), these patter
 | **Escalation** | Human-in-the-loop triggers, workspace tasks, notification with action buttons |
 | **Typed Task Dispatch** | Standardized task types with contracts for batch processing, AI vs pipeline routing, credit estimation |
 | **Notebook** | Verbatim content storage (posts, templates, code, transcripts) with versioning and discovery |
+| **Fleet Dispatch (subagent-per-record)** | Fan out one bounded subagent per record across thousands of records -- predictable cost (records × token envelope), format-consistent outputs, governed per-record memory as the shared substrate so agents don't re-derive |
 
 SHOULD scan this table before designing any production system. If 3+ patterns apply, load the full attachment.
 

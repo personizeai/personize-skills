@@ -1,6 +1,6 @@
 ---
 name: personize-agent-core
-description: "How to think, compose, coordinate, self-correct, and learn as an autonomous Personize-powered agent. Covers bootstrap, the core loop (recall-govern-act-store), tool composition, multi-agent coordination, self-correction, analysis patterns, code generation, governance compliance, risk management, resilience, learning, observability, and cost awareness. Use as the foundation for any Personize-powered AI agent on any platform."
+description: "Use as the foundation for any autonomous Personize-powered agent on any platform -- how to think, compose tools, coordinate, self-correct, and learn. Trigger when building or running an agent on Personize memory and governance: bootstrap, the core loop (recall-govern-act-store), tool composition, multi-agent coordination, self-correction, analysis, code generation, governance compliance, risk, resilience, learning, observability, and cost awareness."
 license: Apache-2.0
 compatibility: "Requires Personize MCP server or @personize/sdk with a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://personize.ai", "alwaysOn": true}
@@ -111,7 +111,7 @@ Error recovery: rate limit -- back off, retry. Auth error -- surface to user. No
 
 ## Platform Gotchas -- Read Before Your First Call
 
-**Memorize is async.** After `memory_store_pro` returns a `recordId`, the record may not be queryable for 1-3 seconds. If you immediately call `memory_update_property` or `bulkUpdate` on that recordId, you'll get 404 RECORD_NOT_FOUND. MUST retry with backoff (wait 1s, 2s, 3s) -- not a fixed sleep.
+**Memorize is async.** After `memory_save` returns a `recordId`, the record may not be queryable for 1-3 seconds. If you immediately call `memory_update_property` or `memory_update_properties` on that recordId, you'll get 404 RECORD_NOT_FOUND. MUST retry with backoff (wait 1s, 2s, 3s) -- not a fixed sleep.
 
 **Property names are Title Case.** When writing properties, MUST use Title Case (`Status`, `Workspace Name`, `Pending Tasks`) -- not snake_case. The API returns properties in Title Case. `filterByProperty` conditions MUST use Title Case: `{ propertyName: 'Status', operator: 'equals', value: 'active' }`.
 
@@ -124,11 +124,11 @@ BAD: Draft email immediately without recalling context or checking governance.
 
 ## Composing Tools
 
-Select by intent: `smartRecall` for any retrieval (default). `memory_digest` for full entity narrative. `recall_pro` `mode:"deep"` for synthesized answers. `memory_store_pro` for rich text (AI extraction is always on). `memory_batch_store` for 10+ items. `memory_update_property` for single property changes. Responses API for multi-step orchestration. `ai_smart_guidelines` for governance.
+Select by intent: `smartRecall` for any retrieval (default). `memory_digest` for full entity narrative. `recall_pro` `mode:"deep"` for synthesized answers. `memory_save` for rich text (AI extraction is always on). `memory_upsert` for structured batch writes with known field values (single or batch, no AI extraction -- the canonical create/upsert path); `client.memory.saveBatch()` or the `personize_cookbook` recipe for content batches that need AI extraction. `memory_update_property` for single property changes. Responses API for multi-step orchestration. `ai_smart_guidelines` for governance.
 
 When creating collections: MUST write property descriptions that guide extraction ("Annual deal budget in USD, extracted from pricing discussions" not just "Budget") -- because the description IS the extraction instruction. MUST use `select`/`multi-select` for properties with enumerable values (deal stages, reply classifications, funding stages) -- because it constrains extraction and enables `filterByProperty`. SHOULD check `personize-enabler` presets before designing schema from scratch.
 
-`filterByProperty`: free deterministic query (no LLM, no credits). Use for known-schema filters like "Deal Stage = Qualified". SHOULD prefer over `smartRecall` when the query maps to structured conditions -- because it is instant and zero-cost. `queryProperties`: LLM-powered property search. More powerful but costs credits. Use when the query is natural language. SDK auto-resolves `collectionName` to `collectionId` -- use names for readability. `records` shorthand in `memorizeBatch`: pass `{ email, content, properties: {} }` array instead of raw mapping/rows -- SDK handles the transformation.
+`filterByProperty`: free deterministic query (no LLM, no credits). Use for known-schema filters like "Deal Stage = Qualified". SHOULD prefer over `smartRecall` when the query maps to structured conditions -- because it is instant and zero-cost. `queryProperties`: LLM-powered property search. More powerful but costs credits. Use when the query is natural language. SDK auto-resolves `collectionName` to `collectionId` -- use names for readability. `records` shorthand (pass a `{ email, content, properties: {} }` array instead of raw mapping/rows -- SDK handles the transformation): use it with `client.memory.saveBatch()` for content batches, or with `memory_upsert` / `client.memory.upsert()` for structured field values. `memorizeBatch` is DEPRECATED -- route structured writes to `memory_upsert` and content extraction to `saveBatch()`.
 
 ## Execute Then Verify -- Never Describe Without Doing
 
@@ -136,8 +136,8 @@ MUST actually call tools, not just describe what you would call. Writing "I will
 
 After every create/update operation, MUST verify the result:
 - After `collection_create` or `collection_update` → call `collection_list` and confirm properties exist
-- After `guideline_create` → call `guideline_list` and confirm the guideline appears
-- After `memory_store_pro` → call `smartRecall` to verify content was stored
+- After `context_save` → call `guideline_list` and confirm the guideline appears
+- After `memory_save` → call `smartRecall` to verify content was stored
 - After `memory_update_property` → call `memory_get_properties` to verify the value
 
 MUST NOT claim "I created X" without having called the tool AND verified the result. This is the #1 failure mode: agents plan actions in documents but never execute them.
@@ -146,7 +146,7 @@ MUST NOT claim "I created X" without having called the tool AND verified the res
 
 After memorizing: verify with `smartRecall`. Empty properties? Re-memorize with `schema`, `tier:"pro"`, `actionId`. After recalling empty: broaden -- different identity key, remove entity scope. Irrelevant? Add `type` filter, `collectionNames`. After generating: compare against MUST constraints, regenerate if violated. Check `creditsCharged` -- high means wrong tier/mode. MUST NOT repeat the same failing approach.
 
-Soft delete is recoverable: `memory.delete()` and `deleteRecord()` have 30-day recovery window. Use `cancelDeletion()` to restore. MUST NOT panic on accidental deletes -- because the data is still recoverable within the retention window. Optimistic concurrency: if `bulkUpdate` returns 409 (version mismatch), another agent updated the record. Re-read with fresh data and retry. SHOULD use `expectedVersion` for critical updates -- because it prevents silent overwrites.
+Soft delete is recoverable: `memory.delete()` and `deleteRecord()` have 30-day recovery window. Use `cancelDeletion()` to restore. MUST NOT panic on accidental deletes -- because the data is still recoverable within the retention window. Optimistic concurrency: if `memory_update_properties` returns 409 (version mismatch), another agent updated the record. Re-read with fresh data and retry. SHOULD use `expectedVersion` for critical updates -- because it prevents silent overwrites.
 
 ## Analysis Patterns
 
@@ -162,7 +162,7 @@ MUST check workspace before acting -- another agent may have already done this.
 
 Broadcast with a clickable button: `notification_broadcast(role:'admin', title:'Q2 Report Ready', message:'Analysis complete.', actionUrl:'https://...', actionLabel:'View Report')`. Use `role:'all'` to reach everyone. If a report or file was generated and hosted externally (S3, GCS, a dashboard URL), pass the URL as `actionUrl` -- the notification becomes the delivery mechanism. Always notify the requester after a long-running task completes.
 
-Concurrent safety: SHOULD use `bulkUpdate` with `expectedVersion` when multiple agents may update the same record -- because 409 response means another agent wrote first. Re-read with fresh data and retry. Notification actions: use `notifications.executeAction()` to respond to actionable notifications from other agents or humans.
+Concurrent safety: SHOULD use `memory_update_properties` with `expectedVersion` when multiple agents may update the same record -- because 409 response means another agent wrote first. Re-read with fresh data and retry. Notification actions: use `notifications.executeAction()` to respond to actionable notifications from other agents or humans.
 
 ## Interface Selection -- MCP vs SDK vs CLI
 
@@ -203,7 +203,9 @@ MUST surface capability limitations to the user instead of silently skipping. Pe
 
 ## Confirmations and Risk
 
-**Low** (read, recall, search): act immediately. **Medium** (memorize, update): act, inform user. **High** (delete, bulk >10, email): confirm first. **Critical** (delete collection, compliance, org-wide): confirm + explain impact. Start with `--dry-run`, review, then run live.
+**Rate every action before doing it** on four axes -- read vs write, reversibility, permission/scope (whose data, how many records), and financial/data impact. The highest axis sets the tier.
+
+**Low** (read, recall, search): act immediately. **Medium** (memorize, update): act, inform user. **High** (delete, bulk >10, email/external send): confirm first. **Critical** (delete collection, compliance-sensitive, org-wide, irreversible): confirm + explain impact. Start with `--dry-run`, review, then run live.
 
 ## Resilience -- Checkpoint and Resume
 
@@ -217,10 +219,10 @@ Store what worked, what failed, and why. Use `about:"self"` for learnings that p
 
 **User identity belongs on the self-record.** When you learn the user's name, role, company, or preferences, MUST store on `about:"self"` -- not only on workspace/project records. Next session, `memory_recall_pro(about:"self")` should return who the user is without searching across all records. If `about:"self"` returns empty, try `smartRecall` with the user's name or domain as a broader fallback.
 
-MUST call `memory_store_pro(about:"self")` before session ends -- because without it, the next session starts from zero. Content should include: who the user is (name, role, company), what was built/configured, decisions made, what worked, what failed, pending tasks.
+MUST call `memory_save(about:"self")` before session ends -- because without it, the next session starts from zero. Content should include: who the user is (name, role, company), what was built/configured, decisions made, what worked, what failed, pending tasks.
 
 Session-end checklist:
-1. Store learnings + user identity: `memory_store_pro(content:"...", about:"self")`
+1. Store learnings + user identity: `memory_save(content:"...", about:"self")`
 2. Update workspace Context if any workspace was written to
 3. Surface pending tasks or open questions to the user
 

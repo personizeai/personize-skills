@@ -332,7 +332,7 @@ Measure (query interaction ledger)
 - Weak signal (<50 data points): store as self-memory for future reference, don't change governance yet
 - Conflicting signals: surface to user, don't auto-apply
 
-**Store learnings:** `memory_store_pro(content="...", about:"self", tags:["learning", "program:{id}"])`. Next session, the agent recalls what worked and doesn't repeat failed approaches.
+**Store learnings:** `memory_save(content="...", about:"self", tags:["learning", "program:{id}"])`. Next session, the agent recalls what worked and doesn't repeat failed approaches.
 
 **Examples:**
 - Sales: "ROI-focused emails get 3x more replies from CTOs" → update playbook
@@ -425,7 +425,7 @@ At 10,000 records: all-AI = ~30,000 credits, 83 min. With routing: ~14,000 credi
 
 ## M. Notebook (Verbatim Content Storage)
 
-**When:** Content needs its exact wording preserved -- posts, templates, code reviews, meeting transcripts, email drafts. `memory_store_pro` atomizes content for semantic recall, which is great for facts but destroys the original structure. The Notebook pattern stores verbatim text as a property.
+**When:** Content needs its exact wording preserved -- posts, templates, code reviews, meeting transcripts, email drafts. `memory_save` atomizes content for semantic recall, which is great for facts but destroys the original structure. The Notebook pattern stores verbatim text as a property.
 
 **Model as:** Records keyed by slug (`nb:{type}-{title-kebab}`), with a `Body` property for exact text and structured properties for discovery.
 
@@ -442,20 +442,20 @@ At 10,000 records: all-AI = ~30,000 credits, 83 min. With routing: ~14,000 credi
 | Notes | Array (append) -- comments and feedback |
 
 **Key operations:**
-- **Create:** `memory_store_pro` (creates record) → `bulkUpdate` (set properties) → `memory_update_property` (set Body verbatim)
+- **Create:** `memory_save` (creates record) → `memory_update_properties` (set properties) → `memory_update_property` (set Body verbatim)
 - **Read:** `filterByProperty(Record Type=notebook)` for list (0 credits), `memory_get_properties` for body
 - **Update body:** Save old body to Versions array FIRST, then overwrite Body
 - **Discover:** `filterByProperty` on Type, Channel, Status, Tags -- all free
 
-**When to use Notebook vs memory_store_pro:**
+**When to use Notebook vs memory_save:**
 
 | Content | Use | Why |
 |---|---|---|
-| "Acme uses Kubernetes" | `memory_store_pro` | Fact -- atomization helps recall |
+| "Acme uses Kubernetes" | `memory_save` | Fact -- atomization helps recall |
 | "Here's my LinkedIn post" | Notebook | Must preserve exact wording |
-| "Cold emails work better on Tuesday" | `memory_store_pro` | Insight -- recalled contextually |
+| "Cold emails work better on Tuesday" | `memory_save` | Insight -- recalled contextually |
 | "Our email template for VP Sales" | Notebook | Template -- needs exact text |
-| "Meeting notes from Acme call" | Either | Verbatim transcript → Notebook. Key facts only → `memory_store_pro` |
+| "Meeting notes from Acme call" | Either | Verbatim transcript → Notebook. Key facts only → `memory_save` |
 
 **Examples across verticals:**
 - Sales: email templates, LinkedIn posts, pitch decks, call scripts
@@ -463,4 +463,122 @@ At 10,000 records: all-AI = ~30,000 credits, 83 min. With routing: ~14,000 credi
 - Education: lesson plans, student feedback templates, curriculum drafts
 - Legal: contract clauses, compliance checklists, policy drafts
 
-**Anti-pattern:** Using `memory_store_pro` for content that needs exact preservation. Extraction atomizes "Your 500-word LinkedIn post" into fragments like "The author believes AI agents are changing sales." The original post is gone.
+**Anti-pattern:** Using `memory_save` for content that needs exact preservation. Extraction atomizes "Your 500-word LinkedIn post" into fragments like "The author believes AI agents are changing sales." The original post is gone.
+
+---
+
+## N. Fleet Dispatch (Subagent per Record)
+
+**When:** You need to run the same reasoning across hundreds to hundreds-of-thousands of records and get back predictable cost and uniform output shape -- enrich every account, score every lead, triage every ticket, draft a variant per recipient, run a watcher over every monitor.
+
+**The shift:** From open-ended autonomous agents (unpredictable cost and output) to **one bounded subagent per record** executing a fixed instruction chain. The unit of work -- not model capability -- is what makes this production-viable.
+
+**The pattern:** A dispatcher selects the record set (`filterByProperty`, a program's enrollment, or a `Pending Tasks` queue), then fans out one subagent per record with a concurrency cap. Each subagent runs the same chain -- Plan → Gather → Reason → Act → Write back -- and is automatically grounded in two things: the **governed memory scoped to that record** (recall) and the **org guidelines** (govern). It writes results back to the record (properties + `updates`), then exits.
+
+**What you trade, and what you get:**
+
+| You give up | You get back |
+|---|---|
+| Open-ended autonomy inside each run | **Forecasted spend:** cost = records × per-record token envelope, not lottery-ticket variance |
+| Free-form output | **Format consistency:** identical output shape across 100,000 runs -- downstream automation can trust it |
+| Cross-record improvisation | **Composability:** predictable typed outputs become trustworthy inputs for the next stage |
+
+**Why memory is the substrate, not a feature:** without shared governed memory, parallel subagents re-derive what the last one already learned -- every run pays the discovery cost again. With it, each subagent recalls the record's compacted history and the org's guidelines, does only the new work, and writes back. Memory is what makes a *fleet* consistent rather than a thousand disconnected one-offs. This is the [`memory-as-business-model.md`](./memory-as-business-model.md) model at scale.
+
+**Guardrails (bake into the chain):**
+- **Hard isolation** -- one record's learned context must never bleed into another's. Scope recall to the record key.
+- **Fabrication refusal** -- when a fact can't be verified, the subagent aborts that field explicitly rather than inventing a plausible value.
+- **Audit/rewrite separation** -- for artifacts >200 words, audit and rewrite are separate steps so the model can't silently mask its own format violations (see `instruction-patterns.md`, tier T3).
+- **Blast-radius bound** -- `maxSteps` per tool-calling instruction; retry-once-then-skip for flaky tools (T4). One bad record never aborts the fleet.
+
+**Cost forecasting:** estimate before dispatch -- `records × (recall + reason + write) token envelope × tier rate`. Pair with `cost-simulator.md` to compare against dumping raw context per call, and report the forecast to the human before a large run.
+
+**Examples across verticals:**
+- Sales: enrich + score every account in a territory; draft a persona-tailored opener per contact.
+- Healthcare: summarize the latest visit for every patient on a care plan.
+- Support: triage and tag every open ticket; draft a first response per ticket.
+- Ops: a cron fleet that re-checks every `monitor` record and writes its `last_result`.
+
+**Anti-pattern:** one open-ended agent looping over all records in a single context. Context bloats, cost is unpredictable, output drifts between record 5 and record 5,000, and one failure can poison the rest. Fan out bounded per-record subagents instead.
+
+**Relationship to other patterns:** Fleet Dispatch is how you *execute* a Typed Task Dispatch (L) queue at scale, and how a Coordinated Program (A) processes its enrollment. Use the Interaction Ledger (E) to capture each run's outcome for the Learning & Evolution (J) loop.
+
+---
+
+## O. Ledger Aggregation
+
+**When:** You have an Interaction Ledger (Pattern E) -- one record per touchpoint -- and you need rolled-up metrics for the learning loop: reply rate by variant, conversion by program, show-up rate by channel. There is no `GROUP BY` in the memory layer, so the aggregation happens in your code, not the query.
+
+**The pattern:** Select the cohort with the free structured filter, pull the one metric property off each record, aggregate client-side, and write the rollup back as a single summary record (or a self-memory). The ledger stays append-only; the summary is the queryable, cheap artifact everyone reads.
+
+| Step | Action | Cost |
+|---|---|---|
+| 1. Select cohort | `filterByProperty` on the ledger (e.g. `program_id = X`, `created_at >= window`) | 0 credits |
+| 2. Pull the metric | Read the outcome/variant property off each returned record | 0 credits |
+| 3. Aggregate | Tally in code: count by `outcome` per `variant`/`channel`/`program_id` | Local |
+| 4. Roll up | Write one summary record (`Record Type=ledger-rollup`, period-keyed) via property write-back, or a `memory_save(about:'self', tags:['rollup'])` | 1 write |
+| 5. Read later | `filterByProperty(Record Type=ledger-rollup)` -- the next cycle reads the summary, not the raw ledger | 0 credits |
+
+**Why aggregate to a record, not recompute every time:** raw ledgers are large and grow unbounded. Scanning 50,000 interaction rows to recompute "reply rate by variant" on every learning cycle is wasteful. Compute it once per cadence, store the rollup, and every subsequent reader (digest, dashboard, the learning loop) gets the answer for the cost of one free filter.
+
+**Cadence:** run the rollup on a fixed beat -- nightly for throughput/quality, weekly for variant attribution (you need enough volume per variant for the numbers to mean anything). Key the summary by period (`rollup:2026-W24`) so history is preserved and trends are queryable.
+
+**Attribution by tag/variant:** the rollup is only as good as the dimension you tagged at write time. Every ledger row must carry its `variant`, `program_id`, and `channel` (set when the interaction was logged). Aggregation groups on those tags -- if they weren't captured, the dimension doesn't exist. For large cohorts, page the filter (`nextToken`) or fan the aggregation out as a Fleet Dispatch (N) over sub-cohorts and sum the partial rollups.
+
+**Examples across verticals:**
+- Sales: reply rate by email variant; meetings booked per program this week.
+- Healthcare: show-up rate by reminder channel (SMS vs email); follow-ups completed per protocol.
+- Education: enrollment conversion by outreach angle; advisor response rate by cohort.
+- Support: median resolution time by queue; CSAT by agent persona.
+
+**Anti-pattern:** asking the LLM to "summarize the ledger" by dumping thousands of rows into a prompt. That is slow, expensive, and non-deterministic -- counts come back wrong. Counting is a code job; reserve the LLM for interpreting the rollup, not computing it.
+
+**Relationship to other patterns:** Ledger Aggregation is the *measure* step that feeds the Learning & Evolution (J) loop -- it turns the raw history captured by the Interaction Ledger (E) into the evidence J needs before it proposes a governance change. Observability & Health Monitoring (I) reads the same rollups for its daily digest.
+
+---
+
+## P. Agent Triggering & Approval Lifecycle
+
+**When:** One agent's work needs to wake another agent (a researcher finishes, a writer should start), or an action is high-stakes enough that a human or a manager agent must approve it before it goes out. Both are coordination problems, and both hinge on one fact about the platform.
+
+**The platform fact:** Personize is *passive*. It stores state, guidelines, and memory; it does not run loops or fire events on its own. Personize coordinates state -- an external scheduler or runner executes. Any "trigger" is something outside Personize polling or reacting to a state change you wrote.
+
+### (a) How Agent A wakes Agent B
+
+There is no in-platform pub/sub. Pick the mechanism that fits your runtime:
+
+| Mechanism | How it works | Use when |
+|---|---|---|
+| **Scheduled poll (cron/rate)** | An external scheduler runs Agent B on a beat; B opens with `filterByProperty(status = "ready-for-B")` and processes whatever A flagged | Batch handoffs, no urgency, simplest to operate |
+| **Destination webhook** | A writes a record/event; a configured webhook destination POSTs into an external runner that invokes Agent B | Near-real-time handoff to code you control |
+| **Workspace `Status` as the flag** | A sets workspace `Status` (e.g. `research-complete`); B's poll or the runner keys off that field as the trigger | Multi-agent collaboration on a shared record |
+
+In every row the pattern is the same: **A writes a state, B (driven by an external scheduler or runner) reads that state and acts.** The flag is a property or workspace `Status`; the *execution* is always external. Design the handoff as a queryable state, never as a direct call -- A and B may run minutes or hours apart.
+
+### (b) The draft -> review -> send state machine
+
+For anything that leaves the building (an email, a public post, a customer-facing document), separate *generation* from *sending* with an explicit, queryable lifecycle on a `Pending Task`:
+
+| Status | Who sets it | What it means |
+|---|---|---|
+| `draft` | Generator agent | Content produced, not yet checked |
+| `pending-review` | Generator agent | Ready for a human or manager agent to judge |
+| `approved` | Manager / review agent | Cleared to send |
+| `sent` | Sender (external runner) | Delivered; terminal |
+| `rejected` | Manager / review agent | Bounced back with a reason; generator may revise |
+
+**Wiring it:**
+- Generation is **compliance-gated before it runs** -- the generator loads governance (`ai_smart_guidelines` / `context_retrieve`) and refuses to draft if a hard rule blocks it. Don't generate first and filter later.
+- Governance marks the send action **REVIEW** (the AUTO / REVIEW / MANUAL boundary from Pattern K). REVIEW means: the agent may *produce* and *propose*, but a human or a designated review agent must flip the status before the send step is allowed to fire.
+- The **manager/review agent owns the status transition.** A separate review pass (its own poll over `filterByProperty(status = "pending-review")`) reads the draft, checks it against guidelines, and sets `approved` or `rejected`. Audit/rewrite separation (Pattern N) applies: review is a distinct step from generation so the generator can't rubber-stamp itself.
+- Only on `approved` does the external sender act, then set `sent`. The status IS the gate -- the runner refuses to send anything not in `approved`.
+
+**Examples across verticals:**
+- Sales: SDR agent drafts an outbound email (`pending-review`); the AE or a manager agent approves before send.
+- Healthcare: an agent drafts patient-facing instructions; a clinician approves before delivery (`MANUAL`/`REVIEW` -- never `AUTO`).
+- Finance: a renewal notice is drafted but blocked at `pending-review` until compliance clears it.
+- Marketing: a post is generated and held; a brand reviewer flips it to `approved` before it publishes.
+
+**Anti-pattern:** an agent that generates and sends in one uninterrupted step for high-stakes output -- there is no point at which a human or reviewer can intervene, and a single bad generation reaches the customer. Equally wrong: expecting Personize to "trigger" Agent B by itself. Nothing runs without an external scheduler or runner; the platform only holds the state they react to.
+
+**Relationship to other patterns:** the approval lifecycle is the concrete state machine behind Escalation & Human-in-the-Loop (K) -- K decides *when* to require review, P defines the *statuses and transitions* that enforce it. The review agent flipping status is a handoff governed by Responsibility Routing (H): generation and approval are different roles, and ownership moves with the status. Triggering (a) is how a Fleet Dispatch (N) of generators hands its drafts to a separate fleet of reviewers.

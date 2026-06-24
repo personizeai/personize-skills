@@ -4,6 +4,23 @@
 
 ---
 
+## Contents
+
+1. Mental Model Overview (the IDE metaphor)
+2. The Tab Taxonomy (memory scopes)
+3. The Affordance Grid (verbs)
+4. The Full Routing Matrix (canonical call per surface: MCP / SDK / HTTP / CLI)
+5. Composite Affordances (multi-call sequences)
+6. Design Templates (runnable SDK snippets)
+7. Cross-Links to Other References
+8. Honest Gaps
+- agent2_0 Collapsed Routing Reference (5-tool surface)
+- Quick-Reference Cheatsheet
+
+> For the *strategic* model (why model memory at all, the three layers, the boundary question), read `memory-as-business-model.md` first. This file is the *operational* routing layer beneath it.
+
+---
+
 ## 1. Mental Model Overview
 
 Memory in Personize is organized the same way a well-designed IDE organizes open files: **tabs** (scopes you can navigate to) and **affordances** (actions you can take in each tab). The mental model is interface-agnostic -- the same taxonomy works whether the agent is calling MCP tools, the TypeScript SDK, the HTTP API, or the CLI.
@@ -38,7 +55,7 @@ A **tab** is a named memory scope. Tabs are not physical database tables -- they
 | **Self** | User-private memories | `userId`, `about='self'` | Only the calling user sees these. Survives session boundaries. |
 | **Context** | Guidelines, playbooks, references, templates | `contextId`, `type` | Governs agent and human behavior. Retrieved by semantic relevance. |
 | **Attachments** | Raw docs and files associated with a context doc | `attachmentId`, `parentContextId` | Uploaded to a parent guideline or playbook. Binary + metadata. |
-| **Graph** *(placeholder)* | Entity relationships (PG graph, concurrent work) | `fromEntity`, `toEntity`, `edgeType` | No tool today. Reserved for the graph layer under active development. |
+| **Graph** | Entity relationships (bi-temporal edges in PostgreSQL) | `fromEntity`, `toEntity`, `edgeType` | Traversal is **live**: `sources.graph:true` on `retrieve_unified` (agent2_0) or `POST /api/v1.1/memory/retrieve`. Edges are inferred automatically at memorize time; no manual edge-write API by design. See `graph-relations.md`. |
 
 ### What is NOT a tab
 
@@ -161,6 +178,8 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 
 **Context types:** `guideline` (governance rules), `playbook` (step-by-step procedures), `reference` (factual reference material), `template` (reusable output structures), `brief` (short situational context). The `type` field governs how the governance layer prioritizes and formats retrieval results. Pass `type` in `context_retrieve` to narrow to a specific kind.
 
+**Context tags:** context docs also carry tags from the org's curated `org_tag_vocabulary`. The LLM section-selector reads each tag's description (format: `Use for: X. Not for: Y.`) to include or exclude docs per query. Agents may apply existing tags during a save but never invent new canonicals -- unmatched candidates are dropped on purpose. Manage via `personize v1.1 context tags ...` (CLI) or `client.v1_1.context.{listTags, createTag, ...}` (SDK). See SKILL.md "Curated Taxonomies" for the full lifecycle.
+
 **Usage pattern:** `context_retrieve` is the runtime path -- pass the current user message or task description; the platform semantically matches the best-fit guidelines. `context_manage_*` tools are the management path -- CRUD for guideline lifecycle. In agentic workflows, you almost always want `context_retrieve`, not `context_manage_list`, at task time.
 
 ---
@@ -207,8 +226,9 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 | Affordance | MCP | SDK | HTTP | CLI |
 |---|---|---|---|---|
 | Recipe lookup | `personize_cookbook` | n/a (call via MCP) | n/a | n/a |
-| Batch store | `memory_batch_store` | `client.memory.memorizeBatch({ records })` | `POST /api/v1/memorize/batch` | `personize memorize --batch --file=records.json` |
-| Batch validate | `memory_batch_validate` | `client.memory.validateBatch({ records })` | `POST /api/v1/memorize/batch/validate` | n/a |
+| Batch upsert (structured, known field values) | `memory_upsert` | `client.memory.upsert({ records })` | `POST /api/v1.1/memory/upsert` | `personize memory upsert --file=records.json` |
+| Batch store (content → AI extraction) | n/a -- no MCP batch tool; use `personize_cookbook` | `client.memory.saveBatch({ records })` (legacy `memorizeBatch`, deprecated) | `POST /api/v1/memorize/batch` | `personize memorize --batch --file=records.json` |
+| Batch validate (dry run) | n/a | `client.memory.validateBatch({ records })` | `POST /api/v1/memorize/batch/validate` | n/a |
 
 **Rule:** For any operation involving 5 or more records -- import, sync, dedup, backfill -- call `personize_cookbook` first. It returns a proven recipe with rate limiting, error handling, and cursor-based pagination already solved. Do not hand-loop 50+ records with individual `memory_save` calls.
 
@@ -489,12 +509,12 @@ For any operation touching 5 or more records, route to `personize_cookbook` rath
 // The cookbook returns a complete, rate-limit-aware script.
 // Follow the recipe rather than writing your own loop.
 
-// If you must write a batch loop, use memorizeBatch:
+// If you must write a batch loop for content extraction, use saveBatch (memorizeBatch is deprecated):
 async function batchIngestLeads(leads: Array<{ email: string; name: string }>) {
     const BATCH_SIZE = 25; // platform-safe batch size
     for (let i = 0; i < leads.length; i += BATCH_SIZE) {
         const batch = leads.slice(i, i + BATCH_SIZE);
-        await client.memory.memorizeBatch({
+        await client.memory.saveBatch({
             records: batch.map(lead => ({
                 email: lead.email,
                 content: `Lead: ${lead.name}`,
@@ -557,13 +577,15 @@ This document covers the tool routing layer. The following reference files cover
 
 | Reference | When to use it |
 |---|---|
-| `reference/integration-modes.md` | Choosing between SDK, MCP, Responses API, multi-agent, and no-code per integration archetype. Start here when the question is "how should my system connect to Personize?" rather than "which tool do I call?" |
-| `reference/schema.md` | Designing the record + property schema for a new domain. Includes the JSON Schema definition for valid property types and 8 worked example schemas (contact, company, deal, employee, product-user, support-ticket, agent-memory, sales-contact overlay). |
-| `reference/archetypes.md` | Use-case-driven patterns: communication-heavy, analysis, decision, execution, and collaboration archetypes with layer weights, architecture diagrams, and example pipelines. Use this after the situation assessment to pick the right overall architecture. |
-| `reference/platform-capabilities.md` | Full inventory of platform features beyond core memory and governance -- smart notifications (Personize Signal), Apollo enrichment, multimodal input, MCP access profiles (agent / agent-readonly / governance / developer), BYOC, and the Agents API. |
-| `reference/wire.md` | Integration wiring patterns: wrap, webhook, middleware, cron, queue, MCP tool provider, outbound webhook. Error handling, rate alignment, and stack-specific recipes. |
-| `reference/plan.md` | The 10-step data intelligence loop, full SDK method reference, rate limits, scheduling strategies, and per-channel delivery code. |
-| `reference/generate.md` | Generation guardrails, format rules, hallucination prevention, output parsing, evaluation patterns. |
+| `reference/memory-as-business-model.md` | The mental model behind all of this -- why model memory, the three retrieval layers, the boundary question. Read first when the question is "how should I think about this?" |
+| `reference/integration-modes.md` | Choosing between SDK, MCP, API, CLI, multi-agent, and no-code per integration archetype. Start here for "how should my system connect to Personize?" |
+| `reference/schema-design-guide.md` | Designing the record + property schema for a new domain: property types, extraction-quality descriptions, and worked example schemas. |
+| `reference/graph-relations.md` | When to model connections as graph edges vs. properties, the relation-type registry, and how to query the graph (`sources.graph`). |
+| `reference/governance-authoring.md` | Authoring guidelines: naming for routing, constraint levels (MUST/SHOULD/MAY), token budget, anti-patterns. |
+| `reference/design-patterns.md` + `reference/production-patterns.md` | Architectural patterns (event-driven, CQRS, workspace) and operational patterns (coordinated program, ledger, fleet dispatch, escalation). |
+| `reference/instruction-patterns.md` | Authoring multi-step `instructions[]` prompts: the 9-pattern catalog, error-handling tiers, context-wiring. |
+| `reference/cost-simulator.md` | The compaction cost model: Personize compact recall vs. raw-LLM vs. RAG, with savings math. |
+| `reference/audit-and-plan.md` | Onboarding an existing corpus: audit → destination per data type → sequence the import → verify. |
 
 ---
 
@@ -579,9 +601,8 @@ The following affordances do NOT have a single-tool implementation today. Each r
 | **Locate-anything** | No single tool: chain `memory_retrieve` → `memory_search` → `context_retrieve` | When the agent has a name or description but no exact key, it must resolve the key through a lookup cascade. |
 | **Bulk-update** | No single tool: `memory_filter_by_property` + loop, or `personize_cookbook` | Updating a property across many records requires either a cookbook recipe or a hand-written batch loop with manual rate limiting. |
 | **Cross-tab join** | Composite: parallel `memory_search` + `context_retrieve` | No single call retrieves both record data and applicable governance rules. The two-call parallel pattern is the canonical workaround. |
-| **Graph.Neighbors** | Placeholder -- no tools today | The PostgreSQL graph layer is under concurrent development. No graph traversal tools exist. |
-| **Graph.Traverse** | Placeholder -- no tools today | Same as above. |
-| **Graph.AddEdge** | Placeholder -- no tools today | Same as above. |
+| **Graph.Neighbors / Traverse** | Live -- not a gap | `retrieve_unified(mode='scout', record={id}, sources={graph:true})` on agent2_0, or `POST /api/v1.1/memory/retrieve` with `sources.graph`. See `graph-relations.md`. |
+| **Graph.AddEdge** | No manual API, by design | Edges are inferred automatically from foreign-key-shaped properties (`company`, `assigned_to_email`, ...) at memorize time; manual seeding is rarely needed. |
 
 ### Why surface gaps explicitly?
 
@@ -594,7 +615,7 @@ Naming the gap turns it from a failure mode into a design decision: the agent kn
 
 ### Roadmap context
 
-These gaps are tracked in the spec `Docs/superpowers/specs/2026-05-14-agent-memory-mental-model-design.md` under "Out of scope (deferred)." The team's intentional choice was to surface the gaps in documentation rather than add wrapper tools that obscure complexity. When graph tools land, this document should be updated with the tool names in the Graph rows of section 4.
+These gaps are tracked in the spec `Docs/superpowers/specs/2026-05-14-agent-memory-mental-model-design.md` under "Out of scope (deferred)." The team's intentional choice was to surface the gaps in documentation rather than add wrapper tools that obscure complexity. Graph *traversal* (read) has since landed -- `sources.graph` on v1.1 retrieve and agent2_0 `retrieve_unified`; section 4's Graph rows reflect it. A manual edge-*write* API remains intentionally deferred in favor of automatic inference at memorize time.
 
 ---
 
@@ -655,7 +676,8 @@ For fast lookup without reading the full matrix.
 | List attachments on a guideline | `context_attachment_list({ guidelineId })` |
 | Upload a file to a guideline | `context_attachment_upload({ guidelineId, file, metadata })` |
 | Run a scale operation (5+ records) | `personize_cookbook` -- get a recipe first |
-| Batch ingest records | `memory_batch_store` or `client.memory.memorizeBatch({ records })` |
+| Batch ingest (structured, known fields) | `memory_upsert` / `client.memory.upsert({ records })` |
+| Batch ingest (content → extraction) | `client.memory.saveBatch({ records })` (or `personize_cookbook` recipe) |
 
 ---
 

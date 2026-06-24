@@ -58,7 +58,7 @@
 | POST | /api/v1/similar | Find similar records | seed, dimensions, limit |
 | POST | /api/v1/segment | Segment/rank audience | seed, dimensions, tiers |
 | POST | /api/v1/smart-memory-digest | Entity context digest | email, type, token_budget |
-| POST | /api/v1/upsert | Upsert structured data | content, email |
+| POST | /api/v1.1/memory/upsert | Structured create/upsert (known field values, no AI extraction; single or batch). Canonical create/upsert path | records[] |
 | POST | /api/v1/export | Export records (alias for search) | filters, format |
 | POST | /api/v1/properties | Get record properties with schema | email, type, propertyNames |
 | GET | /api/v1/test | Verify API key validity | -- |
@@ -226,6 +226,16 @@ For seeding many context docs at once. Returns an `eventId` immediately; upserts
 | DELETE | /api/v1/destinations/:id | Delete destination | -- |
 | POST | /api/v1/destinations/:id/test | Send test event | -- |
 | GET | /api/v1/destinations/:id/logs | Get delivery logs | -- |
+
+### Kits
+
+Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+
+| Method | Path | Description | Key Params |
+|--------|------|-------------|------------|
+| GET | /api/v1/kits | List available kits | -- |
+| POST | /api/v1/kits | Install a kit (async, returns 202 + installId) | kitId \| manifest |
+| GET | /api/v1/kits/:installId | Poll install status | -- |
 
 ---
 

@@ -31,25 +31,29 @@ npx personize test
 
 ## Fresh Org Setup Order
 
+A brand-new org is EMPTY -- no collections, no guidelines. The fastest way to provision it is to install a kit: a built-in declarative manifest that creates collections and guidelines for you. Browse with `kits_list` (built-in: `personize-starter` for a general baseline, `engineering-memory` for engineering teams), install with `kits_install`, and poll progress with `kits_get_status`. Install a kit first; only hand-build collections/guidelines when no kit fits.
+
 When collections are empty and no guidelines exist:
 
 | Step | Tool | What |
 |------|------|------|
 | 1 | `personize_skill` | Load platform guidance |
-| 2 | `personize_context` | Discover org state |
-| 3 | Ask user | What are you building? Who are your entities? |
-| 4 | `collection_create` | Create entity collections with properties |
-| 5 | Verify: `collection_list` | Confirm collections exist with properties |
-| 6 | `guideline_create` | Create governance guidelines (rules, policies) |
-| 7 | Verify: `guideline_list` | Confirm guidelines exist |
-| 8 | `memory_store_pro(about:"self")` | Store what was configured |
+| 2 | `personize_context` | Discover org state (confirm it's empty) |
+| 3 | `kits_list` | List installable kits (`personize-starter`, `engineering-memory`) |
+| 4 | `kits_install` | Provision the empty org from a built-in kit (poll with `kits_get_status`) |
+| 5 | Ask user | What are you building? Who are your entities? (if no kit fits, build manually) |
+| 6 | `collection_create` | Create entity collections with properties |
+| 7 | Verify: `collection_list` | Confirm collections exist with properties |
+| 8 | `context_save` | Create governance guidelines (rules, policies) |
+| 9 | Verify: `guideline_list` | Confirm guidelines exist |
+| 10 | `memory_save(about:"self")` | Store what was configured |
 
 ## What Goes Where
 
 | Thing | Tool | Examples |
 |-------|------|----------|
 | Entity data (has identity) | `collection_create` | Contacts, Companies, Deals, Campaigns |
-| Behavioral rules/policies | `guideline_create` | ICP criteria, email standards, send limits |
-| Content to remember | `memory_store_pro` | Meeting notes, emails, research |
+| Behavioral rules/policies | `context_save` | ICP criteria, email standards, send limits |
+| Content to remember | `memory_save` | Meeting notes, emails, research |
 | Structured field on entity | Property in collection | deal_stage, budget, title |
-| Agent's own learnings | `memory_store_pro(about:"self")` | Preferences, decisions, patterns |
+| Agent's own learnings | `memory_save(about:"self")` | Preferences, decisions, patterns |

@@ -189,4 +189,4 @@ State this explicitly in agent outputs — never hallucinate connections. The ag
 - [audit-and-plan.md](./audit-and-plan.md) — How graph-modeled data fits into the import sequence (companies before contacts so `works_at` edges land correctly)
 - [schema-design-guide.md](./schema-design-guide.md) — Property design that *feeds* the edge inference engine
 - [relation-types-examples.json](../../personize-enabler/presets/relation-types-examples.json) — Concrete example relation-type definitions per use case (now in the `personize-enabler` skill's presets)
-- Reference persona's [mcp-tools.md](../../reference/reference/mcp-tools.md) `retrieve_unified` section — agent2_0 graph mode invocation
+- Reference persona's [mcp-tools.md](../../personize-reference/reference/mcp-tools.md) `retrieve_unified` section — agent2_0 graph mode invocation

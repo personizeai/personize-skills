@@ -1,6 +1,6 @@
 ---
 name: personize-reference
-description: "Complete lookup layer for every Personize API endpoint, SDK method, CLI command, and MCP tool — including schedules (recurring/one-time `run_prompt` and `send_notification`) and CRM passthrough (HubSpot/Salesforce direct API access via the org's managed OAuth connection). Exhaustive cross-interface operation tables, error handling, authentication, response schemas, and FAQ files for instant answers. Use whenever looking up how to call a specific operation, what parameters it takes, what errors to expect, how interfaces map to each other, how to schedule a recurring prompt, or how to call HubSpot/Salesforce REST APIs without managing OAuth credentials."
+description: "Use when looking up exactly how to call a Personize operation across interfaces — which API endpoint, SDK method, CLI command, or MCP tool maps to a task, what parameters it takes, and what errors to expect. Covers the full surface: memory (save, structured upsert, retrieve, search), governance, collections, content generation, analytics, notifications, org/member admin, kits (provision an empty org's schema + governance), schedules (recurring/one-time run_prompt and send_notification), and CRM passthrough (HubSpot/Salesforce REST via the org's managed OAuth). Includes cross-interface operation tables, auth, response schemas, and FAQ files for instant answers."
 license: Apache-2.0
 compatibility: "Requires @personize/sdk or Personize MCP server and a Personize API key (sk_live_...)"
 metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://personize.ai"}
@@ -8,7 +8,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 
 # personize-reference
 
-**Description:** Complete lookup layer for every Personize API endpoint, SDK method, CLI command, and MCP tool — including schedules (recurring/one-time `run_prompt` and `send_notification`) and CRM passthrough (HubSpot/Salesforce direct REST API via the org's managed OAuth connection). Exhaustive cross-interface operation tables, error handling, authentication, response schemas, and FAQ files. Use whenever looking up how to call a specific operation, what parameters it takes, what errors to expect, how interfaces map to each other, how to schedule a recurring prompt, or how to call HubSpot/Salesforce REST APIs without managing OAuth credentials.
+**Description:** Cross-interface lookup layer for Personize. For any operation, find which API endpoint, SDK method, CLI command, or MCP tool maps to it, what parameters it takes, and what errors to expect — across memory (save, structured upsert, retrieve, search), governance, collections, content generation, analytics, notifications, org/member admin, kits (provision an empty org's schema + governance), schedules (recurring/one-time `run_prompt` and `send_notification`), and CRM passthrough (HubSpot/Salesforce REST via the org's managed OAuth). Includes operation tables, auth, response schemas, and FAQ files.
 
 **Tags:** `personize:skill`, `personize:skill:reference`, `personize:skill:api`, `personize:skill:sdk`, `personize:skill:cli`, `personize:skill:mcp`, `personize:skill:schedules`, `personize:skill:crm`
 
@@ -27,8 +27,9 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
-| Store with AI extraction | memory_store_pro | client.memory.memorize() | memory memorize | POST /api/v1/memorize |
-| Batch store | memory_batch_store | client.memory.memorizeBatch() | memory batch | POST /api/v1/batch-memorize |
+| Store with AI extraction | memory_save | client.memory.memorize() | memory memorize | POST /api/v1/memorize |
+| Upsert (structured create/upsert, no AI extraction) | memory_upsert | client.memory.upsert() | memory upsert | POST /api/v1.1/memory/upsert |
+| Batch store (content, AI extraction) | -- (deprecated → upsert/saveBatch) | client.memory.saveBatch() | memory batch | POST /api/v1/batch-memorize |
 | Smart recall (recommended) | smartRecall | client.memory.smartRecall() | memory smart-recall | POST /api/v1/smart-recall |
 | Smart recall unified | smartRecall | client.smartRecallUnified() | -- | POST /api/v1/smart-recall-unified |
 | Entity digest | memory_digest | client.memory.smartDigest() | memory digest | POST /api/v1/smart-memory-digest |
@@ -37,7 +38,6 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Find similar | memory_find_similar | client.memory.similar() | memory similar | POST /api/v1/similar |
 | Segment audience | memory_segment | client.memory.segment() | memory segment | POST /api/v1/segment |
 | Get properties | memory_get_properties | client.memory.properties() | -- | POST /api/v1/properties |
-| Upsert | -- | -- | -- | POST /api/v1/upsert |
 | Export | -- | -- | -- | POST /api/v1/export |
 
 **Cost optimization:** `filterByProperty` is free (no LLM, no credits) for structured queries. Prefer over `smartRecall` when conditions map to known property names and values.
@@ -47,7 +47,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
 | Update property | memory_update_property | client.memory.update() | memory update | POST /api/v1/memory/update |
-| Bulk update | -- | client.memory.bulkUpdate() | -- | POST /api/v1/memory/bulk-update |
+| Bulk update | -- | client.memory.memory_update_properties() | -- | POST /api/v1/memory/bulk-update |
 | Delete memories | -- | client.memory.delete() | memory delete | POST /api/v1/memory/delete |
 | Delete record | -- | client.memory.deleteRecord() | -- | POST /api/v1/memory/delete-record |
 | Cancel deletion | -- | client.memory.cancelDeletion() | -- | POST /api/v1/memory/cancel-deletion |
@@ -59,7 +59,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | List keys | memory_list_keys | client.memory.listKeys() | -- | POST /api/v1/memory/list-keys |
 | Delete keys | memory_delete_keys | client.memory.deleteKeys() | -- | POST /api/v1/memory/delete-keys |
 
-**Concurrency:** `bulkUpdate` supports `expectedVersion` for optimistic concurrency. Returns 409 on version mismatch -- re-read and retry with fresh data. Use when multiple agents may update the same record.
+**Concurrency:** `memory_update_properties` supports `expectedVersion` for optimistic concurrency. Returns 409 on version mismatch -- re-read and retry with fresh data. Use when multiple agents may update the same record.
 
 **Recovery:** `delete` and `deleteRecord` are soft deletes with 30-day recovery. Use `cancelDeletion` to restore within the window.
 
@@ -68,7 +68,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
 | List guidelines | guideline_list | client.guidelines.list() | guidelines list | GET /api/v1/guidelines |
-| Create guideline | guideline_create | client.guidelines.create() | guidelines create | POST /api/v1/guidelines |
+| Create guideline | context_save | client.guidelines.create() | guidelines create | POST /api/v1/guidelines |
 | Read guideline structure | guideline_read | client.guidelines.getStructure() | -- | GET /api/v1/guidelines/:id/structure |
 | Read guideline section | guideline_read | client.guidelines.getSection() | -- | GET /api/v1/guidelines/:id/section |
 | Update guideline | guideline_update | client.guidelines.update() | guidelines update | PATCH /api/v1/guidelines/:id |
@@ -77,7 +77,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Smart guidelines query | ai_smart_guidelines | client.ai.smartGuidelines() | context guidelines | POST /api/v1/ai/smart-guidelines |
 | List attachments | guideline_attachment_list | client.guidelines.listAttachments() | guidelines attachments list | GET /api/v1/guidelines/:id/attachments |
 | Read attachment | guideline_attachment_read | client.guidelines.getAttachment() | -- | GET /api/v1/guidelines/:id/attachments/:attId |
-| Upload attachment | guideline_attachment_upload | -- | -- | POST /api/v1/guidelines/:id/attachments |
+| Upload attachment | context_attachment_upload | -- | -- | POST /api/v1/guidelines/:id/attachments |
 | Delete attachment | guideline_attachment_delete | client.guidelines.deleteAttachment() | -- | DELETE /api/v1/guidelines/:id/attachments/:attId |
 
 ### Async Bulk Context Save (v1.1)
@@ -105,7 +105,7 @@ For seeding many context docs at once (initial corpus import, GitOps sync), use 
 | Contribute update | memory_update_property | client.memory.update() | operation: "set", "push", "remove", "increment", "patch" |
 | Add task | memory_update_property | client.memory.update() | propertyName: "[Tasks]", operation: "push" |
 | Add issue | memory_update_property | client.memory.update() | propertyName: "[Issues]", operation: "push" |
-| Add note | memory_store_pro | client.memory.memorize() | Store with workspace collection actionId |
+| Add note | memory_save | client.memory.memorize() | Store with workspace collection actionId |
 | Read workspace | memory_digest | client.memory.smartDigest() | Returns workspace properties in digest |
 
 ## Content Generation Reference
@@ -140,6 +140,16 @@ For seeding many context docs at once (initial corpus import, GitOps sync), use 
 | Collection history | collection_history | client.collections.history() | -- | GET /api/v1/collections/:id/history |
 | List entity types | entity_type_list | client.entityTypes.list() | entities list | GET /api/v1/entities |
 | Update entity type | -- | client.entityTypes.update() | -- | PATCH /api/v1/entity-types/:id |
+
+## Kits Reference
+
+Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+
+| Operation | MCP Tool | SDK Method | CLI | API |
+|-----------|----------|------------|-----|-----|
+| List kits | kits_list | client.kits.list() | kits list | GET /api/v1/kits |
+| Install kit | kits_install | client.kits.install() | kits install | POST /api/v1/kits (202 + installId) |
+| Get install status | kits_get_status | client.kits.getInstallStatus() | kits status | GET /api/v1/kits/:installId |
 
 ## RAG and Knowledge Base Reference
 
@@ -213,7 +223,7 @@ Events track async operations (batch memorize, etc.):
 | Get event | -- | GET /api/v1/events/:id |
 | Get event details | -- | GET /api/v1/events/:id/details |
 
-Critical for batch tracking: `memory_batch_store` returns `eventId`. Poll `GET /api/v1/events/{eventId}` for status updates.
+Critical for batch tracking: `client.memory.saveBatch()` returns `eventId`. Poll `GET /api/v1/events/{eventId}` for status updates.
 
 ## Schedules Reference
 

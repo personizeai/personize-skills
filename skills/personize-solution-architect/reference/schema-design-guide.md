@@ -34,7 +34,7 @@ Every property in a Personize collection has these fields:
     updateSemantics?: string; // replace | append
     update?: boolean;        // true = entries can be modified after creation
     tags?: string[];         // For filtering and organization
-    // AI extraction is always on for memory_store_pro. Use memory_update_property for code-managed values.
+    // AI extraction is always on for memory_save. Use memory_update_property for code-managed values.
 }
 ```
 

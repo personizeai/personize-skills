@@ -1,7 +1,7 @@
 # Governance FAQ
 
 **Q: How do I create a guideline?**
-Call `guideline_create` with `name`, `value`, and optional `tags`. The name is a short identifier, value is the full policy text, and tags control when the guideline surfaces in SmartContext queries.
+Call `context_save` with `name`, `value`, and optional `tags`. The name is a short identifier, value is the full policy text, and tags control when the guideline surfaces in SmartContext queries.
 
 **Q: What is smart-update and when should I use it?**
 `smart-update` uses AI to intelligently merge your changes with the existing guideline value rather than overwriting it. Use it when updating a guideline that has evolved organically and you want to preserve context while adding new rules.

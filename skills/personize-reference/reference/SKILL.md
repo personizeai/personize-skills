@@ -27,7 +27,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
-| Store with AI extraction | memory_store_pro | client.memory.memorize() | memory memorize | POST /api/v1/memorize |
+| Store with AI extraction | memory_save | client.memory.memorize() | memory memorize | POST /api/v1/memorize |
 | Batch store | memory_batch_store | client.memory.memorizeBatch() | memory batch | POST /api/v1/batch-memorize |
 | Smart recall (recommended) | smartRecall | client.memory.smartRecall() | memory smart-recall | POST /api/v1/smart-recall |
 | Smart recall unified | smartRecall | client.smartRecallUnified() | -- | POST /api/v1/smart-recall-unified |
@@ -47,7 +47,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
 | Update property | memory_update_property | client.memory.update() | memory update | POST /api/v1/memory/update |
-| Bulk update | -- | client.memory.bulkUpdate() | -- | POST /api/v1/memory/bulk-update |
+| Bulk update | -- | client.memory.memory_update_properties() | -- | POST /api/v1/memory/bulk-update |
 | Delete memories | -- | client.memory.delete() | memory delete | POST /api/v1/memory/delete |
 | Delete record | -- | client.memory.deleteRecord() | -- | POST /api/v1/memory/delete-record |
 | Cancel deletion | -- | client.memory.cancelDeletion() | -- | POST /api/v1/memory/cancel-deletion |
@@ -59,7 +59,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | List keys | memory_list_keys | client.memory.listKeys() | -- | POST /api/v1/memory/list-keys |
 | Delete keys | memory_delete_keys | client.memory.deleteKeys() | -- | POST /api/v1/memory/delete-keys |
 
-**Concurrency:** `bulkUpdate` supports `expectedVersion` for optimistic concurrency. Returns 409 on version mismatch -- re-read and retry with fresh data. Use when multiple agents may update the same record.
+**Concurrency:** `memory_update_properties` supports `expectedVersion` for optimistic concurrency. Returns 409 on version mismatch -- re-read and retry with fresh data. Use when multiple agents may update the same record.
 
 **Recovery:** `delete` and `deleteRecord` are soft deletes with 30-day recovery. Use `cancelDeletion` to restore within the window.
 
@@ -68,7 +68,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
 | List guidelines | guideline_list | client.guidelines.list() | guidelines list | GET /api/v1/guidelines |
-| Create guideline | guideline_create | client.guidelines.create() | guidelines create | POST /api/v1/guidelines |
+| Create guideline | context_save | client.guidelines.create() | guidelines create | POST /api/v1/guidelines |
 | Read guideline structure | guideline_read | client.guidelines.getStructure() | -- | GET /api/v1/guidelines/:id/structure |
 | Read guideline section | guideline_read | client.guidelines.getSection() | -- | GET /api/v1/guidelines/:id/section |
 | Update guideline | guideline_update | client.guidelines.update() | guidelines update | PATCH /api/v1/guidelines/:id |
@@ -77,7 +77,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Smart guidelines query | ai_smart_guidelines | client.ai.smartGuidelines() | context guidelines | POST /api/v1/ai/smart-guidelines |
 | List attachments | guideline_attachment_list | client.guidelines.listAttachments() | guidelines attachments list | GET /api/v1/guidelines/:id/attachments |
 | Read attachment | guideline_attachment_read | client.guidelines.getAttachment() | -- | GET /api/v1/guidelines/:id/attachments/:attId |
-| Upload attachment | guideline_attachment_upload | -- | -- | POST /api/v1/guidelines/:id/attachments |
+| Upload attachment | context_attachment_upload | -- | -- | POST /api/v1/guidelines/:id/attachments |
 | Delete attachment | guideline_attachment_delete | client.guidelines.deleteAttachment() | -- | DELETE /api/v1/guidelines/:id/attachments/:attId |
 
 ## Workspace Operations Reference
@@ -87,7 +87,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Contribute update | memory_update_property | client.memory.update() | operation: "set", "push", "remove", "increment", "patch" |
 | Add task | memory_update_property | client.memory.update() | propertyName: "[Tasks]", operation: "push" |
 | Add issue | memory_update_property | client.memory.update() | propertyName: "[Issues]", operation: "push" |
-| Add note | memory_store_pro | client.memory.memorize() | Store with workspace collection actionId |
+| Add note | memory_save | client.memory.memorize() | Store with workspace collection actionId |
 | Read workspace | memory_digest | client.memory.smartDigest() | Returns workspace properties in digest |
 
 ## Content Generation Reference

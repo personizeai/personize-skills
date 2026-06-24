@@ -12,8 +12,8 @@
 | No tags on memorization | Can't filter by source | Always tag with source:X |
 | Jumping to build without proposing | Wrong architecture, rework | Assess -> propose 2-3 options -> decide |
 | Ignoring evaluation after changes | Schema drift, quality drop | Evaluate after every schema change |
-| Creating rules/policies as collections | Rules invisible to SmartContext, agents never see them | ICP, playbooks, tone guides, policies = `guideline_create` |
-| Describing tool calls instead of executing | Nothing gets created, agent just writes plans | MUST call tools (collection_create, guideline_create), then verify with list/read |
+| Creating rules/policies as collections | Rules invisible to SmartContext, agents never see them | ICP, playbooks, tone guides, policies = `context_save` (type:'guideline') |
+| Describing tool calls instead of executing | Nothing gets created, agent just writes plans | MUST call tools (collection_create, context_save), then verify with list/read |
 | Skipping `personize_skill` at bootstrap | Agent doesn't know how platform works, makes fundamental errors | MUST call `personize_skill` before `personize_context` |
 
 ## Prompt-level anti-patterns (`instructions[]` authoring)

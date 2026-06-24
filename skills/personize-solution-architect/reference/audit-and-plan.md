@@ -59,7 +59,7 @@ Three destinations for incoming data; pick one per data type before importing:
 
 | Destination | What goes here | Tool |
 |---|---|---|
-| **Collection record** | Anything with an identity key (email, domain, external_id) — entities you'll recall *by key* | `client.memory.memorize()` / `memory_batch_store` |
+| **Collection record** | Anything with an identity key (email, domain, external_id) — entities you'll recall *by key* | `client.memory.upsert()` (known field values) / `client.memory.save()` (content → AI extraction) |
 | **Context doc** | Behavioral rules, ICP criteria, brand voice, playbooks, account briefs that aren't entity-shaped | `client.context.create()` / `context_save` MCP tool — or `client.v1_1.context.saveBatch()` for 10+ at once |
 | **Workspace property on existing record** | Coordination state (tasks, issues, notes) that lives alongside an entity | `client.memory.update()` with `operation: 'push'` |
 
@@ -80,10 +80,12 @@ Order matters because Personize extracts properties from content, and properties
 
 ### Batch sizing decision table
 
+> **Structured records first:** if you already have the field values (e.g. a CSV of typed columns), use `client.memory.upsert()` (single or batch) -- it sets properties directly, no extraction, no sizing concerns. The tiers below are for **content that needs AI extraction**.
+
 | Record count | Tool | Why |
 |---|---|---|
 | 1–9 records | Per-record `client.memory.memorize()` — synchronous | Latency fine, no event polling needed |
-| 10–500 records | `client.memory.memorizeBatch()` — synchronous | Shared extraction context, lower per-call overhead, ~1 credit/record |
+| 10–500 records | `client.memory.saveBatch()` (legacy `memorizeBatch`, deprecated) | Shared extraction context, lower per-call overhead, ~1 credit/record |
 | 500–10,000 records | `client.v1_1.memory.saveBatch()` — async with eventId polling | State machine handles partial failures; doesn't block your script |
 | 10,000+ records | Chunked async batches of 5,000 with backoff | Avoid `SCHEDULE_CAP_EXCEEDED`-style guardrails; respect plan rate limits |
 
@@ -160,4 +162,4 @@ const recall = await client.memory.smartRecall({
 - [cost-simulator.md](./cost-simulator.md) — Estimate the cost of the import you just planned
 - [schema-design-guide.md](./schema-design-guide.md) — How to define collection properties that extract well
 - [governance-authoring.md](./governance-authoring.md) — Writing context docs that agents will actually use
-- [cheat-data-ingestion.md](../../agent-core/reference/cheat-data-ingestion.md) (agent-core persona) — Decision matrix for "user pastes X into chat, what do I do?"
+- [cheat-data-ingestion.md](../../personize-agent-core/reference/cheat-data-ingestion.md) (agent-core persona) — Decision matrix for "user pastes X into chat, what do I do?"

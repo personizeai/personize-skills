@@ -262,7 +262,7 @@ Warn the user when:
 ### CREATE a workspace record
 
 ```
-Step 1: memory_store_pro
+Step 1: memory_save
   content: "Project: Q2 Outbound Push"
   type: "workspace"           (or "contact" — workspace properties work on any entity type)
   customKeyName: "slug"
@@ -271,9 +271,9 @@ Step 1: memory_store_pro
   → Returns recordId
 
 Step 2: WAIT — memorize is async (1-3 seconds)
-  Retry bulkUpdate with backoff. Do NOT call immediately.
+  Retry memory_update_properties with backoff. Do NOT call immediately.
 
-Step 3: bulkUpdate (once record is queryable)
+Step 3: memory_update_properties (once record is queryable)
   recordId: (from step 1)
   updates:
     - Workspace Name = "Q2 Outbound Push"
@@ -331,7 +331,7 @@ Add notes to a COMPANY:
 Create workspace:
   memorize(customKeyName, customKeyValue, type: "contact", content: "...")
   WAIT for async indexing (retry with backoff)
-  bulkUpdate → set Workspace Name, Workspace Type, Context
+  memory_update_properties → set Workspace Name, Workspace Type, Context
 
 Read workspace:
   memory_get_properties(customKeyName, customKeyValue, propertyNames: [...])

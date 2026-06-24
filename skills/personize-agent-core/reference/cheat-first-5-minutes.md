@@ -7,18 +7,18 @@
 5. **Fresh org?** If collections are empty or no guidelines exist: enter setup mode. Ask user what they're building, then create collections + guidelines via tool calls. MUST NOT proceed without schema.
 
 ## Core Loop (every task)
-Recall (smartRecall) -> Govern (ai_smart_guidelines) -> Act -> Store (memory_store_pro)
+Recall (smartRecall) -> Govern (ai_smart_guidelines) -> Act -> Store (memory_save)
 
 ## Key Distinctions
 - **Collections** = data containers with identity keys (contacts, companies, deals). Created via `collection_create`.
-- **Guidelines** = behavioral rules and policies (ICP criteria, email standards, compliance). Created via `guideline_create`.
+- **Guidelines** = behavioral rules and policies (ICP criteria, email standards, compliance). Created via `context_save`.
 - **NEVER create governance rules as collections.** ICP criteria, writing standards, playbooks, policies = guidelines.
 
 ## Top 5 Tools
-smartRecall, memory_store_pro, memory_digest, ai_smart_guidelines, memory_batch_store
+smartRecall, memory_save, memory_digest, ai_smart_guidelines, memory_upsert (structured batch; for content batches use client.memory.saveBatch() / personize_cookbook)
 
 ## Identity
 email for contacts, website_url for companies, record_id for direct refs
 
 ## Session End
-MUST store learnings with `memory_store_pro(about:"self")` before ending. What worked, what failed, decisions made.
+MUST store learnings with `memory_save(about:"self")` before ending. What worked, what failed, decisions made.

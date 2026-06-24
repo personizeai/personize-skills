@@ -4,13 +4,13 @@
 
 | Tool | Description |
 |------|-------------|
-| `memory_save` | Save memories (was memory_store_pro) |
+| `memory_save` | Save memories (was memory_save) |
 | `memory_retrieve` | Retrieve memories (was memory_recall_pro / smartRecall) |
 | `retrieve_unified` | **agent2_0 only** — unified retrieval replacing 6 legacy tools. Modes (what you're doing): `scout`, `brief`, `expand`, `filter`, `fetch`. Sources (where to look — toggle each): `properties`, `memories`, `documents`, `graph`, `external`. |
 | `retrieve_feedback` | **agent2_0 only** — retrieve user-private feedback and preferences |
 | `context_retrieve` | Find relevant docs (was ai_smart_docs / agentdocs_retrieve) |
 | `context_save` | Evolve docs with AI (was governance_smart_update / agentdocs_save) |
-| `context_manage_create` | Create context doc (was guideline_create / agentdocs_manage_create) |
+| `context_manage_create` | Create context doc (was context_save / agentdocs_manage_create) |
 | `context_manage_list` | List context docs (was guideline_list / agentdocs_manage_list) |
 
 ---
@@ -20,13 +20,13 @@
 | Category | Tools | Profile |
 |----------|-------|---------|
 | Unified Recall | smartRecall | agent, agent-readonly, developer |
-| Memory Core | memory_store_pro, memory_recall_pro, memory_digest | agent, developer |
+| Memory Core | memory_save, memory_recall_pro, memory_digest | agent, developer |
 | Memory Search | memory_search | agent, agent-readonly, developer |
 | Memory Similarity | memory_similarity, memory_batch | agent, developer |
 | Memory CRUD | memory_update_property, memory_update_keys, memory_list_keys, memory_delete_keys | agent, developer |
 | Memory Properties | memory_get_properties | agent, agent-readonly, developer |
-| Governance | ai_smart_guidelines, ai_smart_docs, guideline_list, guideline_read, guideline_create, guideline_update, guideline_delete | governance, developer |
-| Attachments | guideline_attachment_list, guideline_attachment_read, guideline_attachment_upload, guideline_attachment_delete | governance, developer |
+| Governance | ai_smart_guidelines, ai_smart_docs, guideline_list, guideline_read, context_save, guideline_update, guideline_delete | governance, developer |
+| Attachments | guideline_attachment_list, guideline_attachment_read, context_attachment_upload, guideline_attachment_delete | governance, developer |
 | Collections | collection_list, collection_create, collection_update, collection_delete, collection_history | developer |
 | Platform | organization_list, organization_create, member_list, member_invite, entity_type_list, entity_type_update | developer |
 | MCPs + Destinations | mcp_list, mcp_create, destination_list, destination_create | developer |
@@ -171,7 +171,7 @@ ONE tool that replaces 9 individual memory tools. Describe what you need in natu
 
 ## Memory Core
 
-### `memory_store_pro`
+### `memory_save`
 **Profile:** agent, developer
 
 Save memories with AI-powered extraction. Extracts structured properties and semantic memories.
@@ -192,6 +192,16 @@ Save memories with AI-powered extraction. Extracts structured properties and sem
 | timestamp | string | no | Content timestamp (ISO) |
 | custom_key_name | string | no | Custom key field name |
 | custom_key_value | string | no | Custom key value |
+
+### `memory_upsert`
+**Profile:** agent, developer
+
+Structured create/upsert — write known field values directly to records with NO AI extraction. Canonical create/upsert path; single or batch. Use this instead of `memory_save` when you already have the property values and don't need them extracted from free text.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| records | array | yes | Records to create/upsert. Each: `{ email \| website_url \| record_id \| custom_key, type?, properties: {name: value} }` |
+| type | string | no | Default entity type applied to records that omit their own |
 
 ### `memory_recall_pro`
 **Profile:** agent, developer
@@ -257,8 +267,8 @@ Find records similar to a seed record.
 | dimensions | string[] | no | Comparison dimensions |
 | limit | number | no | Max results |
 
-### `memory_batch`
-**Profile:** agent, developer
+### `memory_batch` — not a live MCP tool
+> `memory_batch_store` / `memory_batch_validate` are NOT exposed as MCP tools. For structured create/upsert (single or batch), use `memory_upsert`. For content batch (AI extraction over many records), use the SDK `client.memory.saveBatch()`.
 
 Batch memorize multiple records.
 
@@ -356,7 +366,7 @@ Read guideline structure (headings) or a specific section.
 | guideline_id | string | yes | Guideline ID |
 | header | string | no | Section header (omit for TOC) |
 
-### `guideline_create`
+### `context_save`
 Create a new guideline or context doc.
 
 | Parameter | Type | Required | Description |
@@ -386,7 +396,7 @@ Delete a guideline by ID.
 
 ### `guideline_attachment_list` -- List attachments for a guideline
 ### `guideline_attachment_read` -- Get attachment metadata + download URL
-### `guideline_attachment_upload` -- Upload a new attachment (multipart)
+### `context_attachment_upload` -- Upload a new attachment (multipart)
 ### `guideline_attachment_delete` -- Delete an attachment
 
 ---
@@ -482,3 +492,27 @@ Soft delete with 90-day retention.
 List execution history for one schedule (paginated). Use when you don't have destinations wired and want to poll the latest run's status.
 
 **Server errors:** `SCHEDULE_CAP_EXCEEDED` (429), `RECORD_CAP_EXCEEDED` (429), `INSUFFICIENT_CREDITS` (402), `DUPLICATE_NAME` (409).
+
+---
+
+## Kits
+
+Provision an empty org's schema + governance from a declarative manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+
+### `kits_list`
+List available kits (built-in + custom). Returns kit id, name, description, and what it provisions.
+
+### `kits_install`
+Install a kit into the current org. Async — returns an `installId` to poll.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| kitId | string | conditional | Built-in kit id (`personize-starter`, `engineering-memory`) |
+| manifest | object | conditional | Inline kit manifest (alternative to `kitId`) |
+
+### `kits_get_status`
+Poll install progress by `installId`. Returns terminal status when provisioning completes.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| installId | string | yes | Install ID returned by `kits_install` |

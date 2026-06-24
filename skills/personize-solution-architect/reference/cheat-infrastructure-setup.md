@@ -4,8 +4,8 @@
 |------|------|-----------|
 | 1. Create entity types | entityTypes (auto from collection) | name, entityType on collection |
 | 2. Create collections | collection_create | name, entityType, properties[] |
-| 3. Seed governance | guideline_create | name, value, tags[] |
-| 4. Upload scripts | guideline_attachment_upload | guidelineId, file, type:"script" |
+| 3. Seed governance | context_save | name, value, type:'guideline', tags[] |
+| 4. Upload scripts | context_attachment_upload | guidelineId, file, type:"script" |
 | 5. Connect MCPs | mcps.create | name, url, apiKey |
 | 6. Test MCPs | mcps.test | url, apiKey |
 | 7. Add webhooks | destinations.create | url, events[], secret |

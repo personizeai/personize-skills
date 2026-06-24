@@ -48,8 +48,8 @@ Recipes here are deliberately the **golden path** — no edge cases, no error ha
 | Step | Call | Args |
 |---|---|---|
 | 1 | `personize_cookbook` | `{ query: 'bulk import 50 records' }` — get the proven recipe for your scale |
-| 2 | `memory_batch_validate` | `{ items: [{email, content}, ...] }` — dry run, catches schema issues |
-| 3 | `memory_batch_store` | `{ items: [{email, content}, ...] }` — actual write, async per item |
+| 2 | `memory_upsert` (structured) | `{ records: [{email, properties}, ...] }` — sets known field values directly, batch, no extraction |
+| 3 | content → extraction: follow the cookbook recipe via `client.memory.saveBatch()` (SDK) / `personize memorize --batch` (CLI) | `{ items: [{email, content}, ...] }` — async, returns an eventId (no MCP batch-write tool) |
 
 **Done when:** step 3 returns a job ID. Poll status via the returned URL (or list `memory_retrieve` on a sample after ~30s).
 

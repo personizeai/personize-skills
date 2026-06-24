@@ -392,11 +392,12 @@ async function processChunks(
     const chunkNumber = i + 1;
 
     try {
-      // WHY we use memorizeBatch with records: This is the most flexible batch API.
-      // Each record can have its own email/website_url, properties, and extraction
-      // settings. The alternative (mapping + rows) is better for uniform CSVs, but
-      // records gives per-item control which matters when data quality varies.
-      const _result = await client.memory.memorizeBatch({
+      // WHY saveBatch (content extraction): records here carry free-text `content`
+      // plus properties flagged `extractMemories: true`, so the AI extraction path is
+      // required to populate those fields. Each record keeps its own email/website_url
+      // and per-item properties. (For rows that are PURELY known structured values with
+      // no extraction needed, use client.memory.upsert() instead.)
+      const _result = await client.memory.saveBatch({
         source: `data-import:${filePath}`,
         tier: options.tier as any,
         records: chunk,

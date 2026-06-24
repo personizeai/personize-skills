@@ -1,10 +1,13 @@
 # Batch Processing Guide
 
+> **Canonical paths (read first):** for records you already have **structured field values** for, use `client.memory.upsert({ records })` (`memory_upsert` MCP, `POST /api/v1.1/memory/upsert`, `personize memory upsert`) -- single or batch, no AI extraction. For **content that needs AI extraction** across many records, use `client.memory.saveBatch({ records })`. The `memorizeBatch()` examples below are the **legacy** content-batch method (still functional, deprecated toward `saveBatch`/`upsert`; same payload shape). `memory_batch_store` / `memory_batch_validate` are **not** live MCP tools.
+
 | Scenario | Method | Max Items | Async? | Per-Item Control |
 |----------|--------|-----------|--------|-----------------|
-| <10 items | memorize() in loop | -- | No | Per-call |
-| 10-100 items | memorizeBatch() | 100 | Yes | Per-item: tier, schema, max_properties |
-| 100-10K items | memorizeBatch() chunked | 100/call | Yes | Same per-item control |
+| Structured records (known field values) | `memory.upsert()` (single or batch) | -- | Yes (batch) | Properties set directly, no extraction |
+| <10 items, content → extraction | `memory.save()` in loop | -- | No | Per-call |
+| 10-100 items, content → extraction | `memory.saveBatch()` (legacy: `memorizeBatch()`) | 100 | Yes | Per-item: tier, schema, max_properties |
+| 100-10K items, content → extraction | `memory.saveBatch()` chunked | 100/call | Yes | Same per-item control |
 | 10K+ items | Pipeline (Trigger.dev) | Unlimited | Yes | Same, with durable retry |
 
 Returns eventId for async tracking: GET /api/v1/events/{eventId}
@@ -13,7 +16,7 @@ Per-item extraction: each item can have its own tier, schema, max_properties.
 
 ---
 
-## memorizeBatch() Parameters
+## memorizeBatch() Parameters (legacy -- `saveBatch()` takes the same shape)
 
 ```ts
 interface BatchMemorizeOptions {

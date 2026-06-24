@@ -9,7 +9,7 @@
 | Unexpected high cost | Wrong mode or tier | Switch deep->fast for simple queries |
 | Duplicate records | Missing identity key | Always provide email/website_url, check first |
 | Batch partial fail | Some items invalid | Retry only failed items |
-| 404 after memorize | Record not indexed yet (async, 1-3s delay) | Retry with backoff: wait 1s, 2s, 3s before bulkUpdate |
+| 404 after memorize | Record not indexed yet (async, 1-3s delay) | Retry with backoff: wait 1s, 2s, 3s before memory_update_properties |
 | Property update silent fail | Wrong casing (`status` vs `Status`) | MUST use Title Case: `Status`, `Workspace Name`, `Pending Tasks` |
 | Array overwritten | Used `propertyValue` on append-only property | Use `arrayPush: { items: [...], unique: false }` for Notes, Updates, Tasks, Issues |
 | filterByProperty no results | Wrong operator syntax | Use `equals` not `EQ`. Field is `propertyName` not `property` |

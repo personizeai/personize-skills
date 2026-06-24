@@ -79,6 +79,17 @@ Store content with AI extraction.
 | `--speaker <name>` | Speaker label for transcripts |
 | `--timestamp <iso>` | Content timestamp |
 
+### `personize memory upsert`
+Structured create/upsert — write known field values directly with NO AI extraction (single or batch). Canonical create/upsert path. Maps to `POST /api/v1.1/memory/upsert`.
+
+| Flag | Description |
+|------|-------------|
+| `--file <path>` | JSON file with `records[]` (each: email/website-url/record-id + type + properties) |
+| `--email <email>` | Contact email identifier (single-record shorthand) |
+| `--website-url <url>` | Company website identifier (single-record shorthand) |
+| `--type <type>` | Entity type |
+| `--properties <json>` | JSON object of property:value pairs (single-record shorthand) |
+
 ### `personize memory recall`
 Direct memory lookup.
 
@@ -365,6 +376,21 @@ Soft delete (90-day retention).
 
 ### `personize schedules executions <id-or-name>`
 List execution history. Flags: `--limit`, `--next-token`.
+
+---
+
+## kits
+
+Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+
+### `personize kits list`
+List available kits (built-in + custom).
+
+### `personize kits install <id>`
+Install a kit into the current org. Async — prints an `installId` to poll. Pass a built-in kit id (`personize-starter`, `engineering-memory`) or `--manifest @kit.json` for an inline manifest.
+
+### `personize kits status <installId>`
+Poll install progress by `installId`. Reports terminal status when provisioning completes.
 
 ---
 

@@ -44,6 +44,7 @@
 | client.evaluate | 1 | Memorization accuracy |
 | client (top-level) | 3 | test, me, smartRecallUnified |
 | client.organizations | 3 | Get, create, update |
+| client.kits | 3 | List, install, getInstallStatus (provision empty-org schema + governance) |
 | client.members | 5 | Invite, list, remove, role, invitations |
 | client.entityTypes | 4 | List, get, update, archive |
 | client.mcps | 8 | Test, CRUD, refresh, tools |
@@ -112,6 +113,19 @@ await client.memory.save({
 ```
 Graph fields are independent and combinable. See `Docs/memorize-graph-guide.md` for channel semantics, stub-creation rules, and pricing. The v1.1 surface (`client.v1_1.memory.save`) accepts the same three fields on `SaveRequest`.
 
+### `memory.upsert(options: MemoryUpsertOptions)` — canonical structured create/upsert
+Write known field values directly to records with NO AI extraction. Single or batch. This is the canonical create/upsert path — use it instead of `memory.save` when you already have the property values. Maps to `POST /api/v1.1/memory/upsert`.
+```ts
+await client.memory.upsert({
+  records: [
+    { email: 'maya@orbitclimb.io', type: 'Contact',
+      properties: { title: 'Director of Eng', stage: 'customer' } },
+    { websiteUrl: 'orbitclimb.io', type: 'Company',
+      properties: { employees: 120, tier: 'enterprise' } },
+  ],
+});
+```
+
 ### `memory.memorize(options: MemorizeOptions)` — deprecated, use `memory.save`
 Store content with AI extraction. Extracts structured properties and freeform memories.
 ```ts
@@ -166,6 +180,7 @@ await client.memory.search({
 ```
 
 ### `memory.memorizeBatch(options: BatchMemorizeOptions)`
+DEPRECATED — use `memory.upsert()` (structured) or `memory.saveBatch()` (content).
 Batch sync with per-property AI extraction control. Supports records shorthand.
 ```ts
 await client.memory.memorizeBatch({
@@ -205,10 +220,10 @@ await client.memory.update({
 });
 ```
 
-### `memory.bulkUpdate(options: BulkUpdateOptions)`
+### `memory.memory_update_properties(options: BulkUpdateOptions)`
 Update multiple properties on a record in one request.
 ```ts
-await client.memory.bulkUpdate({
+await client.memory.memory_update_properties({
   recordId: 'rec_...',
   updates: [
     { propertyName: 'stage', propertyValue: 'closed' },
@@ -590,6 +605,27 @@ OpenAI-compatible chat completion endpoint.
 
 ### `evaluate.memorizationAccuracy(options)`
 Three-phase evaluation: extraction, analysis, schema optimization.
+
+---
+
+## client.kits
+
+Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+
+### `kits.list()`
+List available kits (built-in + custom). Returns kit id, name, description, and what each provisions.
+
+### `kits.install(options: { kitId?: string; manifest?: object })`
+Install a kit into the current org. Async — returns an `installId` to poll. Pass a built-in `kitId` or an inline `manifest`.
+```ts
+const { installId } = await client.kits.install({ kitId: 'engineering-memory' });
+```
+
+### `kits.getInstallStatus(options: { installId: string })`
+Poll install progress. Returns terminal status when provisioning completes.
+```ts
+const status = await client.kits.getInstallStatus({ installId });
+```
 
 ---
 

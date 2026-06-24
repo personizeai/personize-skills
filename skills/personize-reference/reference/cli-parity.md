@@ -19,7 +19,8 @@ Every MCP tool below maps to a CLI command. When the CLI lags, the row is marked
 | `memory_update_property` | `personize memory update` | OK |
 | `memory_update_properties` | `personize memory bulk-update` | OK |
 | `memory_digest` | `personize memory digest` | OK |
-| `memory_batch_store` | `personize memory batch` | OK |
+| `memory_upsert` (structured create/upsert) | `personize memory upsert` | OK |
+| `memory_batch_store` — *not a live MCP tool* | content batch via SDK `client.memory.saveBatch()`; structured via `memory_upsert` / `personize memory upsert` | N/A (no MCP tool) |
 | `update_keys` | `personize memory update-keys` | OK |
 | `update_keys_batch` | `personize memory update-keys-batch` | OK |
 | `list_keys` | `personize memory list-keys` | OK |
@@ -42,7 +43,7 @@ Every MCP tool below maps to a CLI command. When the CLI lags, the row is marked
 | `context_manage_download` | *(no CLI)* | **GAP** |
 | `guideline_attachment_list` | `personize context attachment list` (if wired) | **GAP** (verify) |
 | `guideline_attachment_read` | *(no CLI)* | **GAP** |
-| `guideline_attachment_upload` | *(no CLI)* | **GAP** |
+| `context_attachment_upload` | *(no CLI)* | **GAP** |
 | `guideline_attachment_delete` | *(no CLI)* | **GAP** |
 
 ## Collections / Schema

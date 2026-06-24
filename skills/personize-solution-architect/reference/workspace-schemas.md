@@ -292,7 +292,7 @@ const collection = await client.collections.create({
 | Missing `author` field on entries | Every entry must say who contributed it. |
 | Using `replace` on Updates/Notes | These are append-only. History should not be rewritten. |
 | Using `append` on Context | Context is current state. Replace, don't accumulate. |
-| Using `memory_store_pro` for code-managed state | AI extraction may misparse arrays. Use `memory_update_property` for code-managed values. |
+| Using `memory_save` for code-managed state | AI extraction may misparse arrays. Use `memory_update_property` for code-managed values. |
 | Forgetting tags | Tag entries with `workspace:tasks`, `workspace:notes`, etc. for filtered recall. |
 | Not verifying after creation | Write a test entry and read it back with `smartDigest`. |
 | Skipping governance overlays | Add `applicable-guidelines` and `constraints` when account-level rules exist. |
