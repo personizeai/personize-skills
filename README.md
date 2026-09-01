@@ -19,7 +19,7 @@ Persona-based design: instead of memorizing a list of feature skills, you load t
 | Persona | Purpose | Mode |
 |---------|---------|------|
 | [personize-agent-core](./skills/personize-agent-core/) | How to think, compose, coordinate, self-correct, and learn as a Personize-powered agent. Bootstrap, recall-govern-act-store loop, tool composition, multi-agent coordination, identity resolution, error recovery, learning. **Foundation for any agent on any platform.** | AlwaysOn |
-| [personize-architect](./skills/personize-architect/) | How to design, model, plan, evaluate, and evolve Personize integrations — including advanced multi-step `instructions[]` patterns (conditional branching, multi-source reconciliation, compliance-gated generation, persona fanout, bounded research, few-shot classification, checklist-gated workflows, self-reflective refinement). | On-demand |
+| [personize-solution-architect](./skills/personize-solution-architect/) | How to design, model, plan, evaluate, and evolve Personize integrations — including advanced multi-step `instructions[]` patterns (conditional branching, multi-source reconciliation, compliance-gated generation, persona fanout, bounded research, few-shot classification, checklist-gated workflows, self-reflective refinement). | On-demand |
 | [personize-reference](./skills/personize-reference/) | Complete lookup layer for every API endpoint, SDK method, CLI command, and MCP tool — including schedules (`run_prompt` / `send_notification`) and CRM passthrough (HubSpot / Salesforce direct REST API via the org's managed OAuth connection). Cross-interface operation tables, error codes, response schemas, FAQ. | On-demand |
 | [personize-enabler](./skills/personize-enabler/) | Ready-to-execute resources: TypeScript scripts (CSV import, CRM sync, outreach, monitoring), n8n workflow templates, collection schema presets, governance guideline templates. **Grab, customize, and run.** | On-demand |
 
@@ -33,12 +33,11 @@ These are the original feature-named skills. They still work — Claude Code, Cu
 
 | Skill | Replacement | Status |
 |---|---|---|
-| [personize](./skills/personize/) (master) | → personize-reference + personize-architect | Deprecated |
+| [personize](./skills/personize/) (master) | → personize-reference + personize-solution-architect | Deprecated |
 | [personize-memory](./skills/personize-memory/) | → personize-reference (memory tables) + personize-enabler (recipes) | Deprecated |
-| [personize-governance](./skills/personize-governance/) | → personize-architect (governance authoring) + personize-enabler (templates) | Deprecated |
-| [personize-code](./skills/personize-code/) | → personize-enabler (scripts) + personize-architect (instruction patterns) | Deprecated |
-| [personize-agent-workspace](./skills/personize-agent-workspace/) | → personize-architect (workspace schemas) + personize-enabler | Deprecated |
-| [personize-solution-architect](./skills/personize-solution-architect/) | → personize-architect | Deprecated |
+| [personize-governance](./skills/personize-governance/) | → personize-solution-architect (governance authoring) + personize-enabler (templates) | Deprecated |
+| [personize-code](./skills/personize-code/) | → personize-enabler (scripts) + personize-solution-architect (instruction patterns) | Deprecated |
+| [personize-agent-workspace](./skills/personize-agent-workspace/) | → personize-solution-architect (workspace schemas) + personize-enabler | Deprecated |
 
 ---
 
@@ -63,7 +62,7 @@ Copy the persona folder you want into your IDE's skills directory. For Claude Co
 ```bash
 cp -r skills/personize-agent-core ~/.claude/skills/
 cp -r skills/personize-reference ~/.claude/skills/
-cp -r skills/personize-architect ~/.claude/skills/
+cp -r skills/personize-solution-architect ~/.claude/skills/
 cp -r skills/personize-enabler ~/.claude/skills/
 ```
 
@@ -93,10 +92,10 @@ When intent is ambiguous, this is how the personas line up against common reques
 | Look up a specific API endpoint, SDK method, CLI command, MCP tool, or error code | **personize-reference** |
 | Schedule a recurring prompt, set a one-time reminder, or list/edit/cancel schedules | **personize-reference** (schedules section + `client.schedules.*`) |
 | Call HubSpot or Salesforce REST APIs without managing OAuth credentials | **personize-reference** (CRM passthrough section + `client.hubspot.*` / `client.salesforce.*`) |
-| Design a new integration end-to-end (schema, workspace, governance, topology) | **personize-architect** |
-| Author a multi-step prompt that branches by tier, reconciles sources, gates on compliance, fans out to N personas, refines iteratively | **personize-architect** (advanced `instructions[]` patterns) |
+| Design a new integration end-to-end (schema, workspace, governance, topology) | **personize-solution-architect** |
+| Author a multi-step prompt that branches by tier, reconciles sources, gates on compliance, fans out to N personas, refines iteratively | **personize-solution-architect** (advanced `instructions[]` patterns) |
 | Grab a ready-to-run TypeScript script, n8n template, collection preset, or governance template | **personize-enabler** |
-| Build a durable pipeline (outbound sequence, CRM sync, daily digest, account monitor) | **personize-enabler** scripts + **personize-architect** patterns |
+| Build a durable pipeline (outbound sequence, CRM sync, daily digest, account monitor) | **personize-enabler** scripts + **personize-solution-architect** patterns |
 
 When you genuinely don't know which to load, just call the MCP tool: `personize_skill(task_description)` — semantic routing picks for you.
 
@@ -105,6 +104,37 @@ When you genuinely don't know which to load, just call the MCP tool: `personize_
 - **API:** `/api/v1/*` for schedules + CRM passthrough (v1.1 does not yet expose these surfaces). `/api/v1/prompt` and `/api/v1.1/prompt` mirror each other for the `instructions[]` payload — no payload differences. v1 sunsets `2026-07-15` for routes explicitly marked deprecated in the platform migration guide; **schedules and CRM passthrough are NOT in that deprecation set.**
 - **SDK:** [`@personize/sdk@0.12.0`](https://www.npmjs.com/package/@personize/sdk) — verified `client.schedules.{create,list,get,update,delete,executions}`, `client.hubspot.{contacts,companies,deals,tasks,notes,request}`, `client.salesforce.{request,query,queryAll,sobject(...).{create,get,update,upsert,delete}}`, `client.ai.prompt({ instructions: [...] })`.
 - **CLI:** [`@personize/cli@0.5.0`](https://www.npmjs.com/package/@personize/cli) — `personize schedules`, `personize crm hubspot`, `personize crm salesforce` command groups.
+
+## Where This Content Comes From (maintainers)
+
+This repo is a **publishing target**, not the place to edit skills. Each skill has exactly one
+upstream, and `skills/` is a mechanical copy of them:
+
+| Published skill | Upstream |
+|---|---|
+| `personize-agent-core`, `personize-enabler`, `personize-reference`, `personize-solution-architect` | `ai-fargate-agentdocs` → `Skills-2.0/<name>`, read from **`origin/dev`** |
+| `personize`, `personize-memory`, `personize-governance`, `personize-code`, `personize-agent-workspace` | `ai-fargate` → `Skills-Optimized/<name>` (working tree) |
+
+**Edit upstream, then sync.** Editing `skills/` directly means your change is overwritten on the
+next sync, and never reaches the source the rest of the platform reads.
+
+```bash
+node scripts/sync-skills.mjs --check   # report drift, change nothing (exit 1 if drift)
+node scripts/sync-skills.mjs           # apply, then review `git diff` before committing
+```
+
+Two things worth knowing:
+
+- The personas are read from the **`origin/dev` remote-tracking ref**, not a working tree. This is
+  deliberate: local checkouts of `ai-fargate-agentdocs` are often parked on feature branches, and
+  publishing from one of those would ship the wrong content. It also means **nothing publishes
+  until it is merged and pushed to `dev`**. Run `git fetch origin` in that repo first; the script
+  prints how old its `origin/dev` is so you can tell.
+- Comparison ignores line endings. The two upstreams are checked out with different `autocrlf`
+  settings, so a byte-for-byte diff reports every file as changed and tells you nothing.
+
+Override repo locations with `AI_FARGATE_PATH` and `AI_FARGATE_AGENTDOCS_PATH` if your checkouts
+are not siblings of this one. The script never commits, pushes, or publishes.
 
 ## Contributing
 
@@ -115,15 +145,15 @@ Skills are designed to be forkable. If you have a workflow worth sharing:
 3. Author attachments to hit the lowest tier that fits (cheat sheets under 2 KB get auto-inlined; deep references can be larger and load on demand).
 4. Open a PR.
 
-For more on authoring skills well (anti-patterns to avoid, when to split a file, how to write descriptions that trigger correctly), see [personize-architect → instruction-patterns.md](./skills/personize-architect/reference/instruction-patterns.md) and [personize-architect → cheat-anti-patterns.md](./skills/personize-architect/reference/cheat-anti-patterns.md).
+For more on authoring skills well (anti-patterns to avoid, when to split a file, how to write descriptions that trigger correctly), see [personize-solution-architect → instruction-patterns.md](./skills/personize-solution-architect/reference/instruction-patterns.md) and [personize-solution-architect → cheat-anti-patterns.md](./skills/personize-solution-architect/reference/cheat-anti-patterns.md).
 
 ## Versioning & History
 
 | Date | Change |
 |---|---|
-| **2026-05-27** | Skills 2.0 reaches parity with the legacy skills. Schedules + CRM passthrough ported into `personize-reference`; advanced `instructions[]` patterns ported into `personize-architect`. Legacy skills marked deprecated. |
+| **2026-05-27** | Skills 2.0 reaches parity with the legacy skills. Schedules + CRM passthrough ported into `personize-reference`; advanced `instructions[]` patterns ported into `personize-solution-architect`. Legacy skills marked deprecated. |
 | 2026-05-26 | `personize-schedules`, `personize-crm-passthrough`, `personize-instructions-advanced` consolidated into the broader skills they fit. v1.1 API doc updates rolled in. |
-| 2026-04-XX | Skills 2.0 introduced (4 personas replacing 22 feature skills). Initial draft of `personize-agent-core`, `personize-architect`, `personize-reference`, `personize-enabler`. |
+| 2026-04-XX | Skills 2.0 introduced (4 personas replacing 22 feature skills). Initial draft of `personize-agent-core`, `personize-solution-architect`, `personize-reference`, `personize-enabler`. |
 
 ## Links
 
