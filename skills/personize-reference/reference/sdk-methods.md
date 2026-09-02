@@ -572,11 +572,17 @@ OpenAI-compatible chat completion endpoint.
 
 ---
 
-## client.agents
+## client.agents -- REMOVED
 
-### `agents.list(options?)` -- List available agents (paginated)
-### `agents.get(id)` -- Get agent details and expectedInputs
-### `agents.run(id, options?: AgentRunOptions)` -- Run an agent with inputs
+The standalone Agents API was retired server-side and the SDK methods were removed
+in 1.0.0. `agents.list()`, `agents.get()` and `agents.run()` no longer exist, and
+the endpoints they called return 404.
+
+There is no stored agent object to fetch and run. Build the instruction sequence in
+your own code and run it with `ai.prompt()`'s `instructions[]` array. Interpolate
+values with a template literal instead of `{{placeholder}}` substitution, and use
+`metadata.recordId` plus `governedMemory` for the entity context that
+`email` / `websiteUrl` / `recordId` used to supply.
 
 ---
 

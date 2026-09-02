@@ -274,9 +274,6 @@ Provision an empty org's schema + governance from a declarative kit manifest. Ne
 | POST | /api/v1/multimodal/memorize | Memorize image/media | attachments[], email |
 | POST | /api/v1/multimodal/search | Search multimodal content | query, limit |
 | GET | /api/v1/multimodal/status | Check multimodal status | -- |
-| GET | /api/v1/agents | List available agents | limit, nextToken |
-| GET | /api/v1/agents/:id | Get agent details | -- |
-| POST | /api/v1/agents/:id/run | Run an agent | inputs, email, attachments[] |
 
 ## Schedules Endpoints (v1 only)
 

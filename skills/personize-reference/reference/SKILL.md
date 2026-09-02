@@ -100,9 +100,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Prompt with evaluation | -- | client.ai.prompt() | POST /api/v1/prompt | evaluate: { criteria, serverSide: true } |
 | Prompt with auto-memorize | -- | client.ai.prompt() | POST /api/v1/prompt | memorize: true |
 | Prompt streaming (SSE) | -- | client.ai.promptStream() | POST /api/v1/prompt | stream: true, yields text/output/done events |
-| List agents | -- | client.agents.list() | GET /api/v1/agents |
-| Get agent | -- | client.agents.get() | GET /api/v1/agents/:id |
-| Run agent | -- | client.agents.run() | POST /api/v1/agents/:id/run |
+| Multi-step prompt (agent-style run) | -- | client.ai.prompt() | POST /api/v1.1/prompt | instructions: [...] replaces the retired agents API |
 
 **Tool execution loop:** `responses.create` with client tools auto-loops up to 20 rounds: server returns `requires_action` -> SDK executes tools locally -> sends results -> repeats until `completed`. Max 20 rounds.
 

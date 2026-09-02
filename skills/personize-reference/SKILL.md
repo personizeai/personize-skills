@@ -119,9 +119,7 @@ For seeding many context docs at once (initial corpus import, GitOps sync), use 
 | Prompt with evaluation | -- | client.ai.prompt() | POST /api/v1/prompt with evaluate: { criteria, serverSide: true } |
 | Prompt with auto-memorize | -- | client.ai.prompt() | POST /api/v1/prompt with memorize: { email \| websiteUrl \| recordId } |
 | Prompt streaming (SSE) | -- | client.ai.promptStream() | POST /api/v1/prompt with stream: true, yields text/output/done events |
-| List agents | -- | client.agents.list() | GET /api/v1/agents |
-| Get agent | -- | client.agents.get() | GET /api/v1/agents/:id |
-| Run agent | -- | client.agents.run() | POST /api/v1/agents/:id/run |
+| Multi-step prompt (agent-style run) | -- | client.ai.prompt() | POST /api/v1.1/prompt | instructions: [...] replaces the retired agents API |
 
 **`ai.prompt` is dual-mode.** `prompt` and `instructions` are mutually exclusive. Use `instructions` for plan→act→qa→fix in one round-trip without client tools. Use `responses.create` only when client-side `execute()` callbacks are needed.
 

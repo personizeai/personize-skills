@@ -47,8 +47,21 @@ const SOURCES = [
     { name: 'personize-agent-workspace',     repo: 'fargate', from: 'Skills-Optimized/personize-agent-workspace' },
 ];
 
-/** Never publish these: build inputs, web-variant sources, editor cruft. */
-const EXCLUDE = new Set(['web.config.json', 'SKILL.web.md', '.gitkeep', '.DS_Store', 'Thumbs.db', 'desktop.ini']);
+/**
+ * OS junk only.
+ *
+ * This list used to also skip `SKILL.web.md`, `web.config.json` and `.gitkeep` on
+ * the theory that they are build inputs rather than published content. They are
+ * BOTH: `build-web-skills.ts` consumes them, and the published catalogue tracks
+ * them (4 SKILL.web.md, 4 web.config.json, 8 .gitkeep). Excluding them meant the
+ * sync silently never compared them, so they could drift forever while the script
+ * reported "in sync" - and one already had: personize/SKILL.web.md still carried a
+ * `client.agents.list()/.get()/.run()` row for an API retired in #695.
+ *
+ * Anything the target repo tracks must be compared. Only add names here that are
+ * genuinely never committed.
+ */
+const EXCLUDE = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
 
 const REPOS = {
     fargate: process.env.AI_FARGATE_PATH || path.resolve(ROOT, '..', 'ai-fargate'),

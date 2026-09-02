@@ -72,6 +72,9 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `client.guidelines.listAttachments(id)` | `guideline_attachment_list` | List all attachments on a guideline |
 | `client.guidelines.getAttachmentContent(id, attachmentId)` | `guideline_attachment_read` | Read the full content of an attachment |
 | `client.guidelines.deleteAttachment(id, attachmentId)` | `guideline_attachment_delete` | Remove an attachment from a guideline |
+| `client.organizations.getEmbeddingConfig()` | `embedding_config_get` | Show the org's BYO embedding model + lock status (default = still editable) |
+| `client.organizations.listEmbeddingModels(provider?)` | `embedding_models_list(provider?)` | List the 1536-dimensional models pickable on first set |
+| `client.organizations.setEmbeddingConfig({ provider, model, apiKey })` | `embedding_config_set(provider, model, api_key)` | Set the org's embedding model (1536-only; live-probed; immutable once set) |
 
 ### AgentDocs: Unified Knowledge Layer
 
@@ -237,7 +240,7 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 ```
 
 ### MCP Mode
-- Personize MCP server connected (SSE endpoint: `https://agent.personize.ai/mcp/sse`)
+- Personize MCP server connected (Streamable HTTP endpoint: `https://agent.personize.ai/mcp/stream`; the legacy `/mcp/sse` endpoint still works but is deprecated)
 - API key provided via `?api_key=sk_live_...` or OAuth configured
 - Tools `guideline_list`, `guideline_read`, `guideline_create`, `guideline_update`, `guideline_delete`, `guideline_history`, and `ai_smart_guidelines` are automatically available
 
@@ -589,6 +592,35 @@ await client.organizations.update({ name: 'Acme Corp (Rebranded)' });
 ```
 
 Rate limit: `create()` capped at 5 orgs per hour per key. For multi-org governance patterns, see "Advanced: Multi-Organization Governance" above.
+
+#### Embedding model (BYO, 1536-only)
+
+Memory vectors live in a single **1536-dimensional** space. By default an org uses
+the platform model (Bedrock Titan v1, `amazon.titan-embed-text-v1`, 1536d). An org
+on a plan that allows custom LLM keys can bring its own embedding model **once** —
+it MUST emit 1536d (live-probed on set and rejected otherwise), and the model is
+**locked (immutable) after the first set**; only the API key can be rotated afterward.
+
+```typescript
+// 1. Check status: 'default' (still editable) vs 'locked' (model fixed)
+const { status, embeddingConfig } = (await client.organizations.getEmbeddingConfig()).data;
+
+// 2. List the 1536-capable models to choose from (UI dropdown), optionally per provider
+const { data } = (await client.organizations.listEmbeddingModels('openai')).data;
+
+// 3. Bring your own 1536d model (api_key required for non-bedrock providers).
+//    First set locks the model permanently.
+await client.organizations.setEmbeddingConfig({
+  provider: 'openai',
+  model: 'text-embedding-3-small',
+  apiKey: process.env.OPENAI_API_KEY,
+});
+```
+
+⚠️ The model is **immutable once set** — a different model would orphan existing
+vectors (different models are not comparable even at the same dimension), so the
+setter refuses to switch it; changing requires a re-embed migration. Re-calling
+`setEmbeddingConfig` with the same model only rotates the key.
 
 ### Members
 

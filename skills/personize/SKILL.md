@@ -26,7 +26,7 @@ const me = await client.me(); // verify auth + see org info
 | 2 | **Store & Retrieve Knowledge** | Memorize, Recall, Smart Recall, Search, Digest, Similar, Segment, Batch, Keys | [Section 2](#2-store--retrieve-knowledge) |
 | 3 | **Govern & Guide** | Guidelines CRUD, Smart Context, Smart Update, Attachments | [Section 3](#3-govern--guide) |
 | 4 | **Monitor & React** | Analytics, Notifications | [Section 4](#4-monitor--react) |
-| 5 | **Build & Automate** | Responses, Chat Completions, Prompts, RAG, Agents, Evaluation | [Section 5](#5-build--automate) |
+| 5 | **Build & Automate** | Responses, Chat Completions, Prompts, Multi-Step Instructions, RAG, Evaluation | [Section 5](#5-build--automate) |
 
 ---
 
@@ -361,9 +361,7 @@ await client.notifications.send({
 | Chat completions (OpenAI-compat) | `client.chat.completions.create(opts)` | `ai_chat_completions` | Tiered |
 | AI prompt | `client.ai.prompt(opts)` | -- | Tiered |
 | AI prompt (streaming) | `client.ai.promptStream(opts)` | -- | Tiered |
-| List agents | `client.agents.list()` | -- | Free |
-| Get agent | `client.agents.get(id)` | -- | Free |
-| Run agent | `client.agents.run(id, opts)` | -- | Tiered |
+| Multi-step prompt (agent-style run) | `client.ai.prompt({ instructions: [...] })` | -- | Tiered |
 | RAG ingest | `client.rag.ingest(opts)` | -- | Tiered |
 | RAG search | `client.rag.searchProject(opts)` | -- | Tiered |
 | RAG list projects | `client.rag.listProjects()` | -- | Free |
