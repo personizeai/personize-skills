@@ -39,19 +39,3 @@ export async function generateWithTools(opts: {
     attachments: opts.attachments,
   });
 }
-
-/**
- * Run a Personize agent.
- *
- * Built-in tools are available by default.
- */
-export async function runAgent(opts: {
-  agentId: string;
-  inputs?: Record<string, unknown>;
-  email?: string;
-}) {
-  return personize.agents.run(opts.agentId, {
-    inputs: opts.inputs,
-    email: opts.email,
-  });
-}

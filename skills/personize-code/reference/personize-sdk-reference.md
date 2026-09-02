@@ -16,11 +16,8 @@ Quick reference for the `@personize/sdk` methods used in GTM pipelines.
 | `collections` | `list()`, `create()`, `update()`, `delete()` | `GET/POST/PATCH/DELETE /api/v1.1/collections` | CRUD for property collections. |
 | `collections` | `history()` | `GET /api/v1.1/collections/:id/history` | Version history for a collection. |
 | `ai` | `smartGuidelines()` | `POST /api/v1.1/ai/smart-guidelines` | Semantic routing to org guidelines. |
-| `ai` | `prompt()` | `POST /api/v1.1/prompt` | AI generation with MCP tools, outputs, evaluation. |
+| `ai` | `prompt()` | `POST /api/v1.1/prompt` | AI generation with MCP tools, outputs, evaluation. Pass `instructions: [...]` for a multi-step agent-style run (each step may set its own `maxSteps`). |
 | `ai` | `promptStream()` | `POST /api/v1.1/prompt` (SSE) | Streaming prompt execution — yields events as outputs arrive. |
-| `agents` | `list()` | `GET /api/v1.1/agents` | List all agents (paginated). |
-| `agents` | `get(id)` | `GET /api/v1.1/agents/:id` | Get agent config + expected `{{input}}` variables. |
-| `agents` | `run(id)` | `POST /api/v1.1/agents/:id/run` | Execute an agent. |
 | `v1_1.memory` | `save({ shape, ... })` | `POST /api/v1.1/memory/save` | AI extraction + vector storage. `shape: 'shortform' \| 'document' \| 'freeform'` (default `'shortform'`). Replaces v1 `memory.memorize()`. |
 | `v1_1.memory` | `retrieve()` | `POST /api/v1.1/memory/retrieve` | Semantic search with reflection + answer gen (recommended). Replaces v1 `memory.smartRecall()`. MCP: `smartRecall`. |
 | `v1_1.memory` | `smartDigest()` | `POST /api/v1.1/memory/digest` | Compiled entity context bundle. |
@@ -658,82 +655,40 @@ const me = await personize.me();
 
 ---
 
-## Agents
+## Multi-Step Prompts (Agent-Style Runs)
 
-### list — List Available Agents
-
-Returns all agents (prompt actions) for the organization. Supports pagination and tag filtering.
+The standalone Agents API (`agents.list()`, `agents.get()`, `agents.run()`) is retired. There is no server-stored agent object or `{{placeholder}}` template to fetch and fill in: build the instruction sequence directly in your pipeline code and run it with `ai.prompt()`'s `instructions[]` array (see [Multi-Step Instructions](#multi-step-instructions) above). Interpolate your own values with a template literal instead of `{{placeholder}}` substitution, and use `metadata.recordId` plus `governedMemory` for the entity-context resolution that `email` / `websiteUrl` / `recordId` used to provide.
 
 ```typescript
-const agents = await personize.agents.list({
-  limit: 25,                           // page size (default: 25, max: 100)
-  tags: ["outbound"],                  // filter by tags
-  summary: true,                       // lighter payload (strips full instruction text)
+// Was: personize.agents.run("cold-outreach-agent", { inputs: {...}, email, websiteUrl, recordId })
+const recipientEmail = "lead@company.com";
+const company = "Acme Corp";
+const objective = "Book a discovery call";
+
+const result = await personize.ai.prompt({
+  instructions: [
+    {
+      prompt: `Recall everything we know about ${recipientEmail} at ${company}.`,
+      maxSteps: 5,
+    },
+    {
+      prompt: `Write a personalized outreach email to ${recipientEmail} with the goal: ${objective}.`,
+      maxSteps: 3,
+    },
+  ],
+  governedMemory: true,               // resolves entity context automatically, replaces email/websiteUrl/recordId on run()
+  metadata: { recordId: recipientEmail },
+  memorize: { email: recipientEmail, captureToolResults: true },
 });
 
-// agents.data.actions — array of agent objects
-// agents.data.count — total count
-// agents.data.nextToken — cursor for next page (pass to next call)
+// result.data.text - full response text
+// result.data.metadata.model - model used
+// result.data.metadata.usage - token usage
+// result.data.metadata.toolCalls - tools called during the run
+// result.data.metadata.instructionsExecuted - number of instruction steps executed
 ```
 
-### get — Get Agent Details & Expected Inputs
-
-Fetches a single agent's configuration and extracts the `{{placeholder}}` variable names from its instructions. Use this to discover which `inputs` to pass to `agents.run()`. No credits consumed.
-
-```typescript
-const agent = await personize.agents.get("act_agent123");
-
-// agent.data.id — agent ID
-// agent.data.payload.name — agent name (e.g. "Cold Outreach Agent")
-// agent.data.payload.instructions — ordered instruction steps with raw prompt templates
-// agent.data.payload.actions — tools/actions available to the agent
-// agent.data.payload.aiConfig — model and AI configuration
-// agent.data.expectedInputs — e.g. ["companyName", "industry", "targetPersona"]
-```
-
-**Common pattern — discover inputs then run:**
-
-```typescript
-const agent = await personize.agents.get("act_agent123");
-console.log("This agent expects:", agent.data.expectedInputs);
-// → ["recipientEmail", "company", "objective"]
-
-const result = await personize.agents.run("act_agent123", {
-  inputs: {
-    recipientEmail: "lead@company.com",
-    company: "Acme Corp",
-    objective: "Book a discovery call",
-  },
-});
-```
-
-### run — Run a Pre-configured Agent
-
-Executes an agent by ID. The agent's instructions are executed in sequence. Any `{{placeholder}}` tokens in instructions are replaced with matching keys from `inputs`.
-
-```typescript
-// Built-in tools are available by default.
-const result = await personize.agents.run("cold-outreach-agent", {
-  inputs: {                            // substituted into {{placeholder}} tokens in instructions
-    recipientEmail: "lead@company.com",
-    company: "Acme Corp",
-    objective: "Book a discovery call",
-  },
-  email: "lead@company.com",          // resolves entity from memory for CRM context
-  websiteUrl: "https://acme.com",     // resolves company from memory (optional)
-  recordId: "rec_abc",                // resolves CRM record (optional)
-});
-
-// result.data.text — full agent response
-// result.data.metadata.model — model used
-// result.data.metadata.usage — token usage
-// result.data.metadata.toolCalls — tools the agent called
-// result.data.metadata.stepsExecuted — number of LLM round-trips
-```
-
-**Key distinction for `inputs` vs `email`/`websiteUrl`/`recordId`:**
-- `inputs` — simple text substitution into `{{placeholder}}` tokens in agent instructions
-- `email`, `websiteUrl`, `recordId` — also merged into inputs, but additionally resolve entity context from Personize memory (properties, memories). Top-level values take priority over same keys inside `inputs`.
+There is no `list()`/`get()` equivalent to query stored agent configs or expected inputs: the instruction steps and their variables now live in your own pipeline source, so read the task code directly to see what it needs.
 
 ---
 
@@ -741,7 +696,7 @@ const result = await personize.agents.run("cold-outreach-agent", {
 
 ### Built-in Tools (Available by Default)
 
-These tools are available automatically in `ai.prompt()` and `agents.run()`:
+These tools are available automatically in `ai.prompt()` (including multi-step `instructions[]` runs):
 
 | Tool Name | What It Does |
 |---|---|
@@ -756,7 +711,7 @@ These tools are available automatically in `ai.prompt()` and `agents.run()`:
 
 ### External MCP Tools (Auto-Enabled)
 
-External MCP servers connected via the [Personize dashboard](https://app.personize.ai) are automatically available during `ai.prompt()` and `agents.run()` — no parameter needed.
+External MCP servers connected via the [Personize dashboard](https://app.personize.ai) are automatically available during `ai.prompt()` runs, including multi-step `instructions[]` runs: no parameter needed.
 
 | MCP Server | Use Case |
 |---|---|
@@ -765,7 +720,7 @@ External MCP servers connected via the [Personize dashboard](https://app.personi
 | HubSpot | Direct CRM access from within AI generation |
 
 **When to use MCP tools vs. direct SDK calls:**
-- **MCP tools** (in `ai.prompt()` / `agents.run()`): Let the AI decide what to recall/check autonomously during content generation. Preferred for creative tasks.
+- **MCP tools** (in `ai.prompt()`, single-step or multi-step `instructions[]`): Let the AI decide what to recall/check autonomously during content generation. Preferred for creative tasks.
 - **Direct SDK calls** (in task code): When you need deterministic, structured operations — batch sync, export, specific queries. Preferred for data operations.
 
 ---

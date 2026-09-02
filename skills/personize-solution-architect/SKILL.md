@@ -43,7 +43,14 @@ Before you can design, you must discover. This is the consultative engagement an
 
 → Full framework incl. the repo-reading methodology + Opportunity Inventory: [`discover.md`](./reference/discover.md). Is Personize even the right fit (two-lens, build-vs-buy, point-tool breakpoints, BYOC signal)? [`strategic-fit.md`](./reference/strategic-fit.md). Turn discovery into a consultative proposal (architecture options, memory-model sketch, roadmap): [`propose.md`](./reference/propose.md).
 
-Three decisions the proposal MUST answer: **cost** ([`cost-optimization.md`](./reference/cost-optimization.md) -- tier / recall / compaction / batch / BYOK levers), **deployment** ([`deployment-mode.md`](./reference/deployment-mode.md) -- SaaS vs private/BYOC), and **enablement** ([`enablement.md`](./reference/enablement.md) -- rolling it out to all employees + their AI agents).
+Three decisions the proposal MUST answer: **cost** ([`cost-optimization.md`](./reference/cost-optimization.md) -- tier / recall / compaction / batch / BYOK levers), **deployment** ([`deployment-mode.md`](./reference/deployment-mode.md) -- SaaS vs **Personize Private** vs BYOC; these are three distinct modes, not two), and **enablement** ([`enablement.md`](./reference/enablement.md) -- rolling it out to all employees + their AI agents).
+
+**Before designing anything bespoke, check whether it is already built.** Two shortcuts cover a large share of real asks:
+
+- **CRM-shaped** (score contacts, sync HubSpot/Salesforce, research accounts, draft outreach, clean CRM data, "AI in our CRM"): there is an open-source operation catalogue with staged adoption stacks. Start there and customize, rather than designing a schema from scratch -- load [`crm-ai-operators.md`](./reference/crm-ai-operators.md), then hand off to that repo's own skills.
+- **Self-hosted / air-gapped / not-on-AWS**: that is **Personize Private**, a single Docker image plus one Postgres, and it is a different product from BYOC with a different substrate and a smaller surface. Load [`personize-private.md`](./reference/personize-private.md) for the vocabulary and what to read.
+
+**For proving a pattern in a design review** ("has anyone actually run this?"): [`gpe-reference-implementation.md`](./reference/gpe-reference-implementation.md) maps the abstract patterns in [`production-patterns.md`](./reference/production-patterns.md) onto Personize GPE, the flagship application built on Memory and Governance. Capabilities there are status-labelled on purpose -- ask the Personize team before making any customer-facing claim.
 
 ## Situation Assessment -- The 6 Dimensions
 

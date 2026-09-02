@@ -149,7 +149,7 @@ console.log(`Balance: ${credits.data.balance}/${credits.data.included}`);
 | Responses (orchestration) | `client.responses.create(opts)` | -- |
 | Chat completions | `client.chat.completions.create(opts)` | -- |
 | AI prompt | `client.ai.prompt(opts)` | -- |
-| Agents | `client.agents.list()`, `.get(id)`, `.run(id, opts)` | -- |
+| Multi-step prompt (agent-style run) | `client.ai.prompt({ instructions: [...] })` | -- |
 | RAG | `client.rag.ingest()`, `.searchProject()`, `.listProjects()` | -- |
 
 **Generation tiers:** `basic` (default), `pro`, `ultra`

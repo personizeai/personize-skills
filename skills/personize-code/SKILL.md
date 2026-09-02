@@ -51,7 +51,7 @@ Every pipeline is TypeScript. Every pipeline is testable. Every pipeline uses th
 │  • memory.smartDigest() — compiled context per entity    │
 │  • ai.smartGuidelines() — retrieve org guidelines           │
 │  • ai.prompt() — generate with MCP tools + auto-memorize │
-│  • agents.run() — execute multi-step agents with tools   │
+│  • ai.prompt() + instructions[]: multi-step agent runs   │
 ├──────────────────────────────────────────────────────────┤
 │  App SDKs — Native Libraries (No Wrappers)               │
 │  • googleapis (Gmail, Sheets, Calendar)                  │
@@ -68,7 +68,7 @@ Every pipeline is TypeScript. Every pipeline is testable. Every pipeline uses th
 ## The Core Pattern: AI Agent as Pipeline
 
 Personize SDK is the **memory + governance layer**. You can use it with:
-- **Personize AI** (`ai.prompt()`, `agents.run()`) — built-in, simplest
+- **Personize AI** (`ai.prompt()`, including multi-step `instructions[]` runs): built-in, simplest
 - **Any LLM** (OpenAI, Anthropic Claude, Gemini, local models) — bring your own
 
 ### Option A: Personize AI with Built-in Tools
@@ -428,7 +428,7 @@ When generating or customizing a pipeline, follow these steps:
 Every pipeline should:
 1. **Recall** — check what we already know (`memory.recall()` or via MCP tools)
 2. **Contextualize** — get org guidelines (`ai.smartGuidelines()` or via MCP tools)
-3. **Act** — generate content, score leads, draft replies (`ai.prompt()` or `agents.run()`)
+3. **Act** — generate content, score leads, draft replies (`ai.prompt()`, single-step or multi-step `instructions[]`)
 4. **Memorize** — store the interaction (`memory.memorize()` or `memorize:` param)
 5. **Schedule** — self-schedule follow-ups if needed (`wait.for()` or `.trigger({ delay })`)
 

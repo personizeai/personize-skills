@@ -233,6 +233,11 @@ const guidelines = await client.ai.smartGuidelines({
 | `client.guidelines.delete(id)` | `guideline_delete(id)` | Delete guideline |
 | `client.guidelines.history(id)` | `guideline_history(id)` | View change history |
 | `client.ai.smartGuidelines({ message })` | `ai_smart_guidelines(message)` | Fetch relevant guidelines |
+| `client.organizations.getEmbeddingConfig()` | `embedding_config_get` | Show the org's BYO embedding model + lock status |
+| `client.organizations.listEmbeddingModels(provider?)` | `embedding_models_list(provider?)` | List 1536d models pickable on first set |
+| `client.organizations.setEmbeddingConfig({ provider, model, apiKey })` | `embedding_config_set(...)` | Set the org's embedding model (1536-only; live-probed; immutable once set) |
+
+> **Embedding model (1536-only).** Memory vectors live in one 1536d space. Orgs on a custom-keys plan can BYO an embedding model **once** — it must emit 1536d (live-probed on set) and is **locked after the first set** (only the key can change). Default is Bedrock Titan v1. Switching models afterward requires re-embedding.
 
 ---
 

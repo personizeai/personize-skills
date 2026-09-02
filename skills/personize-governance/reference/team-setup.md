@@ -61,7 +61,8 @@ When updating governance skill behavior, update all copies together.
 
 Connect Personize MCP server in your client/tool using:
 
-- SSE endpoint: `https://agent.personize.ai/mcp/sse`
+- Streamable HTTP endpoint (current transport): `https://agent.personize.ai/mcp/stream`. Pass the org ID as an `X-Organization-Id` header where supported, or `?organizationId=`. Clients with a type discriminator (e.g. VS Code) use `"type": "http"`, not `"type": "sse"`.
+- Legacy SSE endpoint (deprecated, still supported): `https://agent.personize.ai/mcp/sse`
 - auth via API key/OAuth per tool
 
 Common MCP tools:
