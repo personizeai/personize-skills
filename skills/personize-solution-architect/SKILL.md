@@ -23,7 +23,7 @@ The mental model under every Personize design, and the first thing to convey to 
 - **Symbolic (properties):** "which actually qualify?" -- typed filters, ordering, aggregation, governance.
 - **Graph (relations):** "what is connected?" -- traversal across entities.
 
-**One write, multiple representations.** A single memorize call embeds the raw text for semantic recall AND projects it into the schema in the same pass, where each property's `description` IS the extraction prompt. Designing the descriptions = designing what the org's AI notices and remembers.
+**One write, multiple representations.** A single `memory_save` call embeds the raw text for semantic recall AND projects it into the schema in the same pass, where each property's `description` IS the extraction prompt. Designing the descriptions = designing what the org's AI notices and remembers.
 
 **The core design decision is the boundary:** what to crystallize into a typed property (high-frequency, filter-on, governance-critical, aggregatable) vs. leave as prose/memory (nuance, narrative, the "why"). Quality saturates around ~7 well-chosen memories per entity -- the constraint is curation, not capacity.
 
@@ -38,7 +38,7 @@ Before you can design, you must discover. This is the consultative engagement an
 1. **Research** the prospect (site, LinkedIn, job posts, integrations page) → a Prospect Intelligence Brief, so you validate instead of interrogate.
 2. **Validate** with discovery questions, 2-3 at a time: product, channels, data landscape, personalization gap, **retrieval economics**, stack.
 3. **Read the codebase** (when shared) → an 8-step repo recon (data models, CRM/event/outbound integration points, decision branches, identity, batch/cron), each mapped to a Personize capability in an **Opportunity Inventory** table.
-4. **Map** each data source to its destination: `memory.upsert` (structured) / `saveBatch` (content) / `context_save` (guideline) / workspace / graph.
+4. **Map** each data source to its destination: `memory_save shape=property` (structured) / `memory_save shape=text` (content) / `memory_save shape=document` (guideline) / workspace / graph.
 5. **Assess** the 6 dimensions (below), then **propose 2-3 options with trade-offs**.
 
 → Full framework incl. the repo-reading methodology + Opportunity Inventory: [`discover.md`](./reference/discover.md). Is Personize even the right fit (two-lens, build-vs-buy, point-tool breakpoints, BYOC signal)? [`strategic-fit.md`](./reference/strategic-fit.md). Turn discovery into a consultative proposal (architecture options, memory-model sketch, roadmap): [`propose.md`](./reference/propose.md).
@@ -64,18 +64,18 @@ After assessment, MUST propose 2-3 options with trade-offs before building -- be
 
 **For cost estimation** before committing to a tier or batch strategy: load [`cost-simulator.md`](./reference/cost-simulator.md) — text-based simulator with the same model as the website's savings calculator. Inputs: records, pages per record, monthly recall volume, LLM tier. Outputs: raw-LLM cost vs. Personize cost vs. savings %.
 
-**For graph relations** (when to use edges vs. nested properties, how the inference engine seeds edges from properties, what relation types are built-in, how to query the graph via `POST /api/v1.1/memory/retrieve` with `sources.graph` — or `retrieve_unified(mode='scout', sources={graph:true})` on agent2_0): load [`graph-relations.md`](./reference/graph-relations.md). Key insight: edges are inferred automatically during memorize from foreign-key-shaped properties (`company`, `linkedin_url`, `attendees`, `assigned_to_email`); manual seeding is rarely needed.
+**For graph relations** (when to use edges vs. nested properties, how the inference engine seeds edges from properties, what relation types are built-in, how to query the graph via `POST /api/v1.1/memory/retrieve` with `sources.graph`, or `memory_retrieve` with `mode=scout` on MCP): load [`graph-relations.md`](./reference/graph-relations.md). Key insight: edges are inferred automatically during `memory_save` from foreign-key-shaped properties (`company`, `linkedin_url`, `attendees`, `assigned_to_email`); manual seeding is rarely needed.
 
 ## Collections vs Guidelines -- The Most Common Mistake
 
 MUST understand this distinction before creating anything:
 
 - **Collections** = data containers for entities with identity keys. Contacts, companies, deals, tickets, products. Created via `collection_create`. Each record is an instance of the entity (one contact, one company). Properties are structured fields extracted from content.
-- **Guidelines** = behavioral rules, policies, and governance for how agents act. ICP criteria, email writing standards, sales playbooks, compliance policies, brand voice. Created via `context_save({ type: 'guideline' })` (MCP/SDK; the underlying tool is also exposed as `context_manage_create`). Written in MUST/SHOULD/MAY format. Routed by SmartContext to agents when relevant.
+- **Guidelines** = behavioral rules, policies, and governance for how agents act. ICP criteria, email writing standards, sales playbooks, compliance policies, brand voice. Created via `memory_save shape=document` (SDK `client.memory.save({ shape: 'document', ... })`). Written in MUST/SHOULD/MAY format. Routed by SmartContext to agents when relevant.
 
 **The test:** Does it describe a *thing with an identity* (person, company, deal)? → Collection. Does it describe *how to behave* (rules, criteria, standards, policies)? → Guideline.
 
-MUST NOT create governance rules as collections -- because collections are for data, guidelines are for rules. Creating "ICP Criteria" as a collection instead of a guideline means no agent will ever receive those rules via `ai_smart_guidelines`. The rules become invisible.
+MUST NOT create governance rules as collections -- because collections are for data, guidelines are for rules. Creating "ICP Criteria" as a collection instead of a guideline means no agent will ever receive those rules via doc search. The rules become invisible.
 
 | Example | Correct Type | Why |
 |---------|-------------|-----|
@@ -151,16 +151,16 @@ SHOULD layer, not replace -- assume the starter's Contact/Company exist (install
 ## Scaling Patterns
 
 >10 items MUST batch -- sequential calls waste credits and risk rate limits. Pick by write shape:
-- **Structured create/upsert** (you have known field values): `memory.upsert()` -- `POST /api/v1.1/memory/upsert`, MCP `memory_upsert`, CLI `personize memory upsert`. Single or batch; sets properties directly without re-extraction. This is the canonical create/upsert path.
-- **Content → AI extraction** at volume: `memory.save()` / `memory.saveBatch()` (v1.1). The legacy `memorizeBatch` still works but is **deprecated toward `memory.upsert()`**; each item can specify its own `tier`, `schema`, `max_properties`, and batch returns an `eventId` you poll via `GET /api/v1/events/{eventId}`.
+- **Structured create/upsert** (you have known field values): `client.memory.save({ shape: 'property', record, ... })`, MCP `memory_save shape=property`. Single or batch; sets properties directly without re-extraction. This is the canonical create/upsert path.
+- **Content → AI extraction** at volume: `client.memory.save({ shape: 'text', ... })` (batch via `items[]` with `shape: 'shortform'`); each item can specify its own `tier`, `schema`, `max_properties`, and batch returns an `eventId` you poll via `GET /api/v1/events/{eventId}`.
 
 Tier selection: `basic` for structured data, `pro` for rich text (default), `ultra` for complex content. Check plan limits via `GET /api/v1/me`. SHOULD plan rate budget before large operations.
 
-Cost: 1 credit/memorize, 1 credit/fast recall, 2 credits/deep recall. Guidelines and workspace: free. Budget = items * credits_per_operation.
+Cost: see the pricing page for save and retrieve rates (document list/get via `filter`/`fetch` is 1 credit for API-key callers and 0 in the UI and MCP). Guidelines and workspace: free. Budget = items * credits_per_operation.
 
 ## Schema Evolution -- Changing What's Already Live
 
-**Adding properties:** safe, backward-compatible. New properties extract from future memorizations only. **Renaming:** requires migration (export, re-import). SHOULD avoid unless critical. **Splitting collections:** export, create new collection, re-import. Plan for dual-write period. **Re-extraction:** re-memorize content with updated `schema`, `actionId`, or higher `tier`.
+**Adding properties:** safe, backward-compatible. New properties extract from future saves only. **Renaming:** requires migration (export, re-import). SHOULD avoid unless critical. **Splitting collections:** export, create new collection, re-import. Plan for dual-write period. **Re-extraction:** re-save content with updated `schema`, `actionId`, or higher `tier`.
 
 MUST NOT delete properties that agents or pipelines depend on without coordinating -- because silent schema changes cause silent failures. SHOULD document changes in a governance guideline so agents discover them via SmartContext.
 
@@ -168,7 +168,7 @@ MUST NOT delete properties that agents or pipelines depend on without coordinati
 
 **Extraction accuracy:** `POST /api/v1/evaluate/memorization-accuracy` with test content and expected properties. SHOULD run after every schema change -- because descriptions directly affect extraction.
 
-**Recall quality:** query via `smartRecall`, compare against expected results. **Governance routing:** test with `ai_smart_guidelines({ message: "task description" })`, verify correct guidelines appear.
+**Recall quality:** query via `memory_retrieve` (`mode=scout`), compare against expected results. **Governance routing:** test with a doc search for the task description, verify correct guidelines appear.
 
 **Optimization loop:** evaluate -> identify weak descriptions -> adjust -> re-extract -> re-evaluate. SHOULD define accuracy threshold before starting -- because without a target, optimization never converges.
 
@@ -212,8 +212,8 @@ Setup order: entity types → collections → governance → scripts → MCPs �
 
 Two per-org taxonomies are human-curated and shared across all AI agents and tools in the org. Both follow the same pattern as `context_doc_types`: system built-ins under `SYSTEM_ORG_ID` merged with per-org overrides.
 
-- **Tag vocabulary** (`org_tag_vocabulary`) -- controlled tag set that auto-tagging snaps to. Use for: organizing context docs by business domain so the LLM section-selector can include / exclude the right docs for each retrieval query. AI agents may USE tags during snap but never INVENT new canonicals. Manage via `client.v1_1.context.{listTags, createTag, updateTag, deleteTag, renameTag}` or `personize v1.1 context tags ...`. **Tag descriptions MUST follow `"Use for: X. Not for: Y."` format** -- the description is injected into the LLM selector prompt to reject plausible-but-wrong docs.
-- **Relation types** (`relation_types`) -- typed taxonomy for graph edges between memory records (works_at, reports_to, treats_patient, ...). Used by edge inference, graph traversal, and retrieval scoring. Manage via `client.v1_1.memory.{listRelationTypes, createRelationType, batchCreateRelationTypes, ...}` or `personize v1.1 memory relation-types ...`.
+- **Tag vocabulary** (`org_tag_vocabulary`) -- controlled tag set that auto-tagging snaps to. Use for: organizing context docs by business domain so the LLM section-selector can include / exclude the right docs for each retrieval query. AI agents may USE tags during snap but never INVENT new canonicals. Manage via the tag methods (`listTags`, `createTag`, `updateTag`, `deleteTag`, `renameTag`) on the v1.1 context client or `personize v1.1 context tags ...`. **Tag descriptions MUST follow `"Use for: X. Not for: Y."` format** -- the description is injected into the LLM selector prompt to reject plausible-but-wrong docs.
+- **Relation types** (`relation_types`) -- typed taxonomy for graph edges between memory records (works_at, reports_to, treats_patient, ...). Used by edge inference, graph traversal, and retrieval scoring. Manage via the relation-type methods (`listRelationTypes`, `createRelationType`, `batchCreateRelationTypes`, ...) on the v1.1 memory client or `personize v1.1 memory relation-types ...`.
 
 SHOULD seed both during onboarding using the curated example sets in `reference/tag-vocabulary-examples.json` (organized by industry/department) and the `personize-enabler` skill's `presets/relation-types-examples.json` (organized by entity-relationship pattern). Users can pick one or more sets, customize labels/descriptions, then bulk-create via the CLI's `batch-create --file <path>` -- because a seeded vocab is decisively better for retrieval than auto-generated tags (CD2 +4 / CD3 +6 in internal benchmarks).
 

@@ -1,7 +1,7 @@
 # Responses API FAQ
 
 **Q: What is the difference between Responses API and Chat Completions?**
-Responses API supports multi-step agentic flows and client-executed tools — the agent can pause and ask your code to run a tool. Chat Completions is an OpenAI-compatible drop-in for simple request/response generation without tool execution loops.
+Responses API supports multi-step agentic flows and client-executed tools, the agent can pause and ask your code to run a tool. Chat Completions is an OpenAI-compatible drop-in for simple request/response generation without tool execution loops.
 
 **Q: What is BYOK (Bring Your Own Key)?**
 BYOK lets you supply your own model provider API key (OpenAI, Anthropic, Google) for generation calls. Your key is used for that request and never stored. This lets you use your own quota and billing with Personize orchestration.

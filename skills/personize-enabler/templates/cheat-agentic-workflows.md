@@ -19,9 +19,10 @@ client.responses.create({
 
 ## Batch-apply pattern
 for (const record of records) {
-  const context = await client.memory.smartDigest({ email: record.email });
+  const res = await client.memory.retrieve({ mode: 'scout', record: { email: record.email }, compile: true, message: 'everything relevant' });
+  const context = res.documents?.compiledContext; // read documents.compiledContext
   const result = await client.responses.create({ instructions: "...", input: context });
-  await client.memory.memorize({ content: result.output, email: record.email });
+  await client.memory.save({ shape: 'text', content: result.output, record: { email: record.email } });
   // Checkpoint every 10 records to workspace
 }
 

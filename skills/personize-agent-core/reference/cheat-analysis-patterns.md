@@ -2,12 +2,12 @@
 
 | Analysis Type | Tool | Key Params | Example |
 |---------------|------|-----------|---------|
-| Entity deep-dive | memory_digest | email, token_budget:2000 | "Everything about Sarah" |
-| Cross-entity | smartRecall | no entity scope, groupByRecord:true | "Who has churn risk?" |
-| Comparison | smartRecall | comparative query | "Compare Sarah vs Mike" |
-| Trends | recall_pro | prefer_recent:true, half_life:30 | "What changed this month?" |
-| Segmentation | memory_segment | dimensions, tiers | "Bucket by engagement" |
-| Aggregation | smartRecall | count intent | "How many in healthcare?" |
-| Similarity | memory_find_similar | seed email, dimensions | "Accounts like Acme" |
+| Entity deep-dive | memory_retrieve | mode:'brief', record:{email} | "Everything about Sarah" |
+| Cross-entity | memory_retrieve | mode:'scout', no entity scope, groupByRecord:true | "Who has churn risk?" |
+| Comparison | memory_retrieve | mode:'brief', comparative query | "Compare Sarah vs Mike" |
+| Trends | memory_retrieve | mode:'filter', updatedAfter, sortOrder | "What changed this month?" |
+| Segmentation | memory_retrieve | mode:'filter', filters on the segment properties | "Bucket by engagement" |
+| Aggregation | memory_retrieve | mode:'scout', count intent | "How many in healthcare?" |
+| Similarity | REST/SDK retrieve | mode:'similar', seed (not available on MCP) | "Accounts like Acme" |
 
 Always state confidence and evidence count. Never invent data.

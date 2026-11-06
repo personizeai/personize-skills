@@ -10,9 +10,9 @@
 | `chat.completions` | OpenAI SDK drop-in replacement | `messages`, `model`, `tools`, `temperature` |
 | `ai.promptStream` | Real-time streaming UX | Same as `ai.prompt` + `streamTimeout`, `signal`; emits SSE: text/output/step_complete/done/error |
 
-**`instructions` is on BOTH `ai.prompt` and `responses.create`.** Older versions of this cheat sheet attributed it to `responses.create` only — that was wrong.
+**`instructions` is on BOTH `ai.prompt` and `responses.create`.** Older versions of this cheat sheet attributed it to `responses.create` only. That was wrong.
 
-Batch-apply: for each record `{ recall → govern → ai.prompt({ instructions }) → memorize }`
+Batch-apply: for each record `{ recall → govern → ai.prompt({ instructions }) → save }`
 Evaluation: `ai.prompt({ evaluate: { criteria: [...], serverSide: true } })`
 Auto-save: `ai.prompt({ memorize: { email | websiteUrl | recordId } })` stores outputs to memory
 Tool loop: `responses.create` auto-executes client `execute()` functions up to 20 rounds

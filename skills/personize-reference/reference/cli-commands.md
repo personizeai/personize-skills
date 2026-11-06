@@ -21,7 +21,10 @@
 | Command Group | Commands | Purpose |
 |---------------|----------|---------|
 | auth | login, logout, status | Authentication |
-| memory | memorize, recall, smart-recall, smart-recall-unified, digest, search, similar, segment, batch, update, bulk-update, delete, delete-record, cancel-deletion, properties, property-history, query-properties, update-keys, list-keys | Memory operations (19) |
+| save | `--shape text\|property\|identifiers\|document`, `--items-file <f>` | Write memory |
+| retrieve | scout, brief, filter, fetch, similar | Read memory |
+| delete | `<type> --yes` (add `--hard` for type record) | Delete memory data |
+| memory | segment (legacy: list-keys, delete-keys, hidden; use `retrieve fetch --fetch-identifiers` and `delete identifier`) | Other memory operations |
 | guidelines | list, create, update, delete, attachments | Governance |
 | collections | list, create, update, delete | Schema management |
 | context | guidelines | SmartContext queries |
@@ -63,96 +66,16 @@ Show current authentication status, organization, and plan.
 
 ## memory
 
-### `personize memory memorize`
-Store content with AI extraction.
+### `personize save`
+Write memory. `--shape` selects the form: `text` (AI extraction), `property` (structured values, no AI extraction), `identifiers`, `document`. API: `POST /api/v1.1/memory/save`.
 
 | Flag | Description |
 |------|-------------|
-| `--content <text>` | Content to memorize (required) |
-| `--email <email>` | Contact email identifier |
-| `--website-url <url>` | Company website identifier |
-| `--type <type>` | Entity type (Contact, Company, etc.) |
-| `--tier <tier>` | Extraction tier: basic, pro, pro_fast, ultra |
-| `--tags <tags>` | Comma-separated tags |
-| `--collection <name>` | Target collection name |
-| `--extraction-prompt <text>` | Focus instructions for extraction |
-| `--speaker <name>` | Speaker label for transcripts |
-| `--timestamp <iso>` | Content timestamp |
+| `--shape <shape>` | `text`, `property`, `identifiers` or `document` |
+| `--items-file <f>` | JSON file with `items[]` for a shortform/freeform/document batch save (not for property or identifiers: one call per record) |
 
-### `personize memory upsert`
-Structured create/upsert — write known field values directly with NO AI extraction (single or batch). Canonical create/upsert path. Maps to `POST /api/v1.1/memory/upsert`.
-
-| Flag | Description |
-|------|-------------|
-| `--file <path>` | JSON file with `records[]` (each: email/website-url/record-id + type + properties) |
-| `--email <email>` | Contact email identifier (single-record shorthand) |
-| `--website-url <url>` | Company website identifier (single-record shorthand) |
-| `--type <type>` | Entity type |
-| `--properties <json>` | JSON object of property:value pairs (single-record shorthand) |
-
-### `personize memory recall`
-Direct memory lookup.
-
-| Flag | Description |
-|------|-------------|
-| `--query <text>` | Search query (required) |
-| `--email <email>` | Contact email |
-| `--type <type>` | Entity type |
-| `--limit <n>` | Max results |
-
-### `personize memory smart-recall`
-Semantic recall with reflection and answer generation.
-
-| Flag | Description |
-|------|-------------|
-| `--query <text>` | Natural language query (required) |
-| `--email <email>` | Contact email |
-| `--website-url <url>` | Company website |
-| `--mode <mode>` | fast (~500ms) or deep (~10-20s) |
-| `--limit <n>` | Max results |
-| `--generate-answer` | Generate synthesized answer |
-| `--group-by-record` | Group results by record |
-
-### `personize memory smart-recall-unified`
-Unified retrieval -- server classifies intent and orchestrates.
-
-| Flag | Description |
-|------|-------------|
-| `--message <text>` | Natural language query (required) |
-| `--emails <emails>` | Comma-separated emails for scoping |
-| `--session-id <id>` | Session ID for follow-up queries |
-
-### `personize memory digest`
-Get compiled entity context digest.
-
-| Flag | Description |
-|------|-------------|
-| `--email <email>` | Contact email |
-| `--website-url <url>` | Company website |
-| `--token-budget <n>` | Max tokens (default: 1000) |
-| `--type <type>` | Entity type |
-
-### `personize memory search`
-Filter and search records by property conditions.
-
-| Flag | Description |
-|------|-------------|
-| `--type <type>` | Entity type |
-| `--query <text>` | Semantic search query |
-| `--email <email>` | Scope to entity by email |
-| `--page-size <n>` | Results per page |
-| `--return-records` | Include property values |
-| `--include-memories` | Include freeform memories |
-
-### `personize memory similar`
-Find records similar to a seed record.
-
-| Flag | Description |
-|------|-------------|
-| `--email <email>` | Seed record email |
-| `--record-id <id>` | Seed record ID |
-| `--dimensions <dims>` | Comparison dimensions |
-| `--limit <n>` | Max results |
+### `personize retrieve <mode>`
+Read memory. Modes: `scout` (multi-source recall), `brief` (synthesized answer), `filter` (property conditions), `fetch` (by ids, e.g. `--record-id <id>`), `similar` (lookalikes). API: `POST /api/v1.1/memory/retrieve`.
 
 ### `personize memory segment`
 Segment/rank all records by similarity tiers.
@@ -163,37 +86,10 @@ Segment/rank all records by similarity tiers.
 | `--seed-text <text>` | Text-based seed description |
 | `--dimensions <dims>` | Comparison dimensions |
 
-### `personize memory batch`
-Batch memorize from file or stdin.
-
-| Flag | Description |
-|------|-------------|
-| `--file <path>` | JSON file with records array |
-| `--tier <tier>` | Extraction tier |
-| `--source <label>` | Source system label |
-| `--dry-run` | Validate without writing |
-
-### `personize memory update`
-Update a single property or freeform memory.
-
-| Flag | Description |
-|------|-------------|
-| `--record-id <id>` | Target record (required) |
-| `--property <name>` | Property to update |
-| `--value <value>` | New property value |
-| `--memory-id <id>` | Freeform memory UUID (alternative) |
-| `--text <text>` | New freeform text (with memory-id) |
-
-### `personize memory bulk-update`
-Update multiple properties on a record.
-
-| Flag | Description |
-|------|-------------|
-| `--record-id <id>` | Target record (required) |
-| `--updates <json>` | JSON array of {propertyName, propertyValue} |
+Batch writes and property updates use `personize save --items-file <f>` and `personize save --shape property`.
 
 ### `personize memory delete`
-Soft-delete memories (30-day recovery window).
+Legacy; the canonical form is `personize delete record`. Soft-delete memories (30-day recovery window).
 
 | Flag | Description |
 |------|-------------|
@@ -201,14 +97,15 @@ Soft-delete memories (30-day recovery window).
 | `--record-id <id>` | Scope by record |
 | `--older-than <date>` | Delete older than ISO date |
 
-### `personize memory delete-record`
-Soft-delete all memories for a record.
+### `personize delete record --record-id <id> --entity-type <type> --yes`
+Soft-delete all memories for a record (30-day restore). Canonical form of the legacy `personize memory delete-record`.
 
 | Flag | Description |
 |------|-------------|
-| `--record-id <id>` | Record to delete (required) |
-| `--type <type>` | Entity type (required) |
-| `--reason <text>` | Deletion reason |
+| `--record-id <id>` | Record to delete (required for a soft delete) |
+| `--entity-type <type>` | Entity type, e.g. `contact` (required for a soft delete) |
+| `--hard` | Hard delete; takes `--record-id` or `--ids` (not both), no `--entity-type` needed |
+| `--yes` | Confirm |
 
 ### `personize memory cancel-deletion`
 Cancel a pending soft-delete within the 30-day window.
@@ -228,44 +125,20 @@ Get record properties with schema descriptions.
 | `--type <type>` | Entity type |
 | `--non-empty` | Only non-empty properties |
 
-### `personize memory property-history`
-Query property change history.
+### Property history
+Use `personize retrieve fetch --fetch-file <f>` (API: `retrieve mode=fetch fetch.propertyHistory`). The file holds `{ "propertyHistory": [{ "recordId": "...", "propertyName": "..." }] }`. Bare `retrieve fetch --record-id` sends an empty `fetch` and is rejected.
 
-| Flag | Description |
-|------|-------------|
-| `--record-id <id>` | Record (required) |
-| `--property <name>` | Filter to specific property |
-| `--from <date>` | Start date (ISO) |
-| `--to <date>` | End date (ISO) |
-| `--limit <n>` | Max entries |
+### Querying properties
+Use `personize retrieve filter` for exact-match property conditions, or `personize retrieve scout` with filters. The old LLM-ranked query was replaced by exact match.
 
-### `personize memory query-properties`
-LLM-powered search across property values.
+### Adding keys
+Add keys (standard or custom) to a record with `personize save --shape identifiers`, one call per record.
 
-| Flag | Description |
-|------|-------------|
-| `--property <name>` | Property to search (required) |
-| `--query <text>` | Natural language query (required) |
-| `--type <type>` | Entity type |
-| `--limit <n>` | Max results |
+### Listing and deleting keys
+List keys: `personize retrieve fetch --record-id <id> --entity-type <type> --fetch-identifiers`. Delete keys: `personize delete identifier --record-id <id> --entity-type <type> --property-names <a,b> --yes`.
 
-### `personize memory update-keys`
-Add keys (standard or custom) to a record.
-
-| Flag | Description |
-|------|-------------|
-| `--record-id <id>` | Target record |
-| `--type <type>` | Entity type (required) |
-| `--keys <json>` | JSON object of key:value pairs |
-
-### `personize memory list-keys`
-List all keys on a record.
-
-| Flag | Description |
-|------|-------------|
-| `--record-id <id>` | Target record |
-| `--email <email>` | Or by email |
-| `--type <type>` | Entity type (required) |
+### Legacy (still works)
+`personize memory delete-record`, `property-history`, `query-properties`, `list-keys` and `delete-keys` translate to the canonical commands above. See `Docs/generated/migration-table.json`.
 
 ---
 
@@ -381,13 +254,13 @@ List execution history. Flags: `--limit`, `--next-token`.
 
 ## kits
 
-Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty - install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
 
 ### `personize kits list`
 List available kits (built-in + custom).
 
 ### `personize kits install <id>`
-Install a kit into the current org. Async — prints an `installId` to poll. Pass a built-in kit id (`personize-starter`, `engineering-memory`) or `--manifest @kit.json` for an inline manifest.
+Install a kit into the current org. Async - prints an `installId` to poll. Pass a built-in kit id (`personize-starter`, `engineering-memory`) or `--manifest @kit.json` for an inline manifest.
 
 ### `personize kits status <installId>`
 Poll install progress by `installId`. Reports terminal status when provisioning completes.
@@ -396,7 +269,7 @@ Poll install progress by `installId`. Reports terminal status when provisioning 
 
 ## crm
 
-Call HubSpot and Salesforce REST APIs through the org's Personize-managed OAuth connection — no provider credentials needed.
+Call HubSpot and Salesforce REST APIs through the org's Personize-managed OAuth connection - no provider credentials needed.
 
 ### `personize crm hubspot`
 
@@ -427,4 +300,4 @@ personize crm salesforce request --method GET --path /services/data/v60.0/limits
 
 Path allowlist: `/services/data/`, `/services/apexrest/`.
 
-**Response shape:** every command outputs the upstream `{ status, headers, body, meta }` envelope. Personize returns HTTP 200 when the upstream call completes — inspect `status` for the provider's outcome. Error codes: `connection_not_found`, `connection_disconnected`, `invalid_path`, `invalid_method`, `upstream_timeout`, `rate_limited`.
+**Response shape:** every command outputs the upstream `{ status, headers, body, meta }` envelope. Personize returns HTTP 200 when the upstream call completes - inspect `status` for the provider's outcome. Error codes: `connection_not_found`, `connection_disconnected`, `invalid_path`, `invalid_method`, `upstream_timeout`, `rate_limited`.

@@ -4,22 +4,22 @@
 
 | Scenario | Strategy |
 |----------|----------|
-| Same person, different emails | `update_keys`: add both as aliases |
-| Company + contact in same content | Memorize with email + website_url (dual write) |
-| CRM ID mapping | `update_keys`: add hubspot_id, salesforce_id as custom keys |
-| Dedup before import | `memory_find_similar` on seed records, merge if score > 0.9 |
+| Same person, different emails | `memory_save` shape:"identifiers": add both as aliases |
+| Company + contact in same content | `memory_save` with email + website_url (dual write) |
+| CRM ID mapping | `memory_save` shape:"identifiers": add hubspot_id, salesforce_id as custom keys |
+| Dedup before import | REST/SDK retrieve mode:'similar' on seed records, merge if score > 0.9 |
 | Name only, no email | name + parent_identifier (weaker, use as last resort) |
 
 ## Multi-Source Import Workflow
 
 When the same entity exists across multiple sources (Apollo, HubSpot, LinkedIn, manual):
 
-1. **First import** (e.g., Apollo CSV): memorize with `email` as primary key, tag `source:apollo`
-2. **Second import** (e.g., HubSpot): before memorizing, check if email already exists via `smartRecall`
-   - If exists: `update_keys` to add `hubspot_id` as alias. New content merges into same record.
-   - If new: memorize normally, tag `source:hubspot`
-3. **Dedup pass**: after import, run `memory_find_similar` across records. Surface potential duplicates (score > 0.85) to user for manual review.
-4. **Link CRM IDs**: `update_keys` to add external IDs (hubspot_id, salesforce_id, apollo_id) as custom keys. This enables lookup by CRM ID in future syncs.
+1. **First import** (e.g., Apollo CSV): `memory_save` with `email` as primary key, tag `source:apollo` (via a shortform save)
+2. **Second import** (e.g., HubSpot): before saving, check if email already exists via `memory_retrieve`
+   - If exists: `memory_save` shape:"identifiers" to add `hubspot_id` as alias. New content merges into same record.
+   - If new: `memory_save` normally, tag `source:hubspot` (via a shortform save)
+3. **Dedup pass**: after import, run a similar-records lookup (REST/SDK `retrieve` with `mode:'similar'`) across records. Surface potential duplicates (score > 0.85) to user for manual review.
+4. **Link CRM IDs**: `memory_save` shape:"identifiers" to add external IDs (hubspot_id, salesforce_id, apollo_id) as custom keys. This enables lookup by CRM ID in future syncs.
 
 ## Property Conflict Resolution
 
@@ -38,21 +38,19 @@ Tag every import with source. When conflicts arise, higher-priority source wins.
 
 ```
 # Single key addition
-update_keys(email="john@acme.com", keys=[{keyName:"hubspot_id", keyValue:"hs_12345"}])
+memory_save(shape="identifiers", record={email:"john@acme.com"}, add=[{name:"hubspot_id", value:"hs_12345"}])
 
-# Batch key linking (max 100 records, 50 keys each)
-updateKeysBatch(records=[
-  {email:"john@acme.com", keys:[{keyName:"hubspot_id", keyValue:"hs_12345"}]},
-  {email:"jane@corp.com", keys:[{keyName:"salesforce_id", keyValue:"sf_67890"}]}
-])
+# Batch key linking (max 100 records, 50 keys each): one memory_save shape:"identifiers" call per record
+memory_save(shape="identifiers", record={email:"john@acme.com"}, add=[{name:"hubspot_id", value:"hs_12345"}])
+memory_save(shape="identifiers", record={email:"jane@corp.com"}, add=[{name:"salesforce_id", value:"sf_67890"}])
 
 # Verify keys
-list_keys(email="john@acme.com") → shows all aliases
+memory_retrieve(mode='fetch', record={email:"john@acme.com"}, fetch:{identifiers:true}) → shows all aliases
 ```
 
 ## Rules
 
 MUST check for existing records before creating new ones.
 MUST NOT create duplicate records -- always provide identity keys.
-MUST tag imports with source for conflict resolution.
-SHOULD run `memory_find_similar` after bulk imports to catch near-duplicates.
+MUST tag imports with source for conflict resolution, using a shortform save (property/identifiers saves do not carry tags).
+SHOULD run a similar-records lookup (REST/SDK) after bulk imports to catch near-duplicates.

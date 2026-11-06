@@ -4,7 +4,7 @@ For users who prefer raw HTTP calls over the SDK or MCP. All endpoints use `http
 
 **Authentication:** Include your API key as a Bearer token in the `Authorization` header.
 
-**API version:** Examples use the v1.1 surface. Legacy v1 paths (`/api/v1/memorize`, `/api/v1/smart-recall`, …) still respond but emit RFC 8594 `Deprecation: true` and `Sunset: 2026-07-15` headers. Migrate to `/api/v1.1/memory/save`, `/api/v1.1/memory/retrieve`, etc.
+**API version:** Examples use the v1.1 surface. Legacy v1 paths (`/api/v1/memorize`, `/api/v1/smart-recall`, …) still respond but emit `Deprecation: @1779667200` (RFC 9745 Structured Fields date: `@` plus the Unix seconds of 2026-05-25T00:00:00Z; do not compare it to the string `true`) and `Sunset: 2026-07-15` headers (RFC 8594). Migrate to `/api/v1.1/memory/save`, `/api/v1.1/memory/retrieve`, etc.
 
 ---
 
@@ -289,4 +289,4 @@ curl -X POST https://agent.personize.ai/api/v1.1/memory/search \
 | Update Collection | `/api/v1.1/collections/:id` | PATCH | — |
 | Search Records | `/api/v1.1/memory/search` | POST | — |
 
-v1 endpoints (`/api/v1/memorize`, `/api/v1/smart-recall`, …) still respond and emit `Deprecation: true` + `Sunset: 2026-07-15`. Migrate to v1.1 at your convenience.
+v1 endpoints (`/api/v1/memorize`, `/api/v1/smart-recall`, …) still respond and emit `Deprecation: @1779667200` + `Sunset: 2026-07-15`. Migrate to v1.1 at your convenience.

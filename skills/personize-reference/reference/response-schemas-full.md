@@ -2,11 +2,11 @@
 
 | Operation | Response Shape | Key Fields |
 |-----------|---------------|------------|
-| memorize | ApiResponse | success, data.creditsCharged, data.properties[] |
-| smartRecall | ApiResponse\<RecallResponse\> | results[], answer?, query? |
+| memory_save | SaveResponse | success, data.recordId/memories/properties(Record)/documentId/propertyExtraction, cost.credits |
+| memory_retrieve | RetrieveResponse | records[], record, memories.tier1-3, documents.must/supplementary/compiledContext |
 | recall | ApiResponse\<RecallResponse\> | results[], memories[] |
 | digest | ApiResponse\<SmartDigestResponse\> | compiledContext, properties, memories[], tokenEstimate |
-| batch | ApiResponse | eventId (async tracking) |
+| batch (memory.save with items) | SaveItemsResponse | batch, mode, destination, optional items/totals, jobId |
 | search | ApiResponse\<SearchResponse\> | recordIds[], records?, mainProperties?, totalMatched |
 | responses | ResponsesCompletedResult | status, steps[], outputs, usage, metadata |
 | guidelines | ApiResponse\<GuidelinesResponse\> | actions[], count, nextToken |
@@ -67,28 +67,90 @@ interface MeResponse {
 
 ---
 
-## Memorize Response
+## Save Response
 
 ```ts
-// POST /api/v1/memorize returns ApiResponse with:
-interface MemorizeResponseData {
-  creditsCharged?: number;
-  properties?: Array<{
-    propertyName: string;
-    propertyValue: unknown;
-    collectionId: string;
-    collectionName?: string;
-    confidence?: number;
-  }>;
-  memories?: Array<{ text: string; id: string }>;
-  recordId?: string;
-  tier?: 'basic' | 'pro' | 'pro_fast' | 'ultra';
+// memory_save (POST /memory/save) returns SaveResponse:
+interface SaveResponse {
+  success: boolean;
+  data?: {
+    recordId?: string;
+    memories?: unknown[];
+    properties?: Record<string, unknown>;
+    documentId?: string;
+    // Present only when options.extractProperties was requested and extraction ran/was attempted
+    propertyExtraction?: {
+      status: 'ok' | 'skipped' | 'failed';
+      recordsUpdated?: number;
+      warnings?: string[];
+      error?: string;
+    };
+  };
+  cost?: { credits?: number; tier?: string };
+  error?: { code: string; message: string; details?: unknown };
+  statusUrl?: string;   // poll URL for async saves
+  warnings?: string[];
 }
 ```
 
 ---
 
-## RecallResponse (smartRecall & recall)
+## RetrieveResponse (memory_retrieve)
+
+```ts
+interface RetrieveResponse {
+  records?: RetrieveRecordBlock[];   // unique canonical entries; nested block type omitted here
+  recordIds?: string[];
+  record?: {
+    id?: string;
+    type?: string;
+    displayName?: string;
+    primaryKeys?: Record<string, string>;
+    resolutionState?: 'resolved' | 'unresolved' | 'merged' | 'deleted';
+    properties?: Record<string, unknown>;
+    citationLabel?: string;
+    propertyCitationLabels?: Record<string, string>;
+    aliasExpansion?: { sharedDomain?: string[]; sharedDevice?: string[]; sharedKey?: string[] };
+  };
+  memories?: {
+    tier1?: Record<string, unknown>[];
+    tier2?: Record<string, unknown>[];
+    tier3?: Record<string, unknown>[];
+    coverage?: { tier1?: number; tier2?: number; tier3?: number; remaining?: number };
+  };
+  documents?: {
+    must?: Record<string, unknown>[];
+    supplementary?: Record<string, unknown>[];
+    relatedNotIncluded?: Record<string, unknown>[];
+    compiledContext?: string;   // brief mode: packed block with [M#]/[D#]/[E#] labels; with compile:true: no-LLM budgeted block
+    tokenEstimate?: number;     // with compile:true
+    tokenBudget?: number;       // with compile:true
+  };
+  graph?: { anchorRecordId?: string; neighbors?: RetrieveGraphNeighbor[]; available?: { edgeTypes?: string[] } };
+  external?: { results?: RetrieveExternalResult[]; perConnection?: RetrievePerConnectionStatus[] };  // only with sources.external
+  state?: { sessionId?: string; callsSinceReset?: number; callsUntilReset?: number; coverage?: Record<string, number>; exhausted?: Record<string, boolean>; sources?: Record<string, { status: RetrieveSourceStatus }> };
+  suggestedNext?: Record<string, unknown>[];
+  usage?: {
+    totalTokens?: number;
+    durationMs?: number;
+    perSource?: Record<string, { tokens?: number; durationMs?: number }>;
+    perSourceTokens?: Record<string, number>;
+    perSourceOverflow?: Record<string, number>;
+    retrievalId?: string;
+    costUSD?: number;
+    synthesisDurationMs?: number;
+  };
+  answer?: string;
+  answerConfidence?: 'high' | 'medium' | 'low';
+  answerReasoning?: string;
+  sourcesUsed?: string[];
+  // ...see sdk/src/types.ts RetrieveResponse for any further trailing fields
+}
+```
+
+---
+
+## RecallResponse (recall)
 
 ```ts
 interface RecallResultItem {
@@ -190,16 +252,27 @@ interface RecordIndexMeta {
 
 ---
 
-## BatchMemorize Response
+## SaveItemsResponse
 
 ```ts
-// Returns ApiResponse with eventId for async tracking
-interface BatchMemorizeResponseData {
-  eventId: string;         // track via GET /api/v1/events/{eventId}
-  memorized?: number;
-  queued?: number;
+// client.memory.save({ items }) — sync batches (HTTP 207) carry items/totals; async/bulk/context (202) carry jobId
+interface SaveItemsResponse {
+  batch: true;
+  mode: 'sync' | 'async' | 'bulk';
+  destination: 'loop' | 'fast-sf' | 'bulk-sf' | 'context-save-batch';
+  items?: Array<{ index: number; status: 'ok' | 'error'; httpStatus: number; data?: unknown; error?: unknown }>;
+  totals?: { succeeded: number; failed: number };
+  jobId?: string;
+  rowsEnqueued?: number;
+  webhook?: string;
+  warnings?: string[];
+  error?: { code: string; message: string; details?: unknown };
 }
 ```
+
+`SaveBatchResponse` (`items[]` with `shape`, plus required `totals`) is the return type of `client.memory.saveBatch` only.
+
+For async/bulk lanes, `client.memory.save({ shape:'shortform', items, options:{ mode:'async' } })` returns a `jobId`; poll it with `client.memory.getJob(jobId)` (`MemoryJob.state`: queued / running / succeeded / failed / partial).
 
 ---
 

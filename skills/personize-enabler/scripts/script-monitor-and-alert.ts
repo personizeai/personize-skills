@@ -99,20 +99,26 @@ async function findCandidates(): Promise<Array<{
   memories?: string[];
   score?: number;
 }>> {
-  // Use smartRecall for semantic search across the entire org
-  // WHY smartRecall over search: smartRecall returns memories with relevance
+  // Use retrieve (brief mode) for semantic search across the entire org
+  // WHY retrieve over filter: retrieve returns memories with relevance
   // scores and can generate an answer. For monitoring, the memories themselves
   // are what we evaluate against our conditions.
-  const result = await client.memory.smartRecall({
-    query: monitorQuery,
-    mode: 'deep',  // WHY deep: We need thorough results, not just the top match.
-                   // Monitoring is a background job; latency is acceptable.
-    limit: 50,     // Cast a wide net, evaluate locally
+  // Monitoring is a background job; latency is acceptable. The old fast/deep switch and
+  // `limit: 50` are gone from this call: cap and evaluate locally.
+  const result: any = await client.memory.retrieve({
+    mode: 'brief',
+    message: monitorQuery,
+    sources: { properties: true },
   });
 
-  const rawResults = result.data || [];
+  const asArr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
+  const rawResults = [
+    ...asArr(result.records),
+    ...asArr(result.memories?.tier1),
+    ...asArr(result.memories?.tier2),
+  ];
 
-  // Group results by entity (smartRecall returns memories, not entities)
+  // Group results by entity (retrieve returns memories, not entities)
   // WHY group: A single entity might have 5 matching memories. We want to
   // evaluate the entity once, not create 5 separate alerts.
   const entityMap = new Map<string, {
@@ -126,13 +132,17 @@ async function findCandidates(): Promise<Array<{
   }>();
 
   for (const item of (Array.isArray(rawResults) ? rawResults : [])) {
-    const key = item.recordId || item.email || item.websiteUrl || 'unknown';
+    const itemRecordId = item.id ?? item.record_id ?? item.recordId;
+    const itemEmail = item.primaryKeys?.email ?? item.email;
+    const itemWebsiteUrl = item.primaryKeys?.website_url ?? item.primaryKeys?.websiteUrl ?? item.websiteUrl;
+    const key = itemRecordId || itemEmail || itemWebsiteUrl;
+    if (!key) continue; // no provable identity: skip (unknown means block)
 
     if (!entityMap.has(key)) {
       entityMap.set(key, {
-        recordId: item.recordId || key,
-        email: item.email,
-        websiteUrl: item.websiteUrl,
+        recordId: itemRecordId || key,
+        email: itemEmail,
+        websiteUrl: itemWebsiteUrl,
         type: item.type,
         properties: item.properties || {},
         memories: [],
@@ -281,21 +291,20 @@ async function alertAlreadyExists(entity: AlertCandidate): Promise<boolean> {
     // WHY recall with tag: We tag all monitor alerts with 'monitor-alert'.
     // Recalling by tag finds only our alerts, not general memories.
     const recallPayload: any = {
-      query: `monitor alert for ${entity.identity}`,
-      mode: 'fast',  // WHY fast: We just need to check existence, not get a deep answer
-      limit: 3,
+      mode: 'scout',  // WHY scout: We just need to check existence, not get a deep answer
+      record: {},
     };
 
     if (entity.identity.includes('@')) {
-      recallPayload.email = entity.identity;
+      recallPayload.record.email = entity.identity;
     } else if (entity.identity.includes('.')) {
-      recallPayload.websiteUrl = entity.identity;
+      recallPayload.record.websiteUrl = entity.identity;
     } else {
-      recallPayload.recordId = entity.recordId;
+      recallPayload.record.id = entity.recordId;
     }
 
-    const result = await client.memory.recall(recallPayload);
-    const memories = result.data || [];
+    const result: any = await client.memory.retrieve(recallPayload);
+    const memories = result.memories?.tier1 ?? [];
 
     // Check if any recent alert exists (within last 7 days)
     // WHY 7-day window: Alerts older than a week are stale. If the condition
@@ -304,7 +313,8 @@ async function alertAlreadyExists(entity: AlertCandidate): Promise<boolean> {
 
     for (const memory of (Array.isArray(memories) ? memories : [])) {
       const text = memory.text || memory.content || memory.memory || '';
-      if (text.includes('monitor-alert') && memory.timestamp && memory.timestamp > sevenDaysAgo) {
+      const ts = memory.timestamp ?? memory.createdAt;
+      if (text.includes('monitor-alert') && ts && ts > sevenDaysAgo) {
         return true;  // Recent alert exists, skip
       }
     }
@@ -331,31 +341,34 @@ async function createAlert(alert: AlertCandidate): Promise<boolean> {
     // Store the alert as a memory on the entity
     // WHY store on the entity: Any future agent or human looking at this entity
     // will see the alert. It becomes part of the entity's history.
-    const memorizePayload: any = {
+    const savePayload: any = {
+      shape: 'text',
+      record: {},
       content: [
         `[monitor-alert] Risk alert generated on ${new Date().toISOString()}`,
         `Severity: ${alert.severity}/10`,
         `Reason: ${alert.reason}`,
         `Recommendation: ${alert.recommendation}`,
+        `Tags: monitor-alert, severity-${alert.severity}`,
         alert.evidence.length > 0
           ? `Evidence:\n${alert.evidence.map(e => `  - ${e}`).join('\n')}`
           : '',
       ].filter(Boolean).join('\n'),
-      type: alert.type || 'Record',
-      tags: ['monitor-alert', `severity-${alert.severity}`],
-      tier: 'basic',  // WHY basic: Alert text is structured, not free-form to extract from
     };
+    // The 'monitor-alert' tag and severity travel in the content text above
+    // (tags/tier are not fields of a text save).
+    savePayload.record.entityType = alert.type || 'Record';
 
     // Scope to entity
     if (alert.identity.includes('@')) {
-      memorizePayload.email = alert.identity;
+      savePayload.record.email = alert.identity;
     } else if (alert.identity.includes('.')) {
-      memorizePayload.website_url = alert.identity;
+      savePayload.record.websiteUrl = alert.identity;
     } else {
-      memorizePayload.record_id = alert.recordId;
+      savePayload.record.id = alert.recordId;
     }
 
-    await client.memory.memorize(memorizePayload);
+    await client.memory.save(savePayload);
 
     // Send Personize notification
     // WHY Personize notifications: They appear in the dashboard, can be acted on,

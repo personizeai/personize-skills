@@ -9,7 +9,7 @@ Personize MCP exposes scoped **profiles** so each person/agent gets exactly the 
 
 | Profile | Surface | Give to |
 |---|---|---|
-| **agent2_0** | 5-tool consolidated surface (`retrieve_unified`, `retrieve_feedback`, `memory_save`, `personize_cookbook`, `personize_md`). | New agent integrations — the default for anything built today. |
+| **agent2_0** | 5-tool consolidated surface (`memory_save`, `memory_retrieve`, `memory_delete`, `memory_feedback`, `personize_md`). | New agent integrations, the default for anything built today. |
 | **agent** | Memory read/write + SmartContext (read-only governance). Legacy full-surface profile. | Production agents that write memory on the legacy tool set. |
 | **agent-readonly** | Memory read + SmartContext. Zero mutations. | Agents that should consult memory + rules but never change anything (analysts, dashboards, untrusted automations). |
 | **governance** | Governance CRUD + SmartContext. No memory tools. | People/agents that own policies and playbooks (ops, enablement, compliance) without touching record data. |

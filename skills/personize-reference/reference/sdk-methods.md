@@ -5,10 +5,8 @@
 ### Memory
 | Method | Description |
 |--------|-------------|
-| `client.memory.save(options)` | AI-powered memory write |
-| `client.memory.saveBatch(options)` | Batch memory import |
-| `client.memory.retrieve(options)` | AI-powered retrieval (modes: fast/deep/auto) |
-| `client.memory.retrieveDigest(options)` | Compiled context bundle |
+| `client.memory.save(options)` | Memory write (`shape`: text, property, identifiers, document, shortform; `items[]` for text/shortform/freeform/document batches only) |
+| `client.memory.retrieve(options)` | Retrieval (modes: scout, brief, expand, filter, fetch, similar) |
 
 ### Context
 | Method | Description |
@@ -35,14 +33,14 @@
 | client.memory | 19 | Store, recall, search, update, delete, keys |
 | client.guidelines | 12 | CRUD, smart-update, attachments |
 | client.collections | 5 | CRUD, history |
-| client.ai | 3 | smartGuidelines, prompt, promptStream |
+| client.ai | 2 | prompt, promptStream |
 | client.responses | 1 | Step-driven orchestration |
 | client.chat.completions | 1 | OpenAI-compatible |
 | client.agents | 3 | List, get, run |
 | client.rag | 8 | External + embedded RAG |
 | client.multimodal | 3 | Image/media memorize, search, status |
 | client.evaluate | 1 | Memorization accuracy |
-| client (top-level) | 3 | test, me, smartRecallUnified |
+| client (top-level) | 2 | test, me |
 | client.organizations | 3 | Get, create, update |
 | client.kits | 3 | List, install, getInstallStatus (provision empty-org schema + governance) |
 | client.members | 5 | Invite, list, remove, role, invitations |
@@ -78,22 +76,14 @@ Verify API key validity. Returns timestamp, IP, userId, organizationId.
 ### `client.me()`
 Get current context: organization, user, key scope, plan details and limits.
 
-### `client.smartRecallUnified(options)`
-Unified memory retrieval. Server classifies intent and orchestrates the query.
-```ts
-await client.smartRecallUnified({
-  message: 'contacts in Victoria',
-  identifiers: { emails: ['john@acme.com'] },
-  session_id: 's1',
-  output_format: 'structured',
-});
-```
+### Unified memory retrieval
+Use `client.memory.retrieve({ mode: 'brief', record, message })` (see `memory.retrieve` below).
 
 ---
 
 ## client.memory
 
-### `memory.save(options: MemorySaveOptions)` — canonical v1.1 write
+### `memory.save(options: MemorySaveOptions)` - canonical v1.1 write
 Store content with AI extraction (atoms + structured properties). Aliased under `client.v1_1.memory.save` with full shape discriminator.
 ```ts
 await client.memory.save({
@@ -101,7 +91,7 @@ await client.memory.save({
   email: 'maya@orbitclimb.io',
   type: 'Contact',
 
-  // Opt-in graph inference (defaults are all OFF — no behavior change if omitted):
+  // Opt-in graph inference (defaults are all OFF - no behavior change if omitted):
   collectionGraph: true,  // Channel B: edges from extracted structured properties (async, billed)
   smartGraph: true,       // Channel C: edges from free-text memories via LLM (async, billed per input token)
   relations: [            // Channel A: caller-declared edges (sync, free)
@@ -113,171 +103,98 @@ await client.memory.save({
 ```
 Graph fields are independent and combinable. See `Docs/memorize-graph-guide.md` for channel semantics, stub-creation rules, and pricing. The v1.1 surface (`client.v1_1.memory.save`) accepts the same three fields on `SaveRequest`.
 
-### `memory.upsert(options: MemoryUpsertOptions)` — canonical structured create/upsert
-Write known field values directly to records with NO AI extraction. Single or batch. This is the canonical create/upsert path — use it instead of `memory.save` when you already have the property values. Maps to `POST /api/v1.1/memory/upsert`.
+### `memory.save` shapes
+Store content with AI extraction, or write known field values directly with no AI extraction (`shape: 'property'`, one call per record). `shape` selects the form: `text`, `property`, `identifiers`, `document`, `shortform` (`items[]` batches apply to shortform, freeform and document only).
 ```ts
-await client.memory.upsert({
-  records: [
-    { email: 'maya@orbitclimb.io', type: 'Contact',
-      properties: { title: 'Director of Eng', stage: 'customer' } },
-    { websiteUrl: 'orbitclimb.io', type: 'Company',
-      properties: { employees: 120, tier: 'enterprise' } },
-  ],
-});
-```
-
-### `memory.memorize(options: MemorizeOptions)` — deprecated, use `memory.save`
-Store content with AI extraction. Extracts structured properties and freeform memories.
-```ts
-await client.memory.memorize({
+await client.memory.save({
+  shape: 'text',
   content: 'John is VP of Sales at Acme, budget $50k...',
-  email: 'john@acme.com',
+  record: { email: 'john@acme.com' },
   tier: 'pro',           // basic | pro | pro_fast | ultra
-  tags: ['sales_call'],
-  collectionNames: ['Contact Properties'],
-  extractionPrompt: 'Focus on budget and timeline',
-  max_properties: 10,
-  // Graph fields are also supported here for backward-compat:
-  collectionGraph: true,
-  smartGraph: true,
-  relations: [/* DeclaredRelation[] */],
 });
-```
 
-### `memory.smartRecall(options: SmartRecallOptions)`
-Semantic recall with optional reflection loop and answer generation.
-```ts
-await client.memory.smartRecall({
-  query: "What's John's budget?",
-  email: 'john@acme.com',
-  mode: 'deep',          // fast (~500ms) | deep (~10-20s)
-  limit: 10,
-  generate_answer: true,
-  groupByRecord: true,
+// Structured write, no AI extraction
+await client.memory.save({
+  shape: 'property',
+  record: { email: 'john@acme.com' },
+  properties: { deal_stage: 'qualified' },
 });
-```
 
-### `memory.recall(options: RecallOptions)`
-Direct memory lookup without reflection. Auto-routes to smartRecall for legacy calls.
-```ts
-await client.memory.recall({
-  query: 'latest interactions',
-  email: 'john@acme.com',
-  type: 'Contact',
-});
-```
-
-### `memory.search(options: SearchOptions)`
-Filter and search records by property conditions.
-```ts
-await client.memory.search({
-  type: 'Contact',
-  groups: [{ conditions: [{ property: 'deal_stage', operator: 'equals', value: 'qualified' }] }],
-  pageSize: 50,
-  returnRecords: true,
-  includeMemories: true,
-});
-```
-
-### `memory.memorizeBatch(options: BatchMemorizeOptions)`
-DEPRECATED — use `memory.upsert()` (structured) or `memory.saveBatch()` (content).
-Batch sync with per-property AI extraction control. Supports records shorthand.
-```ts
-await client.memory.memorizeBatch({
-  tier: 'pro',
-  records: [
-    { email: 'a@co.com', content: 'Meeting notes...' },
-    { email: 'b@co.com', content: 'Call transcript...' },
+// Batch
+await client.memory.save({
+  shape: 'shortform',
+  items: [
+    { record: { email: 'a@co.com' }, content: 'Meeting notes...' },
+    { record: { email: 'b@co.com' }, content: 'Call transcript...' },
   ],
 });
 ```
 
-### `memory.smartDigest(options: SmartDigestOptions)`
-Compiled context bundle for an entity (properties + memories, token-budgeted).
+### `memory.retrieve(options)`
+One read call. `mode` is `scout`, `brief`, `expand`, `filter`, `fetch` or `similar`.
 ```ts
-await client.memory.smartDigest({
-  email: 'john@acme.com',
-  token_budget: 2000,
-  include_properties: true,
-  include_memories: true,
+// Synthesized answer for one record
+await client.memory.retrieve({ mode: 'brief', record: { email: 'john@acme.com' }, message: "What's John's budget?" });
+
+// Multi-source recall
+await client.memory.retrieve({ mode: 'scout', record: { email: 'john@acme.com' } });
+
+// Property filter
+await client.memory.retrieve({
+  mode: 'filter',
+  filters: { groups: [{ logic: 'AND', conditions: [{ property: 'deal_stage', operator: 'EQ', value: 'qualified' }] }], pageSize: 50 },
 });
+
+// Lookalikes
+await client.memory.retrieve({ mode: 'similar', seed: { record: { email: 'john@acme.com' } } });
 ```
 
-### `memory.update(options: UpdatePropertyOptions)`
-Update a single property or freeform memory. Supports array operations.
+### Updating properties
+Single and multi-property updates use `client.memory.save({ shape: 'property', record, properties })`; for many records, make one call per record.
 ```ts
-await client.memory.update({
-  recordId: 'rec_...',
-  propertyName: 'deal_stage',
-  propertyValue: 'closed_won',
-  expectedVersion: 5,    // optimistic concurrency
-});
-// Array push:
-await client.memory.update({
-  recordId: 'rec_...',
-  propertyName: 'meeting_notes',
-  arrayPush: { items: ['New note...'], unique: true },
-});
-```
-
-### `memory.memory_update_properties(options: BulkUpdateOptions)`
-Update multiple properties on a record in one request.
-```ts
-await client.memory.memory_update_properties({
-  recordId: 'rec_...',
-  updates: [
-    { propertyName: 'stage', propertyValue: 'closed' },
-    { propertyName: 'revenue', propertyValue: 50000 },
-  ],
-  expectedVersion: 5,
+await client.memory.save({
+  shape: 'property',
+  record: { id: 'rec_...' },
+  properties: { deal_stage: 'closed_won', revenue: 50000 },
 });
 ```
 
 ### `memory.delete(options: DeleteMemoriesOptions)`
 Soft-delete memories (30-day recovery window).
 
-### `memory.deleteRecord(options: DeleteRecordOptions)`
-Soft-delete all memories for a record.
+### Delete a record or identifiers
+Soft-delete all memories for a record (30-day restore): `client.memory.delete({ type: 'record', record })`. Delete specific key aliases: `client.memory.delete({ type: 'identifier', record, propertyNames })`.
 
 ### `memory.cancelDeletion(options: CancelDeletionOptions)`
 Cancel pending soft-delete. Returns 409 if the 30-day window expired.
 
-### `memory.propertyHistory(options: PropertyHistoryOptions)`
-Query property change history. Supports time range and cursor pagination.
+### Property history
+`client.memory.retrieve({ mode: 'fetch', fetch: { propertyHistory: [{ recordId, propertyName }] } })`.
 
-### `memory.queryProperties(options: QueryPropertiesOptions)`
-LLM-powered search across property values by natural language.
-
-### `memory.filterByProperty(options: FilterByPropertyOptions)`
-Deterministic property filter (no LLM, no token cost).
+### Query and filter properties
+Deterministic property filter (no LLM, no token cost): `client.memory.retrieve({ mode: 'filter', filters })`. For `mode: 'scout'` with filters, see the `retrieve` section.
 ```ts
-await client.memory.filterByProperty({
-  conditions: [{ propertyName: 'deal_stage', operator: 'equals', value: 'closed_won' }],
-  logic: 'AND',
-  limit: 100,
+await client.memory.retrieve({
+  mode: 'filter',
+  filters,
 });
 ```
 
-### `memory.properties(options: GetPropertiesOptions)`
-Get record properties with collection schema descriptions.
+Legacy (still works): `memory.deleteRecord`, `memory.propertyHistory`, `memory.queryProperties` (was LLM-ranked; the canonical is exact match) and `memory.filterByProperty` translate to the forms above. See `Docs/generated/migration-table.json`.
 
-### `memory.similar(options: SimilarOptions)`
-Find records similar to a seed record. Returns ranked results with similarity tiers.
+### Fetch properties and find similar
+Record properties with schema descriptions: `client.memory.retrieve({ mode: 'fetch', fetch: { recordIds, propertyNames } })`. Lookalike records: `client.memory.retrieve({ mode: 'similar', seed: { record } })`.
 
 ### `memory.segment(options: SegmentOptions)`
 Bucket all records into similarity tiers. Supports record-based or text-based seeds.
 
-### `memory.updateKeys(options: UpdateKeysOptions)`
-Add keys (standard or custom) to a record.
+### Adding keys
+Add keys (standard or custom) to a record with `client.memory.save({ shape: 'identifiers', record, add: [{ name, value }] })`. One call per record.
 
-### `memory.updateKeysBatch(options: UpdateKeysBatchOptions)`
-Add keys across multiple records (max 100 records, 50 keys per record).
+### Listing and deleting keys
+List all keys (standard + custom) on a record: `client.memory.retrieve({ mode: 'fetch', record, fetch: { identifiers: true } })`. Delete specific key aliases (blocks deletion if it would leave zero aliases): `client.memory.delete({ type: 'identifier', record, propertyNames })`.
 
-### `memory.listKeys(options: ListKeysOptions)`
-List all keys (standard + custom) on a record.
-
-### `memory.deleteKeys(options: DeleteKeysOptions)`
-Delete specific key aliases. Blocks deletion if it would leave zero aliases.
+Legacy (still works): `memory.listKeys` and `memory.deleteKeys` translate to the two calls above.
 
 ---
 
@@ -468,7 +385,7 @@ do {
 } while (status === 'received' || status === 'processing');
 ```
 
-**`ContextSaveBatchDocument` shape:** `{ id?, name?, externalId?, value, type?, aiExtraction?, tags?, categories?, recordIds? }`. Top-level `defaults` applies to every doc unless overridden — saves keystrokes when 100 docs share a `type` and tag set.
+**`ContextSaveBatchDocument` shape:** `{ id?, name?, externalId?, value, type?, aiExtraction?, tags?, categories?, recordIds? }`. Top-level `defaults` applies to every doc unless overridden - saves keystrokes when 100 docs share a `type` and tag set.
 
 **`ContextSaveBatchResponse`:** `{ success, data: { eventId, trackingId, status: 'received'|'processing'|'completed'|'partial'|'failed', receivedAt, organizationId, stateMachineStarted, estimatedCompletionWindow, itemCount } }`.
 
@@ -480,7 +397,7 @@ do {
 | `v1_1.context.validateSaveBatch(req)` | `POST /api/v1.1/context/save/batch/validate` |
 | `v1_1.context.getSaveBatchStatus(eventId)` | `GET /api/v1.1/context/save/batch/:eventId/status` |
 
-**No MCP tool or CLI command yet** — only the SDK + REST surface. For single-doc saves, the synchronous `client.context.create()` / `context_save` MCP tool / `personize context-docs create` CLI are still the right path.
+**No MCP tool or CLI command yet** - only the SDK + REST surface. For single-doc saves, the synchronous `client.context.create()` / `context_save` MCP tool / `personize context-docs create` CLI are still the right path.
 
 ---
 
@@ -496,11 +413,11 @@ do {
 
 ## client.ai
 
-### `ai.smartGuidelines(options: SmartGuidelinesOptions)`
-Smart guideline routing. Modes: fast (~200ms), deep (~3s), auto.
+### Guideline lookup
+Use `client.memory.retrieve({ mode: 'scout', message: '<task>', sources: { documents: true, memories: false } })` to find relevant guidelines and docs.
 
 ### `ai.prompt(options: PromptOptions)`
-Execute prompt with tools, outputs extraction, evaluation, and auto-memorize. **Dual-mode**: pass `prompt` (single shot) OR `instructions` (multi-step) — mutually exclusive.
+Execute prompt with tools, outputs extraction, evaluation, and auto-memorize. **Dual-mode**: pass `prompt` (single shot) OR `instructions` (multi-step) - mutually exclusive.
 
 ```ts
 interface PromptOptions {
@@ -616,13 +533,13 @@ Three-phase evaluation: extraction, analysis, schema optimization.
 
 ## client.kits
 
-Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty - install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
 
 ### `kits.list()`
 List available kits (built-in + custom). Returns kit id, name, description, and what each provisions.
 
 ### `kits.install(options: { kitId?: string; manifest?: object })`
-Install a kit into the current org. Async — returns an `installId` to poll. Pass a built-in `kitId` or an inline `manifest`.
+Install a kit into the current org. Async - returns an `installId` to poll. Pass a built-in `kitId` or an inline `manifest`.
 ```ts
 const { installId } = await client.kits.install({ kitId: 'engineering-memory' });
 ```
@@ -799,7 +716,7 @@ Execution history (paginated). Use to poll the latest run's status if you don't 
 HubSpot REST passthrough via the org's connected OAuth integration. Your script never sees provider tokens; the path allowlist provides SSRF protection. v1-only surface.
 
 ### `hubspot.request<T>(opts: CrmPassthroughOptions): Promise<CrmPassthroughResult<T>>`
-Raw passthrough — call any allowlisted HubSpot REST path. Allowlisted prefixes: `/crm/`, `/marketing/`, `/cms/`, `/automation/`, `/files/`, `/communication-preferences/`, `/properties/`, `/owners/`, `/oauth/`.
+Raw passthrough - call any allowlisted HubSpot REST path. Allowlisted prefixes: `/crm/`, `/marketing/`, `/cms/`, `/automation/`, `/files/`, `/communication-preferences/`, `/properties/`, `/owners/`, `/oauth/`.
 
 ```ts
 const owners = await client.hubspot.request({
@@ -820,7 +737,7 @@ await client.hubspot.contacts.create({ email, firstname, lastname, company });
 await client.hubspot.contacts.update('123', { jobtitle: 'VP Sales' });
 await client.hubspot.contacts.delete('123');                       // archive
 
-// Companies / Deals — same list/get/create/update/delete shape
+// Companies / Deals - same list/get/create/update/delete shape
 await client.hubspot.companies.list({ limit: 25 });
 await client.hubspot.deals.list({ limit: 25, properties: ['dealname', 'amount', 'dealstage'] });
 
@@ -851,7 +768,7 @@ Every typed wrapper returns `CrmPassthroughResult<T>` = `{ status, headers, body
 Salesforce REST passthrough via the org's Nango-managed connection. Same auth model as HubSpot. v1-only surface. Allowlisted prefixes: `/services/data/`, `/services/apexrest/`.
 
 ### `salesforce.request<T>(opts): Promise<CrmPassthroughResult<T>>`
-Raw passthrough — call any Salesforce REST endpoint.
+Raw passthrough - call any Salesforce REST endpoint.
 
 ```ts
 const limits = await client.salesforce.request({

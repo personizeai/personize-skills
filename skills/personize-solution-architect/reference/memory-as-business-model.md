@@ -35,7 +35,7 @@ Recall in practice fuses them: semantic to find, property filter to qualify, gra
 
 ## One write, multiple representations
 
-The most important mechanism in the whole framework: a single memorize call embeds the raw input for semantic recall *and*, in the same pass, projects it into the structured schema, where each property's `description` doubles as the extraction prompt that tells the model what to capture.
+The most important mechanism in the whole framework: a single `memory_save` call embeds the raw input for semantic recall *and*, in the same pass, projects it into the structured schema, where each property's `description` doubles as the extraction prompt that tells the model what to capture.
 
 **One write, multiple representations, all retrievable.** This is why property descriptions are the highest-leverage thing you author. The org whose properties carry the best descriptions is the org whose AI notices the most. Design the descriptions, and you design what the business remembers.
 

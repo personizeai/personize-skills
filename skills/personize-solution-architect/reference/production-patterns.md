@@ -90,7 +90,7 @@ These patterns solve architectural challenges when building production systems o
 | Program conflict | Children with different active `program_id` | Multiple active programs |
 | Strategy alignment | Parent workspace `context` | Action contradicts stated strategy |
 
-**Cross-entity rollup:** Store summary stats on the parent (active_children_count, last_action_date, overall_sentiment). Update via `memory_update_property` after each child action. Enables `filterByProperty` at the parent level.
+**Cross-entity rollup:** Store summary stats on the parent (active_children_count, last_action_date, overall_sentiment). Update via `memory_save shape=property` after each child action. Enables `filterByProperty` at the parent level.
 
 **Examples:**
 - Sales: account-level coordination across multiple contacts at same company
@@ -224,13 +224,13 @@ This returns all entities due for their next step. The properties ARE the task q
 
 | Step | Action | Tool |
 |---|---|---|
-| 1. Snapshot | Save current guideline content | `guideline_read` → store locally |
+| 1. Snapshot | Save current guideline content | `memory_retrieve` (`mode=fetch` with `fetch.documentIds` and `fetch.includeContent`) → store locally |
 | 2. Validate | Check for truncation, contradictions, missing MUST rules | Agent reasoning |
 | 3. Dry-run | Generate test content with proposed governance | `ai.prompt` with `evaluate` |
 | 4. Compare | Show old vs new output to user | Agent presents diff |
-| 5. Apply | Update with `historyNote` explaining why | `guideline_update` |
+| 5. Apply | Update with `historyNote` explaining why | `memory_save shape=document` (`targetIds` + `updateMode`) |
 | 6. Verify | Generate another test, confirm quality | `ai.prompt` with `evaluate` |
-| 7. Rollback (if needed) | Restore from `guidelines.history()` | `guideline_update` with old value |
+| 7. Rollback (if needed) | Restore from `guidelines.history()` | `memory_save shape=document` (`targetIds`, `restoreVersionId` or old content) |
 
 **Validation checks:**
 - Content length: did the update truncate? (compare character counts)
@@ -442,8 +442,8 @@ At 10,000 records: all-AI = ~30,000 credits, 83 min. With routing: ~14,000 credi
 | Notes | Array (append) -- comments and feedback |
 
 **Key operations:**
-- **Create:** `memory_save` (creates record) → `memory_update_properties` (set properties) → `memory_update_property` (set Body verbatim)
-- **Read:** `filterByProperty(Record Type=notebook)` for list (0 credits), `memory_get_properties` for body
+- **Create:** `memory_save` (creates record) → `memory_save shape=property` (set properties, including Body verbatim)
+- **Read:** `filterByProperty(Record Type=notebook)` for list (0 credits), `memory_retrieve` (`mode=fetch` with `fetch.propertyNames: [{ recordId: record.id, names: ['Body'] }]`; read the Body from the response's `properties[]`) for body
 - **Update body:** Save old body to Versions array FIRST, then overwrite Body
 - **Discover:** `filterByProperty` on Type, Channel, Status, Tags -- all free
 
@@ -568,7 +568,7 @@ For anything that leaves the building (an email, a public post, a customer-facin
 | `rejected` | Manager / review agent | Bounced back with a reason; generator may revise |
 
 **Wiring it:**
-- Generation is **compliance-gated before it runs** -- the generator loads governance (`ai_smart_guidelines` / `context_retrieve`) and refuses to draft if a hard rule blocks it. Don't generate first and filter later.
+- Generation is **compliance-gated before it runs** -- the generator loads governance (`memory_retrieve` with `sources.documents`) and refuses to draft if a hard rule blocks it. Don't generate first and filter later.
 - Governance marks the send action **REVIEW** (the AUTO / REVIEW / MANUAL boundary from Pattern K). REVIEW means: the agent may *produce* and *propose*, but a human or a designated review agent must flip the status before the send step is allowed to fire.
 - The **manager/review agent owns the status transition.** A separate review pass (its own poll over `filterByProperty(status = "pending-review")`) reads the draft, checks it against guidelines, and sets `approved` or `rejected`. Audit/rewrite separation (Pattern N) applies: review is a distinct step from generation so the generator can't rubber-stamp itself.
 - Only on `approved` does the external sender act, then set `sent`. The status IS the gate -- the runner refuses to send anything not in `approved`.

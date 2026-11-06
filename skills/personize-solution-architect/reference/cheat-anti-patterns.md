@@ -12,9 +12,9 @@
 | No tags on memorization | Can't filter by source | Always tag with source:X |
 | Jumping to build without proposing | Wrong architecture, rework | Assess -> propose 2-3 options -> decide |
 | Ignoring evaluation after changes | Schema drift, quality drop | Evaluate after every schema change |
-| Creating rules/policies as collections | Rules invisible to SmartContext, agents never see them | ICP, playbooks, tone guides, policies = `context_save` (type:'guideline') |
-| Describing tool calls instead of executing | Nothing gets created, agent just writes plans | MUST call tools (collection_create, context_save), then verify with list/read |
-| Skipping `personize_skill` at bootstrap | Agent doesn't know how platform works, makes fundamental errors | MUST call `personize_skill` before `personize_context` |
+| Creating rules/policies as collections | Rules invisible to SmartContext, agents never see them | ICP, playbooks, tone guides, policies = `memory_save shape=document` (type:'guideline') |
+| Describing tool calls instead of executing | Nothing gets created, agent just writes plans | MUST call tools (collection_create, memory_save shape=document), then verify with list/read |
+| Skipping `personize_md` at bootstrap | Agent doesn't know org state or platform guidance, makes fundamental errors | MUST call `personize_md` first every session |
 
 ## Prompt-level anti-patterns (`instructions[]` authoring)
 
@@ -26,11 +26,11 @@
 | Bumping `tier: 'ultra'` to fix bad output | Wasted credits on a prompt-quality problem | Fix the prompt first (split instructions, add audit) |
 | Self-reflective loop with no `confidence_in_improvement` gate | Loop shuffles words endlessly; output ≈ v1 | Require `confidence_in_improvement`; terminate on LOW |
 | Conflating stop-workflow with abort | Correct skips logged as broken runs | Stop-workflow → `success: true` + `workflow_status: 'stopped'`. Abort → malformed data only |
-| Few-shot examples without WHY rationale | Model memorizes phrasing, drifts on novel inputs | Each example: INPUT + CLASS + WHY (distinguishes adjacent classes) |
+| Few-shot examples without WHY rationale | Model copies phrasing, drifts on novel inputs | Each example: INPUT + CLASS + WHY (distinguishes adjacent classes) |
 | Tool loops without `maxSteps` | One instruction loops 30+ tool calls | `maxSteps: 5..8` per tool-calling instruction |
 | Abort threshold = "thin data" | Operations fail when partial output would be useful | Use T2 soft-degrade with `confidence` output |
 | One generic `artifact` output | Caller cannot route on shape | Add `artifact_type` companion output |
-| Compliance check after generation | Non-compliant draft lands in auto-memorize | Gate at instruction 1 (Pattern D) |
+| Compliance check after generation | Non-compliant draft lands in auto-save | Gate at instruction 1 (Pattern D) |
 | Multi-source data without source keys | Model picks one silently, no audit trail | Tag each source; force per-source enumeration in instruction 1 |
 | Per-recipient loop | Cross-variant contradictions; N× recall cost | Fanout: one recall, N variants, one consistency audit (Pattern E) |
 | Tool failure aborts run | Flaky MCP server kills whole batch | "Retry once, then warn" inline rule (T4 blast-radius bound) |

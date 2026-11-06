@@ -110,15 +110,20 @@ async function main() {
   let recentItems: Array<{ text: string; email?: string; createdAt?: string }> = [];
   try {
     const searchResult = await withRetry(() =>
-      client.memory.search({
-        groups: [{ conditions: [] }],
-        pageSize: 100,
-        includeMemories: true,
+      client.memory.retrieve({
+        mode: 'filter',
+        filters: { listAll: true, pageSize: 100, includeMemories: true },
       })
     );
 
-    const memories = (searchResult as unknown as { memories?: unknown[] }).memories
+    const rawMemories = (searchResult as unknown as { memories?: unknown }).memories
       ?? (Array.isArray(searchResult) ? searchResult : []);
+    // filter mode returns a recordId-keyed map; brief/scout return arrays or tier objects
+    const memories: unknown[] = Array.isArray(rawMemories)
+      ? rawMemories
+      : rawMemories && typeof rawMemories === 'object'
+        ? (Object.values(rawMemories as Record<string, unknown>) as unknown[]).flat()
+        : [];
 
     recentItems = (memories as Array<Record<string, unknown>>)
       .filter(m => {
@@ -128,7 +133,7 @@ async function main() {
       .map(m => ({
         text:      String(m['text'] ?? m['content'] ?? ''),
         email:     m['email'] ? String(m['email']) : undefined,
-        createdAt: m['createdAt'] ? String(m['createdAt']) : undefined,
+        createdAt: (m['createdAt'] ?? m['timestamp']) ? String(m['createdAt'] ?? m['timestamp']) : undefined,
       }));
 
   } catch (err) {

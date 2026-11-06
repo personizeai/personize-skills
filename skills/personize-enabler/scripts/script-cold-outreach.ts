@@ -125,23 +125,37 @@ async function main() {
   let contacts: Array<{ email: string; name?: string; company?: string }>;
   try {
     const searchResult = await withRetry(() =>
-      client.memory.search({
-        type: 'Contact',
-        groups: [{ conditions: [] }], // list all contacts
-        pageSize: limit,
-        returnRecords: true,
+      client.memory.retrieve({
+        mode: 'filter',
+        filters: {
+          crmFilter: { type: 'Contact' },
+          listAll: true, // list all contacts
+          pageSize: limit,
+        },
       })
     );
 
     // Extract contact info from results
     const records = (searchResult as unknown as { records?: unknown[] }).records ?? [];
     contacts = records
+      .slice(0, limit)
       .map((r: unknown) => {
-        const rec = r as Record<string, unknown>;
+        const rec = r as Record<string, any>;
+        const props = (rec['properties'] ?? {}) as Record<string, unknown>;
+        // property values may be plain or { value } objects
+        const unwrap = (v: unknown): unknown =>
+          v && typeof v === 'object' && 'value' in (v as object) ? (v as { value: unknown }).value : v;
+        const pick = (...keys: string[]): string => {
+          for (const k of keys) {
+            const v = unwrap(props[k]);
+            if (v !== undefined && v !== null && v !== '') return String(v);
+          }
+          return '';
+        };
         return {
-          email:   String(rec['email'] ?? ''),
-          name:    String(rec['name'] ?? rec['firstName'] ?? ''),
-          company: String(rec['company'] ?? rec['companyName'] ?? ''),
+          email:   String(rec['crm_keys']?.email ?? ''),
+          name:    pick('name', 'firstName', 'first_name'),
+          company: pick('company', 'companyName', 'company_name'),
         };
       })
       .filter(c => c.email && c.email !== 'undefined');
@@ -164,16 +178,15 @@ async function main() {
     try {
       // Step 1: Recall context for this contact
       const recallResult = await withRetry(() =>
-        client.memory.smartRecall({
-          email: contact.email,
-          query: 'recent interactions, interests, role, company background, any prior emails sent',
-          mode: 'fast',
+        client.memory.retrieve({
+          mode: 'scout',
+          compile: true,
+          record: { email: contact.email },
+          message: 'recent interactions, interests, role, company background, any prior emails sent',
         })
       );
 
-      const context = (recallResult as unknown as { data?: { results?: Array<{ text: string }> } }).data?.results
-        ?.map(r => r.text)
-        .join('\n') ?? '';
+      const context = (recallResult as unknown as { documents?: { compiledContext?: string } }).documents?.compiledContext ?? '';
 
       // Step 2: Check governance/guidelines for outbound email rules
       const guidelines = await withRetry(() =>
@@ -241,16 +254,16 @@ async function main() {
 
       // Step 5: Memorize the outreach
       await withRetry(() =>
-        client.memory.memorize({
-          email:   contact.email,
+        client.memory.save({
+          shape:   'text',
+          record:  { email: contact.email },
           content: [
-            `[COLD OUTREACH SENT] ${new Date().toISOString()}`,
+            `[COLD OUTREACH SENT] ${new Date().toISOString()} (cold-outreach-script)`,
             `Campaign: ${campaign}`,
+            `Tags: outbound, email-sent, campaign:${campaign}`,
             `Subject: ${subject}`,
             `Body:\n${body}`,
           ].join('\n'),
-          speaker: 'cold-outreach-script',
-          tags:    ['outbound', 'email-sent', `campaign:${campaign}`],
         })
       );
 

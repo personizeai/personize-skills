@@ -88,7 +88,7 @@ SHOULD customize before deploying -- add, remove, or rename properties to match 
 
 ## Governance Templates -- Starter Guidelines
 
-Ready-to-use guideline bodies deployable via `context_save`. Written in MUST/SHOULD/MAY format that SmartContext understands.
+Ready-to-use guideline bodies deployable via `memory_save shape=document`. Written in MUST/SHOULD/MAY format that SmartContext understands.
 
 - **template-brand-voice.md** -- tone rules, vocabulary list, dos/don'ts, rewrites
 - **template-icp.md** -- three-tier qualification (Tier 1/2/3), firmographic and behavioral signals
@@ -100,7 +100,7 @@ SHOULD customize before deploying. At minimum replace bracketed placeholders (`[
 ## Customization Patterns
 
 - **Swap identity keys** -- replace `email` with `website_url` for company-focused workflows
-- **Change collection IDs** -- get real IDs from `personize_context` or `collection_list`
+- **Change collection IDs** -- get real IDs from `personize_md` or `collection_list`
 - **Adjust extraction hints** -- pass a `schema` parameter with domain-specific properties
 - **Modify governance constraints** -- change MUST to SHOULD for softer rules, add domain examples
 - **Adjust preset properties** -- match the schema to actual data before deploying

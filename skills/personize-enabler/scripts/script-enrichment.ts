@@ -258,11 +258,10 @@ async function main() {
 
   try {
     await withRetry(() =>
-      client.memory.memorize({
-        email:    email!,
-        content,
-        speaker:  'enrichment-script',
-        tags:     ['enrichment', ...sources.map(s => `source:${s}`)],
+      client.memory.save({
+        shape:    'text',
+        record:   { email: email! },
+        content:  `${content}\n\n(enrichment-script; tags: enrichment, ${sources.map(s => `source:${s}`).join(', ')})`,
       })
     );
     summary.succeeded++;

@@ -9,24 +9,21 @@ Every MCP tool below maps to a CLI command. When the CLI lags, the row is marked
 
 | MCP tool | CLI command | Status |
 |---|---|---|
-| `memory_save` | `personize memory save` / `memorize` | OK |
-| `memory_retrieve` | `personize memory retrieve` | OK |
-| `memory_search` | `personize memory search` | OK |
+| `memory_save` (shape=text) | `personize save --shape text` (API: `POST /api/v1.1/memory/save`) | OK |
+| `memory_save` (shape=property) | `personize save --shape property` (API: `POST /api/v1.1/memory/save`) | OK |
+| `memory_save` (shape=identifiers) | `personize save --shape identifiers` (API: `POST /api/v1.1/memory/save`) | OK |
+| `memory_save` (items[], shortform/freeform/document only) | `personize save --items-file <f>` (API: `POST /api/v1.1/memory/save`) | OK |
+| `memory_retrieve` (mode=scout) | `personize retrieve scout` (API: `POST /api/v1.1/memory/retrieve`) | OK |
+| `memory_retrieve` (mode=brief) | `personize retrieve brief` (API: `POST /api/v1.1/memory/retrieve`) | OK |
+| `memory_retrieve` (mode=filter) | `personize retrieve filter` (API: `POST /api/v1.1/memory/retrieve`) | OK |
+| `memory_retrieve` (mode=fetch) | `personize retrieve fetch --fetch-file <f>` (API: `POST /api/v1.1/memory/retrieve`) | OK |
+| *(no MCP mode)* lookalike search | `personize retrieve similar` (API: `POST /api/v1.1/memory/retrieve`) | CLI/SDK only |
+| `memory_delete` | `personize delete <type> --yes` (add `--hard` for type record) (API: `memory_delete` endpoints under `/api/v1.1/memory`) | OK |
 | `memory_segment` | `personize memory segment` | OK |
-| `memory_find_similar` | `personize memory similar` | OK |
-| `memory_filter_by_property` | `personize memory filter-by-property` | OK |
-| `memory_get_properties` | `personize memory properties` | OK |
-| `memory_update_property` | `personize memory update` | OK |
-| `memory_update_properties` | `personize memory bulk-update` | OK |
-| `memory_digest` | `personize memory digest` | OK |
-| `memory_upsert` (structured create/upsert) | `personize memory upsert` | OK |
-| `memory_batch_store` — *not a live MCP tool* | content batch via SDK `client.memory.saveBatch()`; structured via `memory_upsert` / `personize memory upsert` | N/A (no MCP tool) |
-| `update_keys` | `personize memory update-keys` | OK |
-| `update_keys_batch` | `personize memory update-keys-batch` | OK |
-| `list_keys` | `personize memory list-keys` | OK |
-| `delete_keys` | `personize memory delete-keys` | OK |
-| `smartRecall` | `personize memory smart-recall-unified` | OK |
-| *(no MCP)* — record deletion | `personize memory delete` / `delete-record` / `cancel-deletion` | CLI-only (admin) |
+| `memory_retrieve` (mode=fetch, fetch.identifiers) | `personize retrieve fetch --record-id <id> --entity-type <type> --fetch-identifiers` | OK |
+| `memory_delete` (type=identifier) | `personize delete identifier --record-id <id> --entity-type <type> --property-names <a,b> --yes` | OK |
+
+Legacy (still works): `list_keys` → `personize memory list-keys`, `delete_keys` → `personize memory delete-keys`; both translate to the canonical rows above.
 
 ## Context / Governance
 
@@ -41,10 +38,10 @@ Every MCP tool below maps to a CLI command. When the CLI lags, the row is marked
 | `context_manage_delete` | `personize guidelines delete <id>` | OK |
 | `context_manage_history` | `personize guidelines history <id>` | OK |
 | `context_manage_download` | *(no CLI)* | **GAP** |
-| `guideline_attachment_list` | `personize context attachment list` (if wired) | **GAP** (verify) |
-| `guideline_attachment_read` | *(no CLI)* | **GAP** |
+| `context_attachment_list` | `personize context attachment list` (if wired) | **GAP** (verify) |
+| `context_attachment_read` | *(no CLI)* | **GAP** |
 | `context_attachment_upload` | *(no CLI)* | **GAP** |
-| `guideline_attachment_delete` | *(no CLI)* | **GAP** |
+| `context_attachment_delete` | *(no CLI)* | **GAP** |
 
 ## Collections / Schema
 
@@ -56,9 +53,9 @@ Every MCP tool below maps to a CLI command. When the CLI lags, the row is marked
 | `collection_delete` | `personize collections delete <id>` | OK |
 | `collection_delete_property` | `personize collections delete-property <cid> <pid>` | OK |
 | `collection_history` | `personize collections history <id>` | OK |
-| *(no MCP)* — get one collection | `personize collections get <id>` | CLI-only |
-| *(no MCP)* — add property | `personize collections add-property <id>` | CLI-only |
-| *(no MCP)* — update property | `personize collections update-property <id>` | CLI-only |
+| *(no MCP)* - get one collection | `personize collections get <id>` | CLI-only |
+| *(no MCP)* - add property | `personize collections add-property <id>` | CLI-only |
+| *(no MCP)* - update property | `personize collections update-property <id>` | CLI-only |
 
 ## Entity Types
 
@@ -100,25 +97,25 @@ Every MCP tool below maps to a CLI command. When the CLI lags, the row is marked
 
 | MCP tool | CLI command | Status |
 |---|---|---|
-| `personize_md` | *(no CLI)* | **GAP** — adding would let operators dump orientation for an org |
-| `personize_md(detail='session')` | *(no CLI)* | **GAP** — needs session ID; CLI has no MCP session concept yet |
-| `personize_cookbook` | *(no CLI)* | **GAP** — useful for offline recipe browsing |
+| `personize_md` | *(no CLI)* | **GAP** - adding would let operators dump orientation for an org |
+| `personize_md(detail='session')` | *(no CLI)* | **GAP** - needs session ID; CLI has no MCP session concept yet |
+| `personize_cookbook` | *(no CLI)* | **GAP** - useful for offline recipe browsing |
 
 ## Gaps to close (priority order)
 
-1. **`personize cookbook <query>`** — calls the cookbook tool; same recipe surface offline. High value for ops/dev.
-2. **`personize md [--detail first-visit|returning|session]`** — operator dumps the org orientation. Useful for support tickets ("paste what your agent sees").
-3. **`personize context attachment ...`** — list/read/upload/delete parity. Today attachments are MCP-only; operators can't audit them.
-4. **`personize guidelines download <id>`** — context_manage_download has no CLI; needed when guidelines are PDF-backed.
-5. **`personize entities ...` audit** — confirm get/update/archive exist; add if missing.
+1. **`personize cookbook <query>`** - calls the cookbook tool; same recipe surface offline. High value for ops/dev.
+2. **`personize md [--detail first-visit|returning|session]`** - operator dumps the org orientation. Useful for support tickets ("paste what your agent sees").
+3. **`personize context attachment ...`** - list/read/upload/delete parity. Today attachments are MCP-only; operators can't audit them.
+4. **`personize guidelines download <id>`** - context_manage_download has no CLI; needed when guidelines are PDF-backed.
+5. **`personize entities ...` audit** - confirm get/update/archive exist; add if missing.
 
 ## Out of scope (intentionally CLI-only)
 
-- `personize doctor` — diagnostic command, not a memory operation
-- `personize setup` / `personize config` — environment management
-- `personize chat` / `responses` / `prompt` — LLM playground
-- `personize evaluate` — eval harness driver
-- Record hard-delete commands — destructive, intentionally not exposed via MCP
+- `personize doctor` - diagnostic command, not a memory operation
+- `personize setup` / `personize config` - environment management
+- `personize chat` / `responses` / `prompt` - LLM playground
+- `personize evaluate` - eval harness driver
+- Record hard-delete commands - destructive, intentionally not exposed via MCP
 
 ## Validation
 

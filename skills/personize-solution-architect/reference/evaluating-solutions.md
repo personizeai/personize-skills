@@ -9,7 +9,7 @@ Both Anthropic and OpenAI converge on the same discipline: **write the evals bef
 The order is deliberate:
 
 1. **Define "good"** as a set of scenarios with expected outputs (the eval set).
-2. **Run a baseline FIRST** -- with no skill, no tuned schema, no governance design -- to see where the gaps actually are. The baseline is the gap analysis. Concretely: memorize a sample record into a *bare* collection (default property descriptions, no guidelines) and run the four evals. The properties that score low and the tasks that route to nothing are your build spec.
+2. **Run a baseline FIRST** -- with no skill, no tuned schema, no governance design -- to see where the gaps actually are. The baseline is the gap analysis. Concretely: save a sample record into a *bare* collection (default property descriptions, no guidelines) and run the four evals. The properties that score low and the tasks that route to nothing are your build spec.
 3. **Build to pass.** Every schema, description, and guideline change is now a hypothesis you can test against the eval.
 4. **Re-run after every change.** A change that doesn't move the eval is noise; a change that regresses it is a bug.
 
@@ -17,16 +17,16 @@ MUST establish the baseline before building -- because you cannot claim a design
 
 ## The Four Eval Types
 
-A Personize solution has four distinct things to measure. Each maps to one capability and one call. MUST cover all four that the solution actually uses -- a solution that only memorizes needs (1)+(2); one that governs generation needs (3); one that does a job end-to-end needs (4).
+A Personize solution has four distinct things to measure. Each maps to one capability and one call. MUST cover all four that the solution actually uses -- a solution that only saves needs (1)+(2); one that governs generation needs (3); one that does a job end-to-end needs (4).
 
 | # | Eval | What it answers | The call | Pass criteria |
 |---|---|---|---|---|
 | 1 | **Extraction accuracy** | Did the schema pull the right typed values out of the content? | `client.evaluate.memorizationAccuracy({ collectionId, input, skipStorage: true })` | Extracted `propertyValues` match expected per-property at/above your threshold (e.g. ≥0.85), confidence not spuriously high on wrong values |
-| 2 | **Recall quality / precision** | Does a query return the right records and not the wrong ones? | `client.memory.smartRecall({ query, mode })` / `memory.search()` / MCP `retrieve_unified` | Expected record(s) appear in top-K; precision (relevant ÷ returned) at/above target; no false positives crowding the answer |
-| 3 | **Governance routing** | Does a task surface the *right* guideline -- and not the wrong one? | `ai_smart_guidelines({ message })` (SDK `client.ai.smartGuidelines`) / `context_retrieve` | The expected guideline name is in `selection`; competing-but-wrong guidelines are absent |
+| 2 | **Recall quality / precision** | Does a query return the right records and not the wrong ones? | `client.memory.retrieve({ mode: 'scout', message, sources: { properties: true } })` / MCP `memory_retrieve` | Expected record(s) appear in top-K; precision (relevant ÷ returned) at/above target; no false positives crowding the answer |
+| 3 | **Governance routing** | Does a task surface the *right* guideline -- and not the wrong one? | `memory_retrieve` with `sources.documents` (SDK `client.ai.smartGuidelines`) | The expected guideline name is in `selection`; competing-but-wrong guidelines are absent |
 | 4 | **End-to-end** | Does the solution do the actual job? | Run the real pipeline (recall → govern → act), score the output | Output meets the task rubric (e.g. email cites a real fact from memory AND obeys the brand guideline) |
 
-**(1) Extraction accuracy.** This eval applies only to the content → AI-extraction write path (`memory.save` / `saveBatch`). A `memory.upsert` write sets known field values directly with no extraction, so there is nothing to score there -- the value either was set or wasn't.
+**(1) Extraction accuracy.** This eval applies only to the content → AI-extraction write path (`memory.save` with `shape: 'text'`). A `shape: 'property'` write sets known field values directly with no extraction, so there is nothing to score there -- the value either was set or wasn't.
 
 `memorizationAccuracy` is a three-phase eval (extract → analyze → suggest schema fixes) and is the canonical extraction signal. Pass `skipStorage: true` so a test run never pollutes real memory. Read `phases[].extraction.propertyValues[]` -- each carries `propertyName`, `value`, and `confidence` -- and diff against expected. The third phase returns an `optimizedCollection` with `wasModified` + `changeReason` per property: that is the engine telling you which descriptions are weak, in its own words.
 
@@ -38,7 +38,7 @@ Watch the `confidence` field, not just the value: a wrong value at high confiden
 
 **(3) Governance routing.** The failure mode is silent: a guideline that never routes is invisible to every agent that needs it, and nothing errors. Send a representative task `message` and assert the expected guideline is in `selection`. Also assert the *absence* of a plausible-but-wrong guideline -- routing precision matters as much as recall, because a competing guideline that wins the slot starves the right one of the token budget. If routing misses, the lever is the guideline's header keywords and its one-concern scope (see [`design-review.md`](./design-review.md), Governance lens), not the routing call.
 
-**(4) End-to-end.** The other three can all pass while the solution still fails the job. Run the full loop -- recall context, govern with `ai_smart_guidelines`, act, store -- on a real scenario and score the artifact against a rubric. This is where you catch "extraction is perfect and the right guideline routed, but the email still sounds generic." Score the output for both grounding (does it cite a real fact from memory?) and compliance (does it obey the routed guideline?); a pass requires both. This is the eval that maps to the actual business outcome, so it is the one a stakeholder cares about -- the other three are diagnostics that explain *why* this one passes or fails.
+**(4) End-to-end.** The other three can all pass while the solution still fails the job. Run the full loop -- recall context, govern with `memory_retrieve` (`sources.documents`), act, store -- on a real scenario and score the artifact against a rubric. This is where you catch "extraction is perfect and the right guideline routed, but the email still sounds generic." Score the output for both grounding (does it cite a real fact from memory?) and compliance (does it obey the routed guideline?); a pass requires both. This is the eval that maps to the actual business outcome, so it is the one a stakeholder cares about -- the other three are diagnostics that explain *why* this one passes or fails.
 
 ## The Method
 
@@ -67,10 +67,10 @@ No single metric tells the whole story: accuracy can rise while cost and latency
 | Metric | Why it matters | Where it comes from |
 |---|---|---|
 | **Accuracy** | Did extraction get the value right? | `propertyValues[].value` vs expected |
-| **Recall precision** | Relevant ÷ returned -- are results clean? | top-K of `smartRecall`/`search` |
+| **Recall precision** | Relevant ÷ returned -- are results clean? | top-K of `memory_retrieve` (`mode=scout`/`filter`) |
 | **Tool-call count** | Fewer calls = simpler, cheaper, less drift | count per scenario |
 | **Tokens** | Context cost per run | response usage |
-| **Credits / cost** | Real money: 1/memorize, 1/fast recall, 2/deep recall, governance free | `creditsCharged` / `analytics.credits()` |
+| **Credits / cost** | Real money: per-call credits (see the pricing page), governance free | `creditsCharged` / `analytics.credits()` |
 | **Errors** | Rate-limits, validation, sparse-context skips | caught exceptions per run |
 | **Latency** | fast (~500ms) vs deep (~10-20s) recall, etc. | wall-clock per call |
 

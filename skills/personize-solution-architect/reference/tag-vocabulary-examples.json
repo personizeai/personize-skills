@@ -1,5 +1,5 @@
 {
-  "$schema": "Curated org_tag_vocabulary seed examples. Each `set` represents one industry / department. Pick a set during onboarding, customize the descriptions to match the org's mental model, then POST each tag via `personize v1.1 context tags create --type-name <canonical_tag> --label <label> --description <description>` (or `client.v1_1.context.createTag`). The 'description' MUST follow the 'Use for: X. Not for: Y.' pattern -- it is injected into the LLM section-selector prompt to reject plausible-but-wrong docs that happen to share a tag.",
+  "$schema": "Curated org_tag_vocabulary seed examples. Each `set` represents one industry / department. Pick a set during onboarding, customize the descriptions to match the org's mental model, then POST each tag via `personize v1.1 context tags create --type-name <canonical_tag> --label <label> --description <description>` (or the `createTag` method on the v1.1 context client). The 'description' MUST follow the 'Use for: X. Not for: Y.' pattern -- it is injected into the LLM section-selector prompt to reject plausible-but-wrong docs that happen to share a tag.",
   "$constraints": {
     "canonical_tag": "regex ^[a-z][a-z0-9_-]{1,59}$ -- lowercase only, may include digits, _, -, no spaces",
     "label": "1-80 chars human-readable display name",

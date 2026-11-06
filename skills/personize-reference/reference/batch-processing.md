@@ -1,110 +1,106 @@
 # Batch Processing Guide
 
-> **Canonical paths (read first):** for records you already have **structured field values** for, use `client.memory.upsert({ records })` (`memory_upsert` MCP, `POST /api/v1.1/memory/upsert`, `personize memory upsert`) -- single or batch, no AI extraction. For **content that needs AI extraction** across many records, use `client.memory.saveBatch({ records })`. The `memorizeBatch()` examples below are the **legacy** content-batch method (still functional, deprecated toward `saveBatch`/`upsert`; same payload shape). `memory_batch_store` / `memory_batch_validate` are **not** live MCP tools.
+> **Canonical paths (read first):** for records you already have **structured field values** for, use `client.memory.save({ shape:'property', record, properties })` (one call per record) or MCP `memory_save shape=property` -- no AI extraction. For **content that needs AI extraction** across many records, use `client.memory.save({ shape:'shortform', items, options })`, which is also the form that returns an async `jobId`. The examples below use an `items` array with per-item control. The older `saveBatch` and `memory_upsert` names are legacy, replaced by these forms. Pre-v1.1 batch-store tool names are **not** live MCP tools.
 
 | Scenario | Method | Max Items | Async? | Per-Item Control |
 |----------|--------|-----------|--------|-----------------|
-| Structured records (known field values) | `memory.upsert()` (single or batch) | -- | Yes (batch) | Properties set directly, no extraction |
+| Structured records (known field values) | `client.memory.save({ shape:'property', record, properties })` (one call per record) | -- | No | Properties set directly, no extraction |
 | <10 items, content → extraction | `memory.save()` in loop | -- | No | Per-call |
-| 10-100 items, content → extraction | `memory.saveBatch()` (legacy: `memorizeBatch()`) | 100 | Yes | Per-item: tier, schema, max_properties |
-| 100-10K items, content → extraction | `memory.saveBatch()` chunked | 100/call | Yes | Same per-item control |
+| 10-25 items, content → extraction | `client.memory.save({ shape:'shortform', items })` | 25 | No (sync loop) | Per-item: `record` (sync only; async/bulk use top-level `email`/`websiteUrl`/`recordId`), `properties`, `extractionPrompt`; `tier` is set in the batch-level `options` (see the `dryRun` caveat in Best Practices). `save({ shape:'shortform', items, options:{ mode:'async' } })`: async/bulk item batches depend on the at-scale rollout and may return `NOT_AVAILABLE` |
+| 26+ items (up to 10K), content → extraction | `client.memory.save({ shape:'shortform', items })` chunked | 25/call | No (sync loop) | Same per-item control. Sending a larger batch in one call needs the at-scale path, which may be off (400 `NOT_AVAILABLE`) |
 | 10K+ items | Pipeline (Trigger.dev) | Unlimited | Yes | Same, with durable retry |
 
-Returns eventId for async tracking: GET /api/v1/events/{eventId}
-MUST NOT mix entity types in one batch (all emails OR all website_urls).
-Per-item extraction: each item can have its own tier, schema, max_properties.
+In sync mode, `client.memory.save({ shape:'shortform', items })` returns per-item results and totals (`res.items`, `res.totals`). A `jobId` comes only with async/bulk (`options: { mode: 'async' }` or `'bulk'`), which are rollout-dependent and may return 400 `NOT_AVAILABLE`.
+MUST NOT mix entity types in one batch (all emails OR all websiteUrls).
+Per-item extraction: each item can have its own `extractionPrompt` and `properties`; set `tier` once in the batch-level `options`.
+
+> **Note:** `tier` and `dryRun` live in the batch-level `options`; per-item `options` are overwritten by the batch options. `dryRun` never prevents content writes on either path (it only skips the caller `properties` write).
 
 ---
 
-## memorizeBatch() Parameters (legacy -- `saveBatch()` takes the same shape)
+## save({ items }) parameters
+
+Call `client.memory.save({ shape:'shortform', items, options })`. Set `tier` in the batch-level `options`. `dryRun` does NOT stop content writes; it only skips the `properties` write.
 
 ```ts
-interface BatchMemorizeOptions {
-  // -- Batch metadata --
-  source?: string;              // Source system label (e.g. 'Hubspot', 'Salesforce')
-  tier?: 'basic' | 'pro' | 'pro_fast' | 'ultra';  // Default extraction tier
-  extractionPrompt?: string;    // Focus instructions for all items (max 500 chars)
-  dryRun?: boolean;             // Validate without writing (default: false)
-  chunkSize?: number;           // Rows per chunk (default: 1)
-
-  // -- Records shorthand (recommended) --
-  records?: BatchMemorizeRecord[];
-
-  // -- Advanced: raw mapping mode --
-  mapping?: BatchMemorizeMapping;
-  rows?: Record<string, unknown>[];
+// sdk/src/types.ts
+interface SaveItemsResponse {
+  batch: true;
+  mode: 'sync' | 'async' | 'bulk';
+  destination: 'loop' | 'fast-sf' | 'bulk-sf' | 'context-save-batch';
+  // Sync (HTTP 200 when all items succeed, 207 when some fail): per-item outcomes
+  items?: Array<{ index: number; status: 'ok' | 'error'; httpStatus: number; data?: unknown; error?: unknown }>;
+  totals?: { succeeded: number; failed: number };
+  // Async/bulk (HTTP 202): poll handle
+  jobId?: string;
+  rowsEnqueued?: number;
+  webhook?: string;
+  warnings?: string[];
+  error?: { code: string; message: string; details?: unknown };
 }
 ```
 
+`mode` and `destination` are always present. Sync calls return 200 (all items succeeded) or 207 (some failed) with `items[]` and `totals`. Async or bulk calls (`options: { mode: 'async' | 'bulk' }`) return 202 with `jobId` and `rowsEnqueued`, but they depend on the at-scale rollout and may return 400 `NOT_AVAILABLE`. 202 `jobId` responses have no `items`/`totals`.
 ---
 
-## Records Shorthand (Recommended)
+## Items (Recommended)
 
-The SDK provides a `records` shorthand that handles mapping automatically:
+On sync batches (25 items or fewer), each entry in `items` addresses its record with a `record` block. Async/bulk batches must use flat top-level `email` / `websiteUrl` / `recordId` instead (see the Item fields table):
 
 ```ts
-await client.memory.memorizeBatch({
-  tier: 'pro',
-  source: 'CRM Sync',
-  records: [
+const res = await client.memory.save({
+  shape: 'shortform',
+  items: [
     {
-      email: 'john@acme.com',
+      record: { email: 'john@acme.com' },
       content: 'Met with John. He mentioned $50k budget for Q2...',
-      speaker: 'John Smith',
-      timestamp: '2026-03-15T10:00:00Z',
-      tags: ['sales_call'],
-      collectionName: 'Contact Properties',
     },
     {
-      email: 'sarah@globex.com',
+      record: { email: 'sarah@globex.com' },
       content: 'Sarah is evaluating our enterprise tier...',
-      tier: 'ultra',          // per-item tier override
     },
     {
-      website_url: 'acme.com',
+      record: { websiteUrl: 'acme.com' },
       content: 'Acme Corp: Series B SaaS, 150 employees, Austin HQ...',
-      type: 'Company',
     },
   ],
+  options: { tier: 'pro' },
 });
+console.log(res.totals); // { succeeded, failed }
 ```
 
-### BatchMemorizeRecord fields
+In sync mode `res.totals` holds the counts. The `record` block applies to sync batches only; for async/bulk use the flat fields. If the `items` type does not list `record`, the server still accepts it on sync batches; cast if TypeScript complains.
+
+### Item fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| content | string | conditional | Text to memorize (or use properties) |
-| email | string | conditional | Contact email (identifies the record) |
-| website_url | string | conditional | Company website (alternative identifier) |
-| record_id | string | no | Pre-resolved record ID |
-| type | string | no | Entity type (Contact, Company, etc.) |
-| customKeyName | string | no | Custom key field name |
-| customKeyValue | string | no | Custom key value |
-| collectionId | string | no | Target collection ID |
-| collectionName | string | no | Target collection name (resolved by SDK) |
+| content | string | yes (shortform) | Text to save |
+| record | object | conditional | Sync batches only (25 items or fewer): `{ email }`, `{ websiteUrl }`, `{ id }` or `{ customKey: { name, value } }` identifies the record. Async/bulk items (`options.mode` 'async' or 'bulk', or more than 25 items with at-scale on) must use top-level `email` / `websiteUrl` / `recordId`: the server ignores `item.record` on that route and saves to a placeholder record, and items that also set `type` get a 400 |
+| email | string | conditional | Top-level contact identifier; valid on every lane, required form for async/bulk |
+| websiteUrl | string | conditional | Top-level company identifier; valid on every lane, required form for async/bulk |
+| recordId | string | no | Pre-resolved record ID; valid on every lane |
 | properties | object | no | Structured property values |
-| tags | string[] | no | Tags for property selection |
-| timestamp | string | no | Content timestamp (ISO) |
-| speaker | string | no | Speaker name for coreference resolution |
+| extractionPrompt | string | no | Per-item extraction focus (max 500 chars) |
+
+`tier` is batch-level: `save({ shape:'shortform', items, options:{ tier:'pro' } })`. Do not set `options` on items. (`dryRun` exists but applies to the `properties` write only; see Best Practices.)
 
 ---
 
 ## Per-Item Extraction Control
 
-Each record in a batch can have its own extraction settings:
+Each item in a batch can carry its own extraction focus:
 
 ```ts
-records: [
+items: [
   {
-    email: 'vip@enterprise.com',
+    record: { email: 'vip@enterprise.com' },
     content: 'Complex enterprise deal...',
-    tier: 'ultra',            // highest quality extraction
-    collectionName: 'Enterprise Contacts',
+    extractionPrompt: 'Focus on budget, timeline and decision makers',
   },
   {
-    email: 'lead@startup.com',
+    record: { email: 'lead@startup.com' },
     content: 'Quick follow-up note',
-    tier: 'basic',            // fastest, cheapest
   },
 ]
 ```
@@ -113,94 +109,27 @@ records: [
 
 ## Structured Properties (No AI Extraction)
 
-Pass structured data directly without AI extraction:
+Pass structured data directly without AI extraction, one `shape:'property'` call per record (shortform items require `content`, so do not use `items[]` for this):
 
 ```ts
-records: [
-  {
-    email: 'john@acme.com',
+for (const rec of records) {
+  await client.memory.save({
+    shape: 'property',
+    record: { email: rec.email },
     properties: {
       deal_stage: 'qualified',
       revenue: 50000,
       next_meeting: '2026-04-15',
     },
-    collectionName: 'Deal Tracker',
-  },
-]
-```
-
-### Per-Property Extraction Control
-
-Mix structured data with AI extraction on specific fields:
-
-```ts
-records: [
-  {
-    email: 'john@acme.com',
-    properties: {
-      deal_stage: 'qualified',                    // stored as-is
-      revenue: 50000,                              // stored as-is
-      meeting_notes: {                             // AI extraction enabled
-        value: 'Long transcript from sales call...',
-        extractMemories: true,
-        collectionName: 'Contact Properties',
-      },
-    },
-  },
-]
-```
-
----
-
-## Advanced: Raw Mapping Mode
-
-For bulk data ingestion from external systems (CSV, database exports):
-
-```ts
-await client.memory.memorizeBatch({
-  source: 'Hubspot Export',
-  tier: 'pro',
-  mapping: {
-    entityType: 'Contact',
-    email: 'contact_email',           // source field name
-    properties: {
-      'Job Title': {
-        sourceField: 'title',
-        collectionId: 'col_abc',
-        collectionName: 'Contact Properties',
-        extractMemories: false,
-      },
-      'Meeting Notes': {
-        sourceField: 'notes',
-        collectionId: 'col_abc',
-        collectionName: 'Contact Properties',
-        extractMemories: true,         // AI extraction for this field
-      },
-    },
-  },
-  rows: [
-    { contact_email: 'john@acme.com', title: 'VP Sales', notes: 'Met at conference...' },
-    { contact_email: 'sarah@globex.com', title: 'CTO', notes: 'Technical evaluation...' },
-  ],
-});
+  });
+}
 ```
 
 ---
 
 ## Chunking Strategy
 
-The SDK automatically handles chunking for the `records` shorthand. For raw mapping mode, use `chunkSize`:
-
-```ts
-// Process 1000 rows, 50 at a time
-await client.memory.memorizeBatch({
-  mapping: { ... },
-  rows: thousandRows,
-  chunkSize: 50,
-});
-```
-
-### Manual Chunking (for very large batches)
+Send at most 25 items per call. Chunk larger inputs yourself:
 
 ```ts
 function chunk<T>(array: T[], size: number): T[][] {
@@ -211,42 +140,54 @@ function chunk<T>(array: T[], size: number): T[][] {
   return chunks;
 }
 
-const allRecords = /* 5000 records */;
-const batches = chunk(allRecords, 100);
+const allItems = /* 5000 items */;
+const batches = chunk(allItems, 25);
 
 for (const batch of batches) {
-  await client.memory.memorizeBatch({
-    records: batch,
-    tier: 'pro',
-    source: 'Migration',
+  await client.memory.save({
+    shape: 'shortform',
+    items: batch,
+    options: { tier: 'pro' },
   });
-  // Optional: rate limit pause
-  await new Promise(r => setTimeout(r, 1000));
 }
 ```
 
 ---
 
-## Async Tracking with eventId
+## Async Tracking
 
-Batch operations return an `eventId` for async status tracking:
+In sync mode, `client.memory.save({ shape:'shortform', items })` returns per-item results and totals. Read `res.items[i].status` (`'ok'` or `'error'`) and `res.totals`:
 
 ```ts
-const result = await client.memory.memorizeBatch({ records: [...] });
-const eventId = result.data?.eventId;
-
-// Poll for completion
-const status = await fetch(`https://agent.personize.ai/api/v1/events/${eventId}`, {
-  headers: { 'Authorization': 'Bearer pz_...' },
-});
+const res = await client.memory.save({ shape: 'shortform', items: [...] });
+console.log(res.totals.succeeded, res.totals.failed);
+for (const item of res.items) {
+  console.log(item.index, item.status, item.httpStatus);
+}
 ```
 
-Event status values:
-- `pending` -- queued for processing
-- `processing` -- currently being processed
-- `completed` -- all items processed successfully
-- `partial_failure` -- some items failed
-- `failed` -- batch failed entirely
+Async or bulk lanes depend on the at-scale rollout and may return 400 `NOT_AVAILABLE`. When enabled, the async response carries `jobId` (`SaveItemsResponse.jobId`) but no `items`/`totals`. Poll it with `client.memory.getJob(jobId)`. Job item statuses are `'succeeded' | 'failed'`, not the sync `'ok' | 'error'`:
+
+```ts
+// Only when the at-scale path is enabled; otherwise this returns 400 NOT_AVAILABLE
+const submit = await client.memory.save({
+  shape: 'shortform',
+  // Async/bulk needs flat identifiers (email / websiteUrl / recordId), not a `record` block
+  items: [
+    { email: 'john@acme.com', content: 'Met with John. He mentioned $50k budget for Q2...' },
+    { websiteUrl: 'acme.com', content: 'Acme Corp: Series B SaaS, 150 employees, Austin HQ...' },
+  ],
+  options: { mode: 'async' },
+});
+const job = await client.memory.getJob(submit.jobId);
+```
+
+`MemoryJob.state` values:
+- `queued` -- waiting to be processed
+- `running` -- currently being processed
+- `succeeded` -- all items processed successfully
+- `partial` -- some items failed (see `job.items[i].status` and `error`)
+- `failed` -- job failed entirely
 
 ---
 
@@ -254,21 +195,20 @@ Event status values:
 
 ### Partial Failures
 
-Batch memorize processes items independently. Some may fail while others succeed:
+Batch save processes items independently. Some may fail while others succeed:
 
 ```ts
-const result = await client.memory.memorizeBatch({ records: [...] });
+const items = [...];
+const res = await client.memory.save({ shape: 'shortform', items });
 
-if (result.data?.errors?.length) {
-  // Retry failed items individually
-  for (const error of result.data.errors) {
-    console.error(`Failed: ${error.email} - ${error.message}`);
-    // Retry with single memorize
-    await client.memory.memorize({
-      content: error.content,
-      email: error.email,
-    });
-  }
+for (const failed of res.items.filter(i => i.status === 'error')) {
+  const original = items[failed.index];
+  console.error(`Failed item ${failed.index}:`, failed.error);
+  // Retry with single save using the original input
+  await client.memory.save({
+    content: original.content,
+    record: original.record,
+  });
 }
 ```
 
@@ -276,9 +216,8 @@ if (result.data?.errors?.length) {
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `ENTITY_TYPE_MISMATCH` | Mixed emails and website_urls | Separate into Contact and Company batches |
-| `MISSING_IDENTIFIER` | Record has no email/website_url/recordId | Add an identifier to each record |
-| `COLLECTION_NOT_FOUND` | collectionName doesn't exist | Create the collection first or use collectionId |
+| `ENTITY_TYPE_MISMATCH` | Mixed emails and websiteUrls | Separate into Contact and Company batches |
+| `MISSING_IDENTIFIER` | Item has no email/websiteUrl/recordId | Add `record` (sync) or top-level `email`/`websiteUrl`/`recordId` (async/bulk) to each item |
 | `RATE_LIMIT_EXCEEDED` | Too many concurrent calls | Add delay between chunks, reduce chunk size |
 | `CONTENT_TOO_LARGE` | Content exceeds 100K chars | Split large content into smaller pieces |
 
@@ -291,13 +230,13 @@ if (result.data?.errors?.length) {
 ```ts
 for (const batch of batches) {
   try {
-    await client.memory.memorizeBatch({ records: batch });
+    await client.memory.save({ shape: 'shortform', items: batch });
   } catch (err) {
     if (err.status === 429) {
       const waitMs = (err.retryAfterSeconds || 60) * 1000;
       await new Promise(r => setTimeout(r, waitMs));
       // Retry this batch
-      await client.memory.memorizeBatch({ records: batch });
+      await client.memory.save({ shape: 'shortform', items: batch });
     }
   }
 }
@@ -323,7 +262,7 @@ async function processWithConcurrency<T>(
 }
 
 await processWithConcurrency(batches, async (batch) => {
-  await client.memory.memorizeBatch({ records: batch, tier: 'pro' });
+  await client.memory.save({ shape: 'shortform', items: batch, options: { tier: 'pro' } });
 }, 3);  // max 3 concurrent batches
 ```
 
@@ -337,14 +276,14 @@ For 10K+ items, use a durable pipeline with retries:
 // trigger.dev pipeline (simplified)
 export const batchSync = task({
   id: 'batch-sync',
-  run: async (payload: { records: BatchMemorizeRecord[] }) => {
-    const chunks = chunk(payload.records, 50);
+  run: async (payload: { items: SaveRequest[] }) => {
+    const chunks = chunk(payload.items, 25);
 
     for (const [i, batch] of chunks.entries()) {
-      await client.memory.memorizeBatch({
-        records: batch,
-        tier: 'pro',
-        source: 'Pipeline Sync',
+      await client.memory.save({
+        shape: 'shortform',
+        items: batch,
+        options: { tier: 'pro' },
       });
       logger.info(`Processed chunk ${i + 1}/${chunks.length}`);
     }
@@ -359,11 +298,9 @@ See the `code-pipelines` skill for full pipeline patterns with error handling, p
 
 ## Best Practices
 
-1. **Separate entity types**: Never mix Contact (email) and Company (website_url) records in the same batch.
-2. **Use records shorthand**: It handles mapping, collection resolution, and entity type inference automatically.
-3. **Set a source label**: Helps track where data came from in analytics.
-4. **Use dryRun first**: Validate large batches before committing.
-5. **Chunk at 50-100**: Optimal balance between throughput and error granularity.
-6. **Include speaker for transcripts**: Enables coreference resolution (pronouns to names).
-7. **Use extractionPrompt for focus**: Guides the AI on what to prioritize during extraction.
-8. **Monitor credits**: Each memorize operation costs credits based on tier (basic=1, pro=2, ultra=5).
+1. **Separate entity types**: Never mix Contact (email) and Company (websiteUrl) items in the same batch.
+2. **Address every item**: Use `record` (sync) or top-level `email`/`websiteUrl`/`recordId` (async/bulk) to identify the target record for each item.
+3. **`dryRun` is not a trial run for content saves**: content extraction and writes always happen, and credits are charged. `dryRun` is batch-level only: `save({ shape:'shortform', items, options:{ dryRun } })` only skips the separate verbatim `properties` write. For a real trial run, use `upsert`/`import` with `options.dryRun`.
+4. **Chunk at 25**: Maximum sync items per call (`saveSyncMax` default); smaller chunks give finer error granularity.
+5. **Use extractionPrompt for focus**: Guides the AI on what to prioritize during extraction.
+6. **Monitor credits**: Each save operation costs credits based on tier by tier and content tokens; see the pricing page (set in batch `options.tier`).

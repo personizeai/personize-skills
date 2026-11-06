@@ -191,7 +191,7 @@ When the token budget (default: 8,000 in MCP, 10,000 via API) is exceeded, lower
 - Shorter, focused guidelines survive budget cuts
 - A 2,000-word guideline competes poorly against three 500-word focused ones
 - Section-level delivery means a long guideline might only deliver 1-2 matched sections anyway
-- Demoted guidelines can be fetched on demand via `guideline_read(guidelineId, header)`
+- Demoted guidelines can be fetched on demand via `memory_retrieve` (`mode=fetch` with `fetch.documentIds` and `fetch.includeContent`) with the guidelineId and header
 
 ---
 

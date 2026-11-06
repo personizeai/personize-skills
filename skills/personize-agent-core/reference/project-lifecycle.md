@@ -75,7 +75,7 @@ Goal: Verify everything works before going live.
 
 Steps:
 1. Dry-run ingest on 5 real records -- verify extraction quality
-2. Recall test: smartRecall on each test record, verify results
+2. Recall test: memory_retrieve on each test record, verify results
 3. Generate test: ai.prompt on one record, verify governance is applied
 4. Notification test (if applicable): trigger one event, verify delivery
 5. Credit check: confirm actual credits match estimate
@@ -95,7 +95,7 @@ Data to read every session:
 | Agent notes | guideline `{project}:agent-notes` | Session start |
 | Recent errors | workspace timeline (last 24h) | Session start |
 | Credit balance | analytics.credits() | Before large ops |
-| Governance rules | ai_smart_guidelines() | Before generating |
+| Governance rules | memory_retrieve(mode='scout', message='<task or rule topic>', sources={documents:true, memories:false}) | Before generating |
 
 Operating loop:
 1. Read workspace for pending tasks
@@ -127,11 +127,11 @@ Schema migration rule: adding properties is safe. Removing or renaming propertie
 
 Every session on an existing project begins with these reads (in order):
 
-1. `personize_context` -- discover org, collections, capabilities
-2. `smartRecall` about:"self" -- recall previous learnings
+1. `personize_md` -- discover org, collections, capabilities
+2. `memory_retrieve` about:"self" -- recall previous learnings
 3. Read workspace `system:{project-slug}` -- pending tasks, recent timeline
 4. Read guideline `{project}:agent-notes` -- accumulated agent knowledge
-5. `ai_smart_guidelines` -- current governance rules
+5. `memory_retrieve(mode='scout', message='<task or rule topic>', sources={documents:true, memories:false})` -- current governance rules
 
 Only after completing all 5 reads: identify which mode applies.
 
@@ -158,7 +158,7 @@ Failure handling: log each failure with reason. Never silently skip. Surface pat
 **Trigger:** Human asks a question or requests analysis ("who are our top accounts?", "what did we learn from David?").
 
 Steps:
-1. Recall context (smartRecall or memory_digest)
+1. Recall context (memory_retrieve(mode='brief'))
 2. Check governance for relevant constraints
 3. State confidence and evidence count (MUST NOT fabricate)
 4. Answer with citations (record IDs or memory IDs)

@@ -67,7 +67,7 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `client.guidelines.delete(id)` | `guideline_delete(guidelineId)` | Delete guideline |
 | `client.guidelines.history(id)` | `guideline_history(guidelineId)` | View change history |
 | `client.ai.smartGuidelines({ message })` | `ai_smart_guidelines(message)` | Verify/fetch guidelines |
-| `client.context.save(opts)` | `context_save(type, instruction, material, ...)` | AI-powered bulk create/update from raw material |
+| `client.context.save(opts)` | `context_save(type, instruction, material, ...)` | AI-powered bulk create/update from raw material. With `target_ids`, default `update_mode` is `replace` (whole body); `append`/`section`/`appendToSection` available; name kept unless `name` passed |
 | `client.guidelines.uploadAttachment(id, opts)` | `guideline_attachment_upload` | Attach a file (script, config, template, etc.) to a guideline |
 | `client.guidelines.listAttachments(id)` | `guideline_attachment_list` | List all attachments on a guideline |
 | `client.guidelines.getAttachmentContent(id, attachmentId)` | `guideline_attachment_read` | Read the full content of an attachment |
