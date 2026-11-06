@@ -392,15 +392,17 @@ async function processChunks(
     const chunkNumber = i + 1;
 
     try {
-      // WHY saveBatch (content extraction): records here carry free-text `content`
-      // plus properties flagged `extractMemories: true`, so the AI extraction path is
-      // required to populate those fields. Each record keeps its own email/website_url
-      // and per-item properties. (For rows that are PURELY known structured values with
-      // no extraction needed, use client.memory.upsert() instead.)
-      const _result = await client.memory.saveBatch({
-        source: `data-import:${filePath}`,
-        tier: options.tier as any,
-        records: chunk,
+      // WHY save shape 'shortform' with items[] (content extraction): records here carry
+      // free-text `content` plus properties flagged `extractMemories: true`, so the AI
+      // extraction path is required to populate those fields. Each item keeps its own
+      // record (email/websiteUrl) and per-item properties. (For rows that are PURELY known
+      // structured values with no extraction needed, use client.memory.save with
+      // shape: 'property', one call per record.) `chunk` items carry top-level
+      // `email`/`website_url` and pass through the schema; `tier` is sent via `options.tier`.
+      const _result = await client.memory.save({
+        shape: 'shortform',
+        items: chunk as any,
+        options: { tier: options.tier as any },
       });
 
       // Track results

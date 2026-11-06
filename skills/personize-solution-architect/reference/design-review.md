@@ -26,8 +26,8 @@ A structured review of a Personize solution design -- a customer's proposed desi
 - **Ask:** "What exactly goes into the prompt at runtime -- raw records, N API calls, or a RAG dump? Where does compaction win?" · "Do multiple runs/agents re-derive the same facts about an entity? (→ shared memory + fleet)." · "Do you need exact filters, negation, or aggregation that vector RAG can't do?" See [`memory-as-business-model.md`](./memory-as-business-model.md).
 
 ### 5. Write path
-- **Good:** structured known values → `upsert`; content needing extraction → `saveBatch`; batch sizing matched to volume.
-- **Ask:** "Do you already have the field values (→ `upsert`, no extraction cost) or is this free text (→ `saveBatch`)?" · "Anything still on `memorizeBatch`? It's deprecated toward `upsert`/`saveBatch`."
+- **Good:** structured known values → `memory_save shape=property`; content needing extraction → `memory_save shape=shortform`; batch sizing matched to volume.
+- **Ask:** "Do you already have the field values (→ `memory_save shape=property`, no extraction cost) or is this free text (→ `memory_save shape=text`)?" · "Anything still on a pre-v1.1 batch call? Move it to `memory_save`."
 
 ### 6. Graph
 - **Good:** entity-to-entity connections modeled as edges (often auto-inferred from foreign-key-shaped properties), not duplicated across records.
@@ -57,7 +57,7 @@ Run these top-to-bottom on any design; each maps to a lens above:
 3. Does every property description instruct the extractor, with examples?
 4. Is compliance/brand gated BEFORE generation, not after?
 5. What goes into the prompt at runtime -- raw, RAG, or compact recall?
-6. Structured (`upsert`) or content (`saveBatch`) on the write path?
+6. Structured (`memory_save shape=property`) or content (`memory_save shape=shortform`) on the write path?
 7. Which relationships will you traverse? (graph)
 8. One looping agent or fleet dispatch at scale -- and what's the cost forecast?
 9. How do multiple agents coordinate without colliding, and where's the human gate?

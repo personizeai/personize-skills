@@ -24,7 +24,7 @@
 | PATCH | `/context/manage/:id` | Update context doc |
 | DELETE | `/context/manage/:id` | Delete context doc |
 
-> Old endpoints (`/memorize`, `/recall`, `/smart-recall-unified`, `/ai/smart-docs`, `/smart-update`, etc.) remain as stable aliases. `/agentdocs/*` paths also remain as stable aliases for all `/context/*` routes.
+> Older endpoint names remain as stable aliases; see `Docs/generated/migration-table.json`. `/agentdocs/*` paths also remain as stable aliases for all `/context/*` routes.
 
 ---
 
@@ -48,19 +48,11 @@
 
 | Method | Path | Description | Key Params |
 |--------|------|-------------|------------|
-| POST | /api/v1/memorize | Store with AI extraction | content, email, tier |
-| POST | /api/v1/memorize_pro | Pro memorization (alias) | content, email, tier, schema |
-| POST | /api/v1/batch-memorize | Batch store (async) | mapping, rows, tier, source, dryRun |
-| POST | /api/v1/smart-recall | Semantic recall with reflection | query, email, mode (fast/deep), limit |
-| POST | /api/v1/smart-recall-unified | Unified retrieval (one tool for all) | message, identifiers, session_id |
-| POST | /api/v1/recall | Direct lookup (no reflection) | query, email, type, limit |
-| POST | /api/v1/search | Filter/export records | groups, type, pageSize, returnRecords |
-| POST | /api/v1/similar | Find similar records | seed, dimensions, limit |
+| POST | /api/v1.1/memory/save | Store with AI extraction or structured values (`shape`: text, property, identifiers, document; `items[]` for text/shortform/freeform/document batches only; property and identifiers writes are one call per record) | shape, record, content, properties, add, items[], tier |
+| POST | /api/v1.1/memory/retrieve | One read call (`mode`: scout, brief, expand, filter, fetch, similar) | mode, record, message, filters, fetch, seed, sources |
+| POST | /api/v1.1/memory/import | Bulk import (async) | mapping, rows, tier, source, dryRun |
 | POST | /api/v1/segment | Segment/rank audience | seed, dimensions, tiers |
-| POST | /api/v1/smart-memory-digest | Entity context digest | email, type, token_budget |
-| POST | /api/v1.1/memory/upsert | Structured create/upsert (known field values, no AI extraction; single or batch). Canonical create/upsert path | records[] |
-| POST | /api/v1/export | Export records (alias for search) | filters, format |
-| POST | /api/v1/properties | Get record properties with schema | email, type, propertyNames |
+| POST | /api/v1/export | Export records | filters, format |
 | GET | /api/v1/test | Verify API key validity | -- |
 | GET | /api/v1/me | Get user context (org, plan) | -- |
 
@@ -70,18 +62,15 @@
 
 | Method | Path | Description | Key Params |
 |--------|------|-------------|------------|
-| POST | /api/v1/memory/update | Update single property or freeform memory | recordId, propertyName, propertyValue |
-| POST | /api/v1/memory/bulk-update | Update multiple properties on a record | recordId, updates[], expectedVersion |
+| POST | /api/v1.1/memory/save | Update properties (`shape: "property"`, one call per record) | record, properties |
 | POST | /api/v1/memory/delete | Soft-delete memories (30-day recovery) | ids[], crmKeys, olderThan |
-| POST | /api/v1/memory/delete-record | Soft-delete all memories for a record | recordId, type, reason |
+| POST | /api/v1.1/memory/delete | Canonical delete: `type=record` soft-deletes all memories for a record (30-day restore); `type=identifier` deletes key aliases | type, ids, record, hard, propertyNames |
 | POST | /api/v1/memory/cancel-deletion | Cancel pending soft-delete | recordId, type |
-| POST | /api/v1/memory/property-history | Query property change history | recordId, propertyName, from, to, limit |
-| POST | /api/v1/memory/query-properties | LLM-powered search across property values | propertyName, query, type, limit |
-| POST | /api/v1/memory/filter-by-property | Deterministic property filter (no LLM) | conditions[], logic (AND/OR), limit |
-| POST | /api/v1/memory/update-keys | Add keys (standard or custom) to a record | recordId, type, keys |
-| POST | /api/v1/memory/update-keys-batch | Add keys across multiple records (max 100) | records[] |
-| POST | /api/v1/memory/list-keys | List all keys on a record | recordId, type |
-| POST | /api/v1/memory/delete-keys | Delete specific key aliases from a record | recordId, type, keys[] |
+| POST | /api/v1.1/memory/retrieve | Property history (`mode: "fetch"`, `fetch.propertyHistory`) and deterministic property filters (`mode: "filter"`) | fetch, filters |
+| POST | /api/v1.1/memory/save | Add keys (standard or custom) to records (`shape: "identifiers"`, one call per record) | record, add (`Array<{name, value}>`) |
+| POST | /api/v1.1/memory/retrieve | List all keys on a record (`mode: "fetch"`, `fetch.identifiers`) | record, fetch |
+
+Legacy (still works): `POST /api/v1/memory/delete-record` → `delete type=record`; `POST /api/v1/memory/list-keys` → `retrieve mode=fetch fetch.identifiers`; `POST /api/v1/memory/delete-keys` → `delete type=identifier`. See `Docs/generated/migration-table.json`.
 
 ---
 
@@ -120,17 +109,17 @@
 
 ### Async Bulk Context Save (v1.1 only)
 
-For seeding many context docs at once. Returns an `eventId` immediately; upserts run in a background state machine. v1-only equivalent does NOT exist — these endpoints are v1.1-exclusive.
+For seeding many context docs at once. Returns an `eventId` immediately; upserts run in a background state machine. v1-only equivalent does NOT exist - these endpoints are v1.1-exclusive.
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/v1.1/context/save/batch` | Submit async bulk save. Body: `{ defaults?: Partial<ContextSaveBatchDocument>, documents: ContextSaveBatchDocument[] }`. Returns `{ eventId, trackingId, status, estimatedCompletionWindow, itemCount }` |
-| POST | `/api/v1.1/context/save/batch/validate` | Dry-run validation of a save-batch payload — same body, no side effects |
+| POST | `/api/v1.1/context/save/batch/validate` | Dry-run validation of a save-batch payload - same body, no side effects |
 | GET | `/api/v1.1/context/save/batch/:eventId/status` | Poll batch status: `received` → `processing` → `completed` \| `partial` \| `failed` |
 
-**`ContextSaveBatchDocument` shape:** `{ id?, name?, externalId?, value, type?, aiExtraction?, tags?, categories?, recordIds? }`. The top-level `defaults` field applies to every document unless that document overrides the field — useful for bulk imports where all docs share a `type` (`playbook`, `guideline`, etc.) or tag set.
+**`ContextSaveBatchDocument` shape:** `{ id?, name?, externalId?, value, type?, aiExtraction?, tags?, categories?, recordIds? }`. The top-level `defaults` field applies to every document unless that document overrides the field - useful for bulk imports where all docs share a `type` (`playbook`, `guideline`, etc.) or tag set.
 
-**When to use:** seeding 10+ docs in one shot — initial corpus import, GitOps sync of `.md` files into context, knowledge-base migration. For 1–9 docs, the synchronous `POST /api/v1/context` is simpler — no eventId polling.
+**When to use:** seeding 10+ docs in one shot - initial corpus import, GitOps sync of `.md` files into context, knowledge-base migration. For 1–9 docs, the synchronous `POST /api/v1/context` is simpler - no eventId polling.
 
 ---
 
@@ -154,7 +143,6 @@ For seeding many context docs at once. Returns an `eventId` immediately; upserts
 | POST | /api/v1/prompt (stream:true) | Stream prompt as SSE | prompt, stream:true, streamTimeout |
 | POST | /api/v1/responses | Step-driven orchestration | steps[], tools[], model, personize |
 | POST | /api/v1/chat/completions | OpenAI-compatible chat | messages[], model, tools[], tier |
-| POST | /api/v1/ai/smart-guidelines | Smart guideline routing | message, mode (fast/deep/auto), maxContentTokens |
 
 ---
 
@@ -229,7 +217,7 @@ For seeding many context docs at once. Returns an `eventId` immediately; upserts
 
 ### Kits
 
-Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+Provision an empty org's schema + governance from a declarative kit manifest. New orgs start empty - install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
 
 | Method | Path | Description | Key Params |
 |--------|------|-------------|------------|
@@ -305,7 +293,7 @@ Direct REST calls into HubSpot or Salesforce via the org's Personize-managed OAu
 - HubSpot: `/crm/`, `/marketing/`, `/cms/`, `/automation/`, `/files/`, `/communication-preferences/`, `/properties/`, `/owners/`, `/oauth/`
 - Salesforce: `/services/data/`, `/services/apexrest/`
 
-**Response envelope:** `{ status, headers, body, meta: { provider, upstreamRequestId, durationMs, rateLimit? } }`. Personize returns HTTP 200 whenever the upstream call completes — `status` is the *upstream* HTTP code; inspect that for the provider's outcome.
+**Response envelope:** `{ status, headers, body, meta: { provider, upstreamRequestId, durationMs, rateLimit? } }`. Personize returns HTTP 200 whenever the upstream call completes - `status` is the *upstream* HTTP code; inspect that for the provider's outcome.
 
 **Error codes:** `connection_not_found`, `connection_disconnected`, `invalid_path`, `invalid_method`, `upstream_timeout` (default 30s, max `timeoutMs: 60_000`), `rate_limited`.
 
@@ -422,19 +410,7 @@ Error responses set `success: false` with `error` and `message` fields.
 These endpoints remain functional for backward compatibility but are **deprecated** and will be removed in a future major release. Use the canonical endpoints above instead.
 
 ### Memory (use /memory/save, /memory/retrieve, /memory/manage/*)
-| Old path | Canonical replacement |
-|---|---|
-| `POST /memorize` | `POST /memory/save` |
-| `POST /memorize_pro` | `POST /memory/save` |
-| `POST /recall` | `POST /memory/retrieve` |
-| `POST /recall_pro` | `POST /memory/retrieve` |
-| `POST /smart-recall` | `POST /memory/retrieve` |
-| `POST /smart-recall-unified` | `POST /memory/retrieve` |
-| `POST /smart-memory-digest` | `POST /memory/retrieve/digest` |
-| `POST /search` | `POST /memory/manage/search` |
-| `POST /export` | `POST /memory/manage/export` |
-| `POST /similar` | `POST /memory/manage/similar` |
-| `POST /segment` | `POST /memory/manage/segment` |
+Older memory endpoint names still work; see `Docs/generated/migration-table.json`.
 
 ### Context docs (use /context/save, /context/retrieve, /context/manage/*)
 | Old path | Canonical replacement |
@@ -446,7 +422,6 @@ These endpoints remain functional for backward compatibility but are **deprecate
 | `GET /guidelines/:id/structure` | `GET /context/manage/:id/structure` |
 | `GET /guidelines/:id/section` | `GET /context/manage/:id/section` |
 | `GET /guidelines/download` | `GET /context/manage/download` |
-| `POST /ai/smart-guidelines` | `POST /context/retrieve` (types: ['guideline']) |
 | `POST /ai/smart-docs` | `POST /context/retrieve` |
 | `POST /smart-update` | `POST /context/save` |
 | `GET /agentdocs` | `GET /context/manage` |

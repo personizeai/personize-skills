@@ -125,41 +125,47 @@ async function findTargetEntities(): Promise<Array<{
   const conditions = parseQueryToConditions(queryFilter);
 
   if (conditions.length > 0) {
-    // WHY filterByProperty over search: No LLM cost, deterministic results,
+    // WHY retrieve mode 'filter' over brief: No LLM cost, deterministic results,
     // faster execution. Perfect for batch operations with known criteria.
-    const result = await client.memory.filterByProperty({
-      conditions: conditions as any,
-      limit,
+    const result: any = await client.memory.retrieve({
+      mode: 'filter',
+      filters: {
+        groups: [{
+          conditions: conditions.map(c => ({ property: c.propertyName, operator: c.operator, value: c.value })),
+        }],
+        pageSize: limit,
+      },
     });
 
-    // filterByProperty returns record IDs with matched property values
-    const records = result.data?.records || [];
+    // filter mode returns record IDs with matched property values
+    const records = result.records ?? [];
     return records.map((r: any) => ({
-      recordId: r.recordId,
-      email: r.email,
-      websiteUrl: r.websiteUrl,
-      type: r.type,
+      recordId: r.record_id ?? r.recordId,
+      email: r.crm_keys?.email ?? r.email,
+      websiteUrl: r.crm_keys?.website_url ?? r.crm_keys?.websiteUrl ?? r.websiteUrl ?? r.website_url,
+      type: r.entity_type ?? r.type,
       properties: r.properties,
-    }));
+    })).filter((e: any) => e.recordId || e.email || e.websiteUrl);
   }
 
-  // No filter: use search to find recent/active entities
-  // WHY search as fallback: Without explicit conditions, we do a broad search.
-  // The query "active records" is semantic -- the AI interprets intent.
-  const result = await client.memory.search({
-    query: queryFilter || 'active records',
-    limit,
-    includeProperties: true,
+  // No filter: use retrieve (brief) to find recent/active entities
+  // WHY brief as fallback: Without explicit conditions, we do a broad semantic query.
+  // The message "active records" is semantic -- the AI interprets intent.
+  // (`limit` is not sent; cap the records locally.)
+  const result: any = await client.memory.retrieve({
+    mode: 'brief',
+    message: queryFilter || 'active records',
+    sources: { properties: true },
   });
 
-  const records = result.data?.results || result.data || [];
+  const records = result.records ?? [];
   return (Array.isArray(records) ? records : []).map((r: any) => ({
-    recordId: r.recordId,
-    email: r.email,
-    websiteUrl: r.websiteUrl,
+    recordId: r.id ?? r.record_id ?? r.recordId,
+    email: r.primaryKeys?.email ?? r.email,
+    websiteUrl: r.primaryKeys?.website_url ?? r.primaryKeys?.websiteUrl ?? r.websiteUrl,
     type: r.type,
     properties: r.properties,
-  }));
+  })).filter((e: any) => e.recordId || e.email || e.websiteUrl);
 }
 
 // =============================================================================
@@ -190,35 +196,43 @@ async function processEntity(entity: {
     // =========================================================================
     // RECALL: Pull entity context from memory
     // =========================================================================
-    // WHY smartDigest: It compiles ALL known information about an entity into a
-    // token-budgeted markdown block. Properties, memories, recent interactions --
-    // everything the AI needs to act intelligently.
-    //
-    // Alternative: smartRecall (for specific questions about an entity)
-    //   const recall = await client.memory.smartRecall({
-    //     query: 'What are this contact\'s main pain points?',
-    //     email: entity.email,
-    //     mode: 'deep',  // 'fast' for speed, 'deep' for thorough answer
-    //   });
-    //
-    // WHY digest over recall here: We need the FULL picture, not answers to
-    // specific questions. The action step will decide what matters.
+    // WHY retrieve mode 'scout' with compile: true: for a record target it returns that
+    // record's properties + observations compiled into documents.compiledContext.
+    // (mode 'brief' without compile/synthesize returns org docs, not the record's context.)
+    // compile requires a record target, so the org-wide fallback below stays 'brief'
+    // without compile and builds context from records / tier1 text instead.
 
-    const digestPayload: any = { maxTokens: 2000 };
+    const digestPayload: any = {
+      mode: 'scout',
+      compile: true,
+      message: 'everything known about this entity',
+    };
 
     // WHY we scope by identity: Without scoping, you get org-wide results.
     // With scoping, you get everything about THIS specific entity.
     if (entity.email) {
-      digestPayload.email = entity.email;
+      digestPayload.record = { email: entity.email };
     } else if (entity.websiteUrl) {
-      digestPayload.websiteUrl = entity.websiteUrl;
+      digestPayload.record = { websiteUrl: entity.websiteUrl };
     } else if (entity.recordId) {
-      digestPayload.recordId = entity.recordId;
+      digestPayload.record = { id: entity.recordId };
+    } else {
+      digestPayload.mode = 'brief';
+      delete digestPayload.compile;
+      digestPayload.sources = { properties: true };
     }
 
-    const digest = await client.memory.smartDigest(digestPayload);
+    const digest: any = await client.memory.retrieve(digestPayload);
 
-    const entityContext = digest.data?.digest || digest.data?.markdown || '';
+    let entityContext: string;
+    if (digestPayload.record) {
+      entityContext = digest.documents?.compiledContext ?? '';
+    } else {
+      // No record target: never read documents.compiledContext (org-doc text).
+      const tier1Text = (digest.memories?.tier1 ?? []).map((m: any) => m?.text).filter(Boolean).join('\n');
+      const recs = digest.records ? JSON.stringify(digest.records) : '';
+      entityContext = [tier1Text, recs].filter(Boolean).join('\n');
+    }
 
     if (!entityContext || entityContext.length < 20) {
       // WHY skip sparse entities: If we have almost no context, the generated
@@ -345,21 +359,18 @@ Evaluate:
     // a follow-up agent running next week will see that and can reference it.
 
     if (!dryRun) {
-      const memorizePayload: any = {
-        content: `Action performed: ${action}\nDate: ${new Date().toISOString()}\nResult:\n${output.substring(0, 2000)}`,
-        type: entity.type || 'Record',
-        tags: ['agent-action', action],
-        tier: 'basic',  // WHY basic: We are storing a known output, not mining insights.
-                        // Basic tier stores it fast and cheap. Use 'pro' only when
-                        // the content needs AI extraction.
+      const savePayload: any = {
+        shape: 'text',
+        content: `Action performed: ${action}\nDate: ${new Date().toISOString()}\nTags: agent-action, ${action}\nResult:\n${output.substring(0, 2000)}`,
+        record: { entityType: entity.type || 'Record' },
       };
 
-      // Scope the memorize to the same entity
-      if (entity.email) memorizePayload.email = entity.email;
-      else if (entity.websiteUrl) memorizePayload.website_url = entity.websiteUrl;
-      else if (entity.recordId) memorizePayload.record_id = entity.recordId;
+      // Scope the save to the same entity
+      if (entity.email) savePayload.record.email = entity.email;
+      else if (entity.websiteUrl) savePayload.record.websiteUrl = entity.websiteUrl;
+      else if (entity.recordId) savePayload.record.id = entity.recordId;
 
-      await client.memory.memorize(memorizePayload);
+      await client.memory.save(savePayload);
     }
 
     return {
@@ -388,7 +399,7 @@ Evaluate:
 // 40 concurrent API calls, which will hit rate limits immediately.
 //
 // WHY 1 credit per recall matters: If you have 100 credits and process 100 entities
-// with smartDigest (1 credit each) + responses.create (varies by model), you could
+// with retrieve (brief) + responses.create (varies by model), you could
 // exhaust your balance mid-run. Always check balance before large batch operations.
 
 async function main() {
@@ -397,7 +408,12 @@ async function main() {
     // WHY check first: Running 100 entities and failing at entity 50 because
     // credits ran out wastes time and leaves the job half-done.
     const creditsResult = await client.analytics.credits();
-    const balance = creditsResult.data?.balance ?? creditsResult.data?.credits ?? 0;
+    const rawBalance = creditsResult.data?.balance !== undefined
+      ? creditsResult.data.balance
+      : (creditsResult.data?.credits ?? 0);
+    // null = unknown balance: skip the sufficiency check
+    const balanceUnknown = rawBalance === null;
+    const balance = rawBalance as number;
 
     // Rough estimate: each entity costs ~3 credits (digest + guidelines + generate)
     const estimatedCost = limit * 3;
@@ -408,12 +424,15 @@ async function main() {
       query: queryFilter || '(no filter)',
       limit,
       dryRun,
-      creditBalance: balance,
+      creditBalance: balanceUnknown ? null : balance,
       estimatedCost,
-      sufficient: balance >= estimatedCost,
+      sufficient: balanceUnknown ? null : balance >= estimatedCost,
+      ...(balanceUnknown ? { balanceUnknown: true } : {}),
     }));
 
-    if (balance < estimatedCost && !dryRun) {
+    if (balanceUnknown) {
+      console.error(JSON.stringify({ warning: 'Credit balance unknown; skipping sufficiency check.' }));
+    } else if (balance < estimatedCost && !dryRun) {
       console.error(JSON.stringify({
         warning: `Credit balance (${balance}) may be insufficient for ${limit} entities (estimated ${estimatedCost} credits). Proceeding anyway -- will stop if credits run out.`,
       }));

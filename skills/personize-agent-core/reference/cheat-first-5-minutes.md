@@ -1,21 +1,20 @@
 # First 5 Minutes with Personize
 
-1. **Load platform guidance:** call `personize_skill` FIRST -- it tells you how the platform works. Without it, you will misuse tools.
-2. **Discover org state:** call `personize_context` -- reveals collections, guidelines, capabilities, credits.
-3. **Load self-memory:** `memory_recall_pro(about:"self")` -- recall previous learnings and preferences.
-4. **Check governance:** `ai_smart_guidelines` -- load active rules before acting.
-5. **Fresh org?** If collections are empty or no guidelines exist: enter setup mode. Ask user what they're building, then create collections + guidelines via tool calls. MUST NOT proceed without schema.
+1. **Bootstrap:** call `personize_md` FIRST -- it reveals collections, guidelines, capabilities, and credits. Without it, you are guessing at org state.
+2. **Load self-memory:** `memory_retrieve(about:"self")` -- recall previous learnings and preferences.
+3. **Check governance:** `memory_retrieve(mode='scout', message='<task or rule topic>', sources={documents:true, memories:false})` -- load active rules before acting.
+4. **Fresh org?** If collections are empty or no guidelines exist: enter setup mode. Ask user what they're building, then create collections + guidelines via tool calls. MUST NOT proceed without schema.
 
 ## Core Loop (every task)
-Recall (smartRecall) -> Govern (ai_smart_guidelines) -> Act -> Store (memory_save)
+Recall (memory_retrieve) -> Govern (memory_retrieve on documents) -> Act -> Store (memory_save)
 
 ## Key Distinctions
 - **Collections** = data containers with identity keys (contacts, companies, deals). Created via `collection_create`.
-- **Guidelines** = behavioral rules and policies (ICP criteria, email standards, compliance). Created via `context_save`.
+- **Guidelines** = behavioral rules and policies (ICP criteria, email standards, compliance). Created via `memory_save(shape:'document', type:'guideline', ...)`.
 - **NEVER create governance rules as collections.** ICP criteria, writing standards, playbooks, policies = guidelines.
 
 ## Top 5 Tools
-smartRecall, memory_save, memory_digest, ai_smart_guidelines, memory_upsert (structured batch; for content batches use client.memory.saveBatch() / personize_cookbook)
+memory_retrieve, memory_save, memory_delete, personize_md (structured writes use `memory_save` with `shape:"property"`; content batches use `shape:"shortform"` with `items[]`)
 
 ## Identity
 email for contacts, website_url for companies, record_id for direct refs

@@ -4,35 +4,43 @@
 
 | Tool | Description |
 |------|-------------|
-| `memory_save` | Save memories (was memory_save) |
-| `memory_retrieve` | Retrieve memories (was memory_recall_pro / smartRecall) |
-| `retrieve_unified` | **agent2_0 only** — unified retrieval replacing 6 legacy tools. Modes (what you're doing): `scout`, `brief`, `expand`, `filter`, `fetch`. Sources (where to look — toggle each): `properties`, `memories`, `documents`, `graph`, `external`. |
-| `retrieve_feedback` | **agent2_0 only** — retrieve user-private feedback and preferences |
-| `context_retrieve` | Find relevant docs (was ai_smart_docs / agentdocs_retrieve) |
-| `context_save` | Evolve docs with AI (was governance_smart_update / agentdocs_save) |
-| `context_manage_create` | Create context doc (was context_save / agentdocs_manage_create) |
-| `context_manage_list` | List context docs (was guideline_list / agentdocs_manage_list) |
+| `memory_save` | Save memories with AI extraction |
+| `memory_retrieve` | The only read. Modes (what you're doing): `scout`, `brief`, `expand`, `filter`, `fetch`. Sources (where to look - toggle each): `properties`, `memories`, `documents`, `graph`, `external`. |
+| `memory_feedback` | Rates a past retrieve (by `retrievalId`) |
+| `context_retrieve` | Find relevant docs by type/message (superseded a since-renamed pre-v1.1 governance-retrieval tool) |
+| `context_save` | Evolve docs with AI |
+| `context_manage_create` | Create context doc |
+| `context_manage_list` | List context docs (superseded a since-renamed pre-v1.1 guideline-listing tool) |
 
 ---
 
+## Core tools
 
+Five tools make up the core list. Tiers come from the tool catalog (`tool-catalog.ts`): `read` tools only read, `agent` tools also write or delete.
+
+| Tool | Tier | Role |
+|------|------|------|
+| `personize_md` | read | Orientation README: org identity, collections, doc index, routing rules |
+| `memory_retrieve` | read | The only read |
+| `memory_feedback` | read | Rates a past retrieve (by `retrievalId`) |
+| `memory_save` | agent | The only write: `text`, `property`, `document`, `identifiers`; `items[]` only for shortform/freeform/document batches |
+| `memory_delete` | agent | The only destructive call |
+
+Older tool names still work; see `Docs/generated/migration-table.json` (and the legacy-translation table under Memory CRUD).
+
+---
 
 | Category | Tools | Profile |
 |----------|-------|---------|
-| Unified Recall | smartRecall | agent, agent-readonly, developer |
-| Memory Core | memory_save, memory_recall_pro, memory_digest | agent, developer |
-| Memory Search | memory_search | agent, agent-readonly, developer |
-| Memory Similarity | memory_similarity, memory_batch | agent, developer |
-| Memory CRUD | memory_update_property, memory_update_keys, memory_list_keys, memory_delete_keys | agent, developer |
-| Memory Properties | memory_get_properties | agent, agent-readonly, developer |
-| Governance | ai_smart_guidelines, ai_smart_docs, guideline_list, guideline_read, context_save, guideline_update, guideline_delete | governance, developer |
-| Attachments | guideline_attachment_list, guideline_attachment_read, context_attachment_upload, guideline_attachment_delete | governance, developer |
+| Memory Core | memory_save, memory_retrieve, memory_delete, memory_feedback | agent, developer |
+| Governance | context_retrieve, context_manage_list, context_manage_read, context_save, context_manage_update, context_manage_delete | governance, developer |
+| Attachments | context_attachment_list, context_attachment_read, context_attachment_upload, context_attachment_delete | governance, developer |
 | Collections | collection_list, collection_create, collection_update, collection_delete, collection_history | developer |
-| Platform | organization_list, organization_create, member_list, member_invite, entity_type_list, entity_type_update | developer |
+| Platform | organization_get, organization_create, members_list, members_invite, entity_type_get, entity_type_update | developer |
 | MCPs + Destinations | mcp_list, mcp_create, destination_list, destination_create | developer |
 | Analytics | analytics_overview | developer |
 | Notifications | notification_send, notification_list | developer |
-| Context | personize_context, personize_skill | developer |
+| Context | personize_md, personize_cookbook | developer |
 
 ---
 
@@ -40,7 +48,7 @@
 
 | Profile | Description |
 |---------|-------------|
-| **agent2_0** | **5-tool surface: `retrieve_unified`, `retrieve_feedback`, `memory_save`, `personize_cookbook`, `personize_md`. Consolidated for agentic workflows. Use this for new integrations.** |
+| **agent2_0** | Consolidated surface for agentic workflows, built on the canonical tools `memory_retrieve`, `memory_feedback` and `memory_save` plus `personize_cookbook` and `personize_md`. |
 | agent | Memory read/write + SmartContext (read-only). Legacy full-surface profile. |
 | agent-readonly | Memory read + SmartContext. Zero mutations. |
 | governance | Governance CRUD + SmartContext. No memory tools. |
@@ -48,13 +56,13 @@
 
 ---
 
-## agent2_0 — Unified Retrieval
+## Unified Retrieval
 
-### `retrieve_unified`
-**Profile:** agent2_0 only
+### `memory_retrieve`
+**Tier:** read (the only read). The old names `retrieve_unified` and `retrieve_feedback` are legacy translations to `memory_retrieve` and `memory_feedback` (`tool-catalog.ts:95,105`).
 **Endpoint:** `POST /api/v1.1/memory/retrieve` (API-key) / `POST /api/v1/retrieve` (gateway). Server-gated by `FEATURE_UNIFIED_RETRIEVE_V1`; older servers return 404.
 
-Single retrieval tool replacing `memory_search`, `memory_filter_by_property`, `memory_retrieve`, `memory_find_similar`, `memory_get_properties`, `context_retrieve`, and `memory_segment`.
+Single retrieval tool covering filter, scout, brief, expand and fetch (including documents, property history and `fetch.identifiers`).
 
 **Mental model: `mode` × `sources`.** `mode` is *what you're doing*; `sources` is *where to look*. They compose independently.
 
@@ -67,25 +75,27 @@ Single retrieval tool replacing `memory_search`, `memory_filter_by_property`, `m
 | filters | object | conditional | For `mode='filter'`. Shape: `{ groups: [{ logic: 'AND'|'OR', conditions: [{property, operator, value}] }], page, pageSize, sortOrder, countOnly, listAll, crmFilter }`. 17 operators: `EQ`, `NEQ`, `CONTAINS`, `NOT_CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `GT`, `GTE`, `LT`, `LTE`, `BETWEEN`, `NOT_BETWEEN`, `IN`, `NOT_IN`, `IS_SET`, `IS_NOT_SET`, `IS_EMPTY`, `EXISTS`, `NOT_EXISTS`. |
 | fetch | object | conditional | For `mode='fetch'`. Sub-keys: `memoryIds[]` (max 100), `documentIds[]`, `edgeIds[]`, `attachmentIds[]`, `propertyNames: [{recordId, names[]}]` (max 20), `propertyHistory: [{recordId, propertyName, limit?, since?, until?}]`. Combine any sub-types in one call. |
 | sources | object | no | Toggle each source on/off: `{ properties, memories, documents, graph, external }`. Defaults vary per mode (see below). |
-| intent | object | no | `{ raw, bucket, perSource: { memories:{limit,offset}, documents:{limit,offset,types[],tags[]}, graph:{limit,offset}, external:{connectionNames[],topK} } }`. `intent.raw` drives `suggestedNext`. `perSource` caps each source independently — e.g. `documents.types: ['guideline','playbook']` narrows to specific doc types; `external.connectionNames: ['pinecone-prod']` targets specific external RAGs. |
+| intent | object | no | `{ raw, bucket, perSource: { memories:{limit,offset}, documents:{limit,offset,types[],tags[]}, graph:{limit,offset}, external:{connectionNames[],topK} } }`. `intent.raw` drives `suggestedNext`. `perSource` caps each source independently - e.g. `documents.types: ['guideline','playbook']` narrows to specific doc types; `external.connectionNames: ['pinecone-prod']` targets specific external RAGs. |
 | budget | object | no | `{ totalTokens (≤50K), allocation: {source: weight 0-1} }`. Token cap for brief synthesis. Defaults: properties=0.1, memories=0.35, documents=0.3, graph=0.05, external=0.2. Empty sources auto-redistribute. |
 | chatHistory | array | no | Last 6 turns passed to brief synthesizer for multi-turn context. Caller redacts PII. |
-| sessionId | uuid | no | Reuse an existing session. Most callers don't set this — scout/brief auto-create sessions. |
+| sessionId | uuid | no | Reuse an existing session. Most callers don't set this - scout/brief auto-create sessions. |
 | resetEvery | int | no | After this many `expand` calls, session offsets reset to 0 (default 10). 0 = never. |
 | synthesize | bool \| `'deferred'` | no | Brief mode only. `'deferred'` returns scout immediately (202); poll `GET /api/v1.1/memory/retrieve/:retrievalId/synthesis` for the answer. |
 | qualityTier | enum | no | Brief mode only: `basic`, `pro`, `ultra`. |
 
 **Modes** (what you're doing):
 
-| Mode | Replaces | Use when |
-|------|----------|----------|
-| `scout` (default) | `memory_retrieve` + `memory_search` + `memory_find_similar` | Cheap multi-source aggregation. "What do we know about sarah@acme-corp.io?" |
-| `brief` | *(new)* | LLM-synthesized natural-language answer over retrieved context. "What's John's budget? Give me the answer." |
-| `expand` | *(new)* | Paginate a prior scout/brief session via `continueFrom`. "Tell me more from where I left off." |
-| `filter` | `memory_filter_by_property` + `memory_segment` | Deterministic SQL-like queries (17 operators, AND/OR groups, pagination). "All CTOs in healthcare > 100." |
-| `fetch` | `memory_get_properties` + direct ID lookups | When you already have IDs (memory/doc/edge/attachment) or specific property names on a record. |
+| Mode | Use when |
+|------|----------|
+| `scout` (default) | Cheap multi-source aggregation. "What do we know about sarah@acme-corp.io?" |
+| `brief` | LLM-synthesized natural-language answer over retrieved context. "What's John's budget? Give me the answer." |
+| `expand` | Paginate a prior scout/brief session via `continueFrom`. "Tell me more from where I left off." |
+| `filter` | Deterministic SQL-like queries (17 operators, AND/OR groups, pagination). "All CTOs in healthcare > 100." |
+| `fetch` | When you already have IDs (memory/doc/edge/attachment) or specific property names on a record. |
 
-**Sources** (where to look — independent on/off toggles):
+There is no `mode: "similar"` on MCP retrieve. Lookalike search is REST/SDK `retrieve` with `mode=similar`.
+
+**Sources** (where to look - independent on/off toggles):
 
 | Source | Default behavior | What it returns |
 |---|---|---|
@@ -97,15 +107,15 @@ Single retrieval tool replacing `memory_search`, `memory_filter_by_property`, `m
 
 **Defaults per mode:** scout = all sources on. brief = all on except graph. filter = properties only. fetch = nothing automatically (you specify in `fetch`).
 
-**RGAS loop for agent2_0 — call `retrieve_unified` TWICE per turn when both memory and governance are needed.** Same tool, same mode, different `sources` toggles:
+**RGAS loop - call `memory_retrieve` TWICE per turn when both memory and governance are needed.** Same tool, same mode, different `sources` toggles:
 
 1. **Recall (memory):**
    ```
-   retrieve_unified(mode='scout', record={email: '...'})
+   memory_retrieve(mode='scout', record={email: '...'})
    ```
 2. **Govern (documents only):**
    ```
-   retrieve_unified(
+   memory_retrieve(
        mode='scout',
        message='<task description>',
        sources={documents: true, memories: false},
@@ -117,14 +127,14 @@ Single retrieval tool replacing `memory_search`, `memory_filter_by_property`, `m
 
 | You want… | Call |
 |---|---|
-| "What do we know about John?" | `retrieve_unified(mode='scout', record={email: 'john@acme.com'})` |
-| LLM-synthesized answer | `retrieve_unified(mode='brief', message='What's his budget?', record={email: 'john@acme.com'})` |
-| Governance for a task | `retrieve_unified(mode='scout', message='<task>', sources={documents: true, memories: false}, intent={perSource: {documents: {types: ['guideline','playbook']}}})` |
-| Graph traversal | `retrieve_unified(mode='scout', record={id: '...'}, sources={graph: true})` |
-| Property values on a record | `retrieve_unified(mode='fetch', fetch={propertyNames: [{recordId: '...', names: ['Status','Budget']}]})` |
-| Deterministic filter | `retrieve_unified(mode='filter', filters={groups: [{conditions: [{property: 'title', operator: 'CONTAINS', value: 'CTO'}]}]})` |
-| Paginate prior session | `retrieve_unified(mode='expand', continueFrom=<state.sessionId>)` |
-| Multi-source incl. external RAG | `retrieve_unified(mode='brief', message=..., record={email:...}, sources={memories:true, documents:true, external:true}, intent={perSource:{external:{connectionNames:['pinecone-prod']}}})` |
+| "What do we know about John?" | `memory_retrieve(mode='scout', record={email: 'john@acme.com'})` |
+| LLM-synthesized answer | `memory_retrieve(mode='brief', message='What's his budget?', record={email: 'john@acme.com'})` |
+| Governance for a task | `memory_retrieve(mode='scout', message='<task>', sources={documents: true, memories: false}, intent={perSource: {documents: {types: ['guideline','playbook']}}})` |
+| Graph traversal | `memory_retrieve(mode='scout', record={id: '...'}, sources={graph: true})` |
+| Property values on a record | `memory_retrieve(mode='fetch', fetch={propertyNames: [{recordId: '...', names: ['Status','Budget']}]})` |
+| Deterministic filter | `memory_retrieve(mode='filter', filters={groups: [{conditions: [{property: 'title', operator: 'CONTAINS', value: 'CTO'}]}]})` |
+| Paginate prior session | `memory_retrieve(mode='expand', continueFrom=<state.sessionId>)` |
+| Multi-source incl. external RAG | `memory_retrieve(mode='brief', message=..., record={email:...}, sources={memories:true, documents:true, external:true}, intent={perSource:{external:{connectionNames:['pinecone-prod']}}})` |
 
 **Pagination loop:**
 1. Call `mode='scout'` or `'brief'` → response includes `state.sessionId`.
@@ -132,40 +142,16 @@ Single retrieval tool replacing `memory_search`, `memory_filter_by_property`, `m
 3. Repeat until `state.exhausted.memories=true` (or whichever source you care about).
 4. After `resetEvery` calls (default 10), session auto-resets and the next call starts from the beginning.
 
-When to paginate (don't paginate reflexively — adds cost and latency):
+When to paginate (don't paginate reflexively - adds cost and latency):
 - Task says "all / everything / full history / comprehensive" AND `state.exhausted.memories=false` → expand once more.
 - Simple lookups ("what's John's title?") → 25 items is enough, don't expand.
 
 ---
 
-### `retrieve_feedback`
-**Profile:** agent2_0 only
+### `memory_feedback`
+**Tier:** read
 
-Retrieve user-private feedback and preference memories (self-scoped). Equivalent to `memory_retrieve(about='self')` on the legacy surface.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| query | string | no | Natural language query to narrow feedback |
-
----
-
-## Unified Recall
-
-### `smartRecall`
-**Profile:** agent, agent-readonly, developer
-
-ONE tool that replaces 9 individual memory tools. Describe what you need in natural language -- the server classifies intent, builds an execution plan, queries all data sources, and returns structured results.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| message | string | yes | Natural language query describing what you need |
-| identifiers | object | no | `{ emails?: string[], websites?: string[], record_ids?: string[] }` |
-| type | string | no | Entity type filter (Contact, Company, etc.) |
-| session_id | string | no | Session ID for follow-up queries (pronouns resolve) |
-| output_format | string | no | 'structured' or 'narrative' |
-| limit | number | no | Max results |
-
-**Supported intents:** filter, recall, count, similar, segment, compare, analyze, browse, aggregate.
+Rates a past `memory_retrieve` call (by `retrievalId`). Legacy name `retrieve_feedback` translates to `memory_feedback`.
 
 ---
 
@@ -193,151 +179,36 @@ Save memories with AI-powered extraction. Extracts structured properties and sem
 | custom_key_name | string | no | Custom key field name |
 | custom_key_value | string | no | Custom key value |
 
-### `memory_upsert`
-**Profile:** agent, developer
+For structured writes with no AI extraction (known field values), use `memory_save` with `shape=property`, one call per record. `items[]` carries only shortform, freeform and document batches.
 
-Structured create/upsert — write known field values directly to records with NO AI extraction. Canonical create/upsert path; single or batch. Use this instead of `memory_save` when you already have the property values and don't need them extracted from free text.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| records | array | yes | Records to create/upsert. Each: `{ email \| website_url \| record_id \| custom_key, type?, properties: {name: value} }` |
-| type | string | no | Default entity type applied to records that omit their own |
-
-### `memory_recall_pro`
-**Profile:** agent, developer
-
-Semantic recall with optional reflection and answer generation.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| query | string | yes | Natural language query |
-| email | string | no | Scope to contact |
-| website_url | string | no | Scope to company |
-| mode | string | no | 'fast' (~500ms) or 'deep' (~10-20s) |
-| limit | number | no | Max results (default: 10) |
-| type | string | no | Entity type |
-| generate_answer | boolean | no | Generate synthesized answer |
-| group_by_record | boolean | no | Group results by record |
-
-### `memory_digest`
-**Profile:** agent, developer
-
-Get compiled context digest for an entity. Token-budgeted markdown.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| email | string | conditional | Contact email (or website_url) |
-| website_url | string | conditional | Company website |
-| token_budget | number | no | Max tokens (default: 1000) |
-| type | string | no | Entity type |
-| include_properties | boolean | no | Include structured properties (default: true) |
-| include_memories | boolean | no | Include freeform memories (default: true) |
-
----
-
-## Memory Search
-
-### `memory_search`
-**Profile:** agent, agent-readonly, developer
-
-Filter and search records by property conditions.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| type | string | no | Entity type |
-| groups | array | no | Filter groups with conditions |
-| query | string | no | Semantic search (routes to smartRecall) |
-| page_size | number | no | Results per page (max: 200) |
-| return_records | boolean | no | Include property values |
-| include_memories | boolean | no | Include freeform memories |
-
----
-
-## Memory Similarity
-
-### `memory_similarity`
-**Profile:** agent, developer
-
-Find records similar to a seed record.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| seed_email | string | conditional | Seed record email |
-| seed_record_id | string | conditional | Seed record ID |
-| dimensions | string[] | no | Comparison dimensions |
-| limit | number | no | Max results |
-
-### `memory_batch` — not a live MCP tool
-> `memory_batch_store` / `memory_batch_validate` are NOT exposed as MCP tools. For structured create/upsert (single or batch), use `memory_upsert`. For content batch (AI extraction over many records), use the SDK `client.memory.saveBatch()`.
-
-Batch memorize multiple records.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| records | array | yes | Array of records to memorize |
-| tier | string | no | Extraction tier |
-| source | string | no | Source system label |
+### `memory_retrieve(mode='brief')`
+See the `memory_retrieve` section above for the full parameter set. Gets an LLM-synthesized, token-budgeted digest for an entity.
 
 ---
 
 ## Memory CRUD
 
-### `memory_update_property`
-Update a single property on a record. Supports set, array push/remove/patch.
+Single-property updates go through `memory_save` (`shape=property`, one call per record). Content batches over many records use the SDK `client.memory.save({ shape: 'shortform', items: [...] })` or `personize_cookbook`.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| record_id | string | yes | Target record |
-| property_name | string | yes | Property to update |
-| property_value | any | conditional | New value (or use array ops) |
-| array_push | object | no | `{ items: any[], unique?: boolean }` |
-| array_remove | object | no | `{ items?: any[], indices?: number[] }` |
+Key management and property reads use the canonical tools. The old tool names are legacy translations (`tool-catalog.ts`):
 
-### `memory_update_keys`
-Add keys (standard or custom) to a record.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| record_id | string | conditional | Target record (or email/websiteUrl) |
-| type | string | yes | Entity type |
-| keys | object | yes | Key:value pairs to register |
-
-### `memory_list_keys`
-List all keys on a record.
-
-### `memory_delete_keys`
-Delete specific key aliases. Blocks if it would leave zero aliases.
-
-### `memory_get_properties`
-Get record properties with collection schema descriptions.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| email | string | conditional | Contact email |
-| record_id | string | conditional | Record ID |
-| type | string | no | Entity type |
-| non_empty | boolean | no | Only return non-empty properties |
+| Legacy name (still works) | Canonical |
+|---|---|
+| `update_keys` | `memory_save shape=identifiers` (`record`, `add: [{name, value}]`), one call per record |
+| `list_keys` | `memory_retrieve mode=fetch fetch.identifiers` |
+| `delete_keys` | `memory_delete` (`type=identifier`); blocks if it would leave zero aliases |
+| `memory_get_properties` | `memory_retrieve mode=fetch` (`fetch.propertyNames`) |
+| `retrieve_unified` | `memory_retrieve` |
+| `retrieve_feedback` | `memory_feedback` |
 
 ---
 
 ## Governance
 
-### `ai_smart_guidelines`
+### `context_retrieve`
 **Profile:** all profiles
 
-Smart guideline routing. Selects relevant guidelines for a task.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| message | string | yes | Task/context description |
-| mode | string | no | 'fast' (~200ms), 'deep' (~3s), 'auto' |
-| tags | string[] | no | Filter by tags |
-| max_content_tokens | number | no | Token budget (default: 10000) |
-
-### `ai_smart_docs`
-**Profile:** all profiles
-
-Retrieve type-filtered Context Docs (guidelines, playbooks, references, templates, briefs). Use this instead of `ai_smart_guidelines` when you need non-guideline doc types.
+Smart guideline/context-doc routing. Selects relevant guidelines (and, with `types`, other Context Doc types) for a task.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -353,12 +224,12 @@ When retrieving guidelines you'll act on, use `match='strict'` -- it returns onl
 
 ---
 
-### `guideline_list`
-List all organizational guidelines. Returns name, id, tags, content, governanceScope.
+### `context_manage_list`
+List all organizational guidelines/context docs. Returns name, id, tags, content, governanceScope.
 
-> Also accepts an `contextDocType` parameter to filter by doc type: guideline, playbook, reference, template, brief.
+> Also accepts a `contextDocType` / `agentDocType` parameter to filter by doc type: guideline, playbook, reference, template, brief.
 
-### `guideline_read`
+### `context_manage_read`
 Read guideline structure (headings) or a specific section.
 
 | Parameter | Type | Required | Description |
@@ -377,7 +248,7 @@ Create a new guideline or context doc.
 | tags | string[] | no | Tags for routing |
 | contextDocType | string | no | Doc type: guideline (default), playbook, reference, template, brief |
 
-### `guideline_update`
+### `context_manage_update`
 Update a guideline. Supports replace, append, section, appendToSection modes.
 
 | Parameter | Type | Required | Description |
@@ -387,17 +258,17 @@ Update a guideline. Supports replace, append, section, appendToSection modes.
 | update_mode | string | no | replace, append, section, appendToSection |
 | section_header | string | no | Target section (for section modes) |
 
-### `guideline_delete`
+### `context_manage_delete`
 Delete a guideline by ID.
 
 ---
 
 ## Attachments
 
-### `guideline_attachment_list` -- List attachments for a guideline
-### `guideline_attachment_read` -- Get attachment metadata + download URL
+### `context_attachment_list` -- List attachments for a guideline
+### `context_attachment_read` -- Get attachment metadata + download URL
 ### `context_attachment_upload` -- Upload a new attachment (multipart)
-### `guideline_attachment_delete` -- Delete an attachment
+### `context_attachment_delete` -- Delete an attachment
 
 ---
 
@@ -413,11 +284,11 @@ Delete a guideline by ID.
 
 ## Platform
 
-### `organization_list` -- Get current organization
+### `organization_get` -- Get current organization
 ### `organization_create` -- Create new organization
-### `member_list` -- List all members
-### `member_invite` -- Invite members by email
-### `entity_type_list` -- List all entity types
+### `members_list` -- List all members
+### `members_invite` -- Invite members by email
+### `entity_type_get` -- Get one entity type by ID (no MCP tool lists all entity types)
 ### `entity_type_update` -- Update entity type display name/icon
 ### `mcp_list` -- List MCP servers
 ### `mcp_create` -- Create MCP server
@@ -428,16 +299,16 @@ Delete a guideline by ID.
 
 ## Context & Skills
 
-### `personize_context`
-Bootstrap context. Returns registered tools, org info, and usage guidance.
+### `personize_md`
+Bootstrap context. Returns org identity, collections, guidelines index, routing rules, session phase, and handoffs.
 
-### `personize_skill`
-Execute a skill by name. Skills provide specialized domain capabilities.
+### `personize_cookbook`
+Score platform guidance against the current task and return relevant sections + attachment previews.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| skill_name | string | yes | Skill to execute |
-| args | object | no | Skill arguments |
+| message | string | yes | Task/question description |
+| focus | string | no | Narrow to a specific guideline or topic |
 
 ---
 
@@ -497,13 +368,13 @@ List execution history for one schedule (paginated). Use when you don't have des
 
 ## Kits
 
-Provision an empty org's schema + governance from a declarative manifest. New orgs start empty — install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
+Provision an empty org's schema + governance from a declarative manifest. New orgs start empty - install a kit to seed collections, entity types, and guidelines in one shot. Built-in kits: `personize-starter`, `engineering-memory`.
 
 ### `kits_list`
 List available kits (built-in + custom). Returns kit id, name, description, and what it provisions.
 
 ### `kits_install`
-Install a kit into the current org. Async — returns an `installId` to poll.
+Install a kit into the current org. Async - returns an `installId` to poll.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

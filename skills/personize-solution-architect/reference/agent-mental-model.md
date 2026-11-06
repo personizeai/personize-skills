@@ -103,20 +103,20 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 
 | Affordance | MCP | SDK | HTTP | CLI |
 |---|---|---|---|---|
-| Find (semantic) | `memory_search` | `client.memory.search({ query, limit? })` | `POST /api/v1/memory/search` | `personize memory search "<query>"` |
-| Find (structured) | `memory_filter_by_property` | `client.memory.filterByProperty({ filters })` | `POST /api/v1/memory/filter` | `personize memory filter --property=<name> --value=<val>` |
+| Find (broad filter) | `memory_retrieve` with `mode='filter'` | `client.memory.retrieve({ mode: 'filter', filters })` | `POST /api/v1.1/memory/retrieve` | `personize retrieve filter` |
+| Find (structured) | `memory_retrieve` with `mode='filter'` | `client.memory.retrieve({ mode: 'filter', filters })` | `POST /api/v1.1/memory/retrieve` | `personize retrieve filter` |
 | Find (direct) | `memory_retrieve` | `client.memory.retrieve({ email })` | `GET /api/v1/memory/:key` | `personize memory get --email=<email>` |
-| View | **(composite)** `memory_retrieve` + `memory_get_properties` + `context_attachment_list` | (composite -- see section 5) | (composite) | (composite) |
-| Save | `memory_save` | `client.memory.save({ email, content })` | `POST /api/v1/memorize` | `personize memorize --email=<email> --content=<text>` |
-| List / Browse | `memory_search` with broad query or empty filter | `client.memory.filterByProperty({ filters: [] })` | `POST /api/v1/memory/filter` | `personize memory filter` |
+| View | **(composite)** `memory_retrieve` (`mode='fetch'` for properties) + `context_attachment_list` | (composite -- see section 5) | (composite) | (composite) |
+| Save | `memory_save` | `client.memory.save({ email, content })` | `POST /api/v1.1/memory/save` | `personize memorize --email=<email> --content=<text>` |
+| List / Browse | `memory_retrieve` with `mode='filter'` and `filters.listAll=true` | `client.memory.retrieve({ mode: 'filter', filters: { listAll: true } })` | `POST /api/v1.1/memory/retrieve` | `personize retrieve filter` |
 | Delete | `memory_retrieve` to get memoryIds, then targeted call | (composite) | `DELETE /api/v1/memory/:key` | n/a |
-| Describe | **(composite)** `collection_list` + `memory_get_properties` | (composite -- see section 5) | (composite) | (composite) |
+| Describe | **(composite)** `collection_list` + `memory_retrieve` (`mode='fetch'`) | (composite -- see section 5) | (composite) | (composite) |
 
 **Key selector rules:**
 - Pass `email` when you have an email address (the primary key for `contact` records).
 - Pass `website_url` when you have a domain (the primary key for `company` records).
 - Pass `recordId` (a deterministic HMAC derived from the org + key type + key value) when you have a stable identifier from a prior retrieval response.
-- Never pass a raw name string as the key -- use `memory_search` first to find the record, then `memory_retrieve` with the resolved key.
+- Never pass a raw name string as the key -- use `memory_retrieve` with `mode='filter'` first to find the record, then `memory_retrieve` with the resolved key.
 
 ---
 
@@ -129,7 +129,7 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 | Update | **(composite gap)** delete + re-save today | (composite gap -- see section 5) | (composite gap) | (composite gap) |
 | Delete | Targeted delete via memory API | `client.memory.delete({ memoryId })` | `DELETE /api/v1/memory/:key` | n/a |
 
-**Immutability note:** Memories are atomic facts written once by the extraction pipeline. There is no `memory_update_memory` or `memory_patch_fact` tool. If a fact changes, the correct workflow is: identify the old memoryId, delete it, then write a new memory via `memory_save` with the corrected content. The platform reconciles contradictions at recall time but the canonical resolution is to let the LLM score relevance -- do not accumulate contradictory facts indefinitely.
+**Immutability note:** Memories are atomic facts written once by the extraction pipeline. There is no memory-level update or patch tool. If a fact changes, the correct workflow is: identify the old memoryId, delete it, then write a new memory via `memory_save` with the corrected content. The platform reconciles contradictions at recall time but the canonical resolution is to let the LLM score relevance -- do not accumulate contradictory facts indefinitely.
 
 ---
 
@@ -137,12 +137,14 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 
 | Affordance | MCP | SDK | HTTP | CLI |
 |---|---|---|---|---|
-| Find / List | `memory_get_properties` | `client.memory.getProperties({ key })` | `GET /api/v1/memory/:key/properties` | `personize memory properties <key>` |
-| Update (single) | `memory_update_property` | `client.memory.updateProperty({ key, name, value })` | `POST /api/v1/memory/:key/properties/:name` | `personize memory set-property <key> <name> <value>` |
-| Update (bulk) | `memory_update_properties` | `client.memory.updateProperties({ key, properties })` | `POST /api/v1/memory/:key/properties` | n/a |
-| Delete (single) | `memory_update_property` with `null` value | `client.memory.updateProperty({ key, name, value: null })` | `POST /api/v1/memory/:key/properties/:name` with null | n/a |
+| Find / List | `memory_retrieve` with `mode='fetch'` | `client.memory.retrieve({ mode: 'fetch', ... })` | `POST /api/v1.1/memory/retrieve` | `personize retrieve fetch` |
+| Update (single) | `memory_save({ shape: 'property', record, operations: [{ op: 'set', property: 'name', value }] })` | `client.memory.save({ shape: 'property', record, properties: { name: value } })` | `POST /api/v1.1/memory/save` | n/a |
+| Update (bulk) | `memory_save({ shape: 'property', record, operations: [{ op: 'set', property: 'name', value }] })` (put several `set` operations in one call) | `client.memory.save({ shape: 'property', record, properties })` | `POST /api/v1.1/memory/save` | n/a |
+| Delete (single) | `memory_save({ shape: 'property', record, operations: [{ op: 'unset', property: 'name' }] })` | `client.memory.save({ shape: 'property', record, properties: { name: null } })` | `POST /api/v1.1/memory/save` with null | n/a |
 
-**Property vs Memory distinction:** Properties are typed schema columns (like database fields). Memories are unstructured atomic facts. When you want to store `{ seniority: 'executive' }`, use `memory_update_property`. When you want to store "Sarah mentioned she prefers async communication and dislikes demos", use `memory_save`. The extraction pipeline automatically fills properties during memorize; `memory_update_property` is for manual corrections and enrichment.
+Note: the `properties` map is accepted by the SDK and REST only. The MCP `memory_save` tool requires `operations`.
+
+**Property vs Memory distinction:** Properties are typed schema columns (like database fields). Memories are unstructured atomic facts. When you want to store `{ seniority: 'executive' }`, use `memory_save` with `shape='property'`. When you want to store "Sarah mentioned she prefers async communication and dislikes demos", use `memory_save`. The extraction pipeline automatically fills properties during memorize; `memory_save` with `shape='property'` is for manual corrections and enrichment.
 
 ---
 
@@ -155,7 +157,7 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 | Update | `collection_update` | `client.collections.update({ id, ...fields })` | `PUT /api/v1/collections/:id` | n/a |
 | Delete | `collection_delete` | `client.collections.delete({ id })` | `DELETE /api/v1/collections/:id` | n/a |
 | History | `collection_history` | `client.collections.history(id, { mode: 'diff' })` | `GET /api/v1/collections/:id/history` | n/a |
-| Describe | **(composite)** `collection_list` + `memory_get_properties` | (composite -- see section 5) | (composite) | (composite) |
+| Describe | **(composite)** `collection_list` + `memory_retrieve` (`mode='fetch'`) | (composite -- see section 5) | (composite) | (composite) |
 
 **Standard vs custom collections:** The platform pre-creates `contact` and `company` collections in every org. `deal`, `location`, and any domain-specific collection (e.g., `listing`, `ticket`, `course`) are custom and must be created by the integration author. `collection_list` returns both standard and custom collections with their property schemas -- always call it at session start when designing against an unknown org.
 
@@ -201,7 +203,7 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 
 | Affordance | MCP | SDK | HTTP | CLI |
 |---|---|---|---|---|
-| Save | `memory_save(about='self')` | `client.memory.save({ about: 'self', content })` | `POST /api/v1/memorize` with `about=self` | `personize memorize --about=self` |
+| Save | `memory_save(about='self')` | `client.memory.save({ about: 'self', content })` | `POST /api/v1.1/memory/save` with `about=self` | `personize memorize --about=self` |
 | Find / Retrieve | `memory_retrieve` filtered by `about=self` | `client.memory.retrieve({ about: 'self' })` | `GET /api/v1/memory/:key` with self scope | n/a |
 
 **Scope discipline:** Self-scoped memories are private to the calling user. Use `about='self'` only for user preferences, working style notes, personal reminders, and session handoffs from a previous conversation. Do NOT save business-critical information (a contact's deal stage, a company's funding round, a team decision) under `about='self'` -- it will be invisible to teammates and other agents. Use org-scoped `memory_save` with `email` or `website_url` for shared business data.
@@ -214,7 +216,7 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 
 | Affordance | MCP | SDK | HTTP | CLI |
 |---|---|---|---|---|
-| Save | `memory_save(type='workspace'\|'project'\|'campaign'\|'task')` | `client.memory.save({ type, name, content })` | `POST /api/v1/memorize` | `personize memorize --type=workspace --name=<n>` |
+| Save | `memory_save(type='workspace'\|'project'\|'campaign'\|'task')` | `client.memory.save({ type, name, content })` | `POST /api/v1.1/memory/save` | `personize memorize --type=workspace --name=<n>` |
 | Find | `memory_retrieve` with workspace name or id | `client.memory.retrieve({ workspaceId })` | `GET /api/v1/memory/:key` | n/a |
 
 **When to use:** Workspaces, projects, and campaigns are the shared coordination layer for multi-agent systems and team collaboration. An orchestrator agent writes handoff state to a workspace; specialist agents read it. Each contribution is a new memory entry under the workspace name -- the platform accumulates these as the workspace timeline. Use `type='task'` for discrete action items within a workspace.
@@ -226,8 +228,8 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 | Affordance | MCP | SDK | HTTP | CLI |
 |---|---|---|---|---|
 | Recipe lookup | `personize_cookbook` | n/a (call via MCP) | n/a | n/a |
-| Batch upsert (structured, known field values) | `memory_upsert` | `client.memory.upsert({ records })` | `POST /api/v1.1/memory/upsert` | `personize memory upsert --file=records.json` |
-| Batch store (content → AI extraction) | n/a -- no MCP batch tool; use `personize_cookbook` | `client.memory.saveBatch({ records })` (legacy `memorizeBatch`, deprecated) | `POST /api/v1/memorize/batch` | `personize memorize --batch --file=records.json` |
+| Batch upsert (structured, known field values) | `memory_save({ shape: 'property', record, operations: [{ op: 'set', property: 'name', value }] })` (one call per record) | `client.memory.save({ shape: 'property', record, properties })` | `POST /api/v1.1/memory/save` | n/a |
+| Batch store (content → AI extraction) | n/a -- no MCP batch tool; use `personize_cookbook` | `client.memory.save({ shape: 'shortform', items: [...] })` | `POST /api/v1.1/memory/save` | `personize memorize --batch --file=records.json` |
 | Batch validate (dry run) | n/a | `client.memory.validateBatch({ records })` | `POST /api/v1/memorize/batch/validate` | n/a |
 
 **Rule:** For any operation involving 5 or more records -- import, sync, dedup, backfill -- call `personize_cookbook` first. It returns a proven recipe with rate limiting, error handling, and cursor-based pagination already solved. Do not hand-loop 50+ records with individual `memory_save` calls.
@@ -241,9 +243,9 @@ This is the primary reference. One row per (tab, affordance) pair. Each row maps
 | Traverse / Neighbors | n/a *(no tool on legacy profiles)* | `retrieve_unified(mode='scout', record={id:...}, sources={graph:true})` | `client.retrieve({record, sources:{graph:true}})` | `POST /api/v1.1/memory/retrieve` (sources.graph) | n/a |
 | Add edge | n/a | n/a *(edges written automatically by extraction pipeline)* | n/a | n/a | n/a |
 
-**agent2_0:** Graph traversal is available by setting `sources.graph: true` on any `retrieve_unified` call (typically `mode='scout'`). Pass `record={id: '...'}` (or `{email}`/`{websiteUrl}`) as the anchor node. The platform returns connected entities and edge types derived from the extraction pipeline. If no edges are seeded for a record, the result is empty — state that explicitly rather than hallucinating connections. There is **no** `mode='graph'`; graph is a source, not a mode.
+**agent2_0:** Graph traversal is available by setting `sources.graph: true` on any `retrieve_unified` call (typically `mode='scout'`). Pass `record={id: '...'}` (or `{email}`/`{websiteUrl}`) as the anchor node. The platform returns connected entities and edge types derived from the extraction pipeline. If no edges are seeded for a record, the result is empty; state that explicitly rather than hallucinating connections. There is **no** `mode='graph'`; graph is a source, not a mode.
 
-**Legacy profiles (agent, developer):** No graph tool exists. Do not simulate traversal by chaining `memory_retrieve` calls — use `personize_cookbook` to ask for the appropriate pattern if graph data is needed.
+**Legacy profiles (agent, developer):** No graph tool exists. Do not simulate traversal by chaining `memory_retrieve` calls; use `personize_cookbook` to ask for the appropriate pattern if graph data is needed.
 
 ---
 
@@ -273,7 +275,7 @@ const attachments = await client.attachments.list({ guidelineId: '<parentGuideli
 
 **Combine:** merge `record.data.memories` + `properties.data` + `attachments.data` into one "open record" view. This is the equivalent of clicking a record in the Personize web app.
 
-**MCP sequence:** `memory_retrieve` → `memory_get_properties` → `context_attachment_list` (optional).
+**MCP sequence:** `memory_retrieve` → `memory_retrieve` with `mode='fetch'` → `context_attachment_list` (optional).
 
 ---
 
@@ -292,9 +294,9 @@ const collections = await client.collections.list();
 const sample = await client.memory.getProperties({ key: 'sample@acme-corp.io' });
 ```
 
-**Why step 2?** The collection schema defines what fields CAN exist. `memory_get_properties` on a real record shows what fields ARE populated and what the values look like -- critical when writing extraction prompts or filter expressions.
+**Why step 2?** The collection schema defines what fields CAN exist. `memory_retrieve` with `mode='fetch'` on a real record shows what fields ARE populated and what the values look like -- critical when writing extraction prompts or filter expressions.
 
-**MCP sequence:** `collection_list` → `memory_get_properties`.
+**MCP sequence:** `collection_list` → `memory_retrieve` with `mode='fetch'`.
 
 ---
 
@@ -319,7 +321,7 @@ await client.memory.save({
 });
 ```
 
-**Note:** This is a composite gap -- there is no `memory_update_memory` or `memory_patch` tool. For structured fields (seniority, title, deal stage), use `memory_update_property` instead, which IS a single call and is idempotent. Reserve the delete+re-save pattern for unstructured memory facts only.
+**Note:** This is a composite gap -- there is no memory-level update or patch tool. For structured fields (seniority, title, deal stage), use `memory_save` with `shape='property'` instead, which IS a single call and is idempotent. Reserve the delete+re-save pattern for unstructured memory facts only.
 
 ---
 
@@ -334,11 +336,12 @@ await client.memory.save({
 let result = await client.memory.retrieve({ email: 'sarah@acme-corp.io' });
 if (result.data) return result;
 
-// Try 2: semantic search by name or description
-const hits = await client.memory.search({ query: 'Sarah at Acme Corp', limit: 5 });
-if (hits.data.length > 0) {
+// Try 2: lookup by name/description
+const hits = await client.memory.retrieve({ mode: 'filter', filters: { groups: [{ conditions: [{ property: 'name', operator: 'CONTAINS', value: 'Sarah' }] }], pageSize: 5 } });
+if (hits.records.length > 0) {
     // resolve the top hit to a key, then retrieve
-    return await client.memory.retrieve({ email: hits.data[0].email });
+    // filter hits are resolved by recordId (fetch.recordIds), not by email
+    return await client.memory.retrieve({ mode: 'fetch', fetch: { recordIds: [hits.recordIds[0]] } });
 }
 
 // Try 3: if it might be a guideline or playbook
@@ -348,7 +351,7 @@ if (ctx.data) return ctx;
 // If none resolve: report to the user that no entity was found
 ```
 
-**Why this matters:** A common agent error is calling `memory_search` for everything, including entities that have a known exact key. Always try `memory_retrieve` first when you have an email or domain. `memory_search` is for discovery when the key is unknown.
+**Why this matters:** A common agent error is calling `memory_retrieve` with `mode='filter'` for everything, including entities that have a known exact key. Always try a direct `memory_retrieve` by key first when you have an email or domain. `mode='filter'` is for discovery when the key is unknown.
 
 ---
 
@@ -358,7 +361,7 @@ if (ctx.data) return ctx;
 
 **Today's approach:**
 
-1. For small batches (<5 records): `memory_filter_by_property` to get the record keys, then loop `memory_update_property` per key.
+1. For small batches (<5 records): `memory_retrieve` with `mode='filter'` to get the record keys, then loop `memory_save` with `shape='property'` per key.
 2. For larger batches: call `personize_cookbook` -- it will return a proven batch pattern with rate limiting and cursor-based pagination already wired.
 
 **Never hand-loop 50+ individual update calls.** The platform has rate limits (160 calls/min on Free, 1000/min on Enterprise) and the cookbook recipes respect these limits. Custom loops typically don't.
@@ -374,7 +377,7 @@ if (ctx.data) return ctx;
 ```typescript
 // Run in parallel -- these are independent reads
 const [records, guidelines] = await Promise.all([
-    client.memory.search({ query: 'CTOs at fintech companies', limit: 10 }),
+    client.memory.retrieve({ mode: 'filter', filters: { groups: [{ conditions: [{ property: 'title', operator: 'CONTAINS', value: 'CTO' }] }], pageSize: 10 } }),
     client.context.retrieve({ message: 'cold outreach to technical executives', types: ['guideline', 'playbook'] }),
 ]);
 // Combine: records become the personalization data, guidelines become the instructions
@@ -442,8 +445,9 @@ async function upsertLead(lead: { email: string; firstName: string; company: str
 
     if (existing.data) {
         // Record exists -- update properties, don't re-memorize free text
-        await client.memory.updateProperties({
-            key: lead.email,
+        await client.memory.save({
+            shape: 'property',
+            record: { email: lead.email },
             properties: {
                 firstName: lead.firstName,
                 company: lead.company,
@@ -469,31 +473,45 @@ Find candidates semantically, then narrow with a structured filter. Useful when 
 
 ```typescript
 async function findExecutivesAtFintechCompanies(): Promise<string[]> {
-    // Semantic search: broad intent signal
-    const candidates = await client.memory.search({
-        query: 'technical decision maker fintech',
-        limit: 50,
+    // Structured filter, server-side: conditions in one group combine with AND
+    const executives = await client.memory.retrieve({
+        mode: 'filter',
+        filters: {
+            groups: [{
+                conditions: [
+                    { property: 'industry', operator: 'EQ', value: 'fintech' },
+                    { property: 'seniority', operator: 'EQ', value: 'executive' },
+                ],
+            }],
+            pageSize: 50,
+        },
     });
 
-    // Structured filter: narrow by property value
-    // (client-side post-filter when server-side AND is not available in one call)
-    const executives = candidates.data.filter(
-        r => r.properties?.seniority === 'executive' || r.properties?.seniority === 'vp'
-    );
-
-    return executives.map(r => r.email).filter(Boolean);
+    // Filter rows keep the email in crm_keys; `properties` cells are { Result } objects
+    return executives.records
+        .map(r => (r as { crm_keys?: { email?: string } }).crm_keys?.email)
+        .filter((e): e is string => !!e);
 }
 
-// Alternative: use memory_filter_by_property for pure structured search
+// Alternative: use memory_retrieve with mode 'filter' for pure structured search
 async function findByProperty(): Promise<string[]> {
-    const result = await client.memory.filterByProperty({
-        filters: [
-            { property: 'seniority', operator: 'equals', value: 'executive' },
-            { property: 'industry', operator: 'equals', value: 'fintech' },
-        ],
-        limit: 50,
+    const result = await client.memory.retrieve({
+        mode: 'filter',
+        filters: {
+            groups: [{
+                // conditions inside one group combine with AND (logic defaults to 'AND')
+                conditions: [
+                    { property: 'seniority', operator: 'EQ', value: 'executive' },
+                    { property: 'industry', operator: 'EQ', value: 'fintech' },
+                ],
+            }],
+            pageSize: 50,
+        },
     });
-    return result.data.map(r => r.email).filter(Boolean);
+    // Filter rows keep the email in crm_keys; `properties` cells are { Result } objects
+    return result.records
+        .map(r => (r as { crm_keys?: { email?: string } }).crm_keys?.email)
+        .filter((e): e is string => !!e);
 }
 ```
 
@@ -509,14 +527,15 @@ For any operation touching 5 or more records, route to `personize_cookbook` rath
 // The cookbook returns a complete, rate-limit-aware script.
 // Follow the recipe rather than writing your own loop.
 
-// If you must write a batch loop for content extraction, use saveBatch (memorizeBatch is deprecated):
+// If you must write a batch loop for content extraction, use a shortform save with items[]:
 async function batchIngestLeads(leads: Array<{ email: string; name: string }>) {
     const BATCH_SIZE = 25; // platform-safe batch size
     for (let i = 0; i < leads.length; i += BATCH_SIZE) {
         const batch = leads.slice(i, i + BATCH_SIZE);
-        await client.memory.saveBatch({
-            records: batch.map(lead => ({
-                email: lead.email,
+        await client.memory.save({
+            shape: 'shortform',
+            items: batch.map(lead => ({
+                record: { email: lead.email },
                 content: `Lead: ${lead.name}`,
             })),
         });
@@ -595,12 +614,12 @@ The following affordances do NOT have a single-tool implementation today. Each r
 
 | Affordance | Status | Why It Matters |
 |---|---|---|
-| **Records.View** | Composite: `memory_retrieve` + `memory_get_properties` + `context_attachment_list` | Agents designing a "record detail" view must compose three calls. Each returns a different slice: memories, properties, linked files. |
-| **Records.Describe** | Composite: `collection_list` + `memory_get_properties` | No single tool returns "the full schema for this record type." |
-| **Memories.Update** | Composite gap: delete + re-save | The platform treats memories as immutable. Mutation requires two-step delete + re-write. For structured fields, use `memory_update_property` instead -- that IS idempotent. |
-| **Locate-anything** | No single tool: chain `memory_retrieve` → `memory_search` → `context_retrieve` | When the agent has a name or description but no exact key, it must resolve the key through a lookup cascade. |
-| **Bulk-update** | No single tool: `memory_filter_by_property` + loop, or `personize_cookbook` | Updating a property across many records requires either a cookbook recipe or a hand-written batch loop with manual rate limiting. |
-| **Cross-tab join** | Composite: parallel `memory_search` + `context_retrieve` | No single call retrieves both record data and applicable governance rules. The two-call parallel pattern is the canonical workaround. |
+| **Records.View** | Composite: `memory_retrieve` (including `mode='fetch'`) + `context_attachment_list` | Agents designing a "record detail" view must compose three calls. Each returns a different slice: memories, properties, linked files. |
+| **Records.Describe** | Composite: `collection_list` + `memory_retrieve` (`mode='fetch'`) | No single tool returns "the full schema for this record type." |
+| **Memories.Update** | Composite gap: delete + re-save | The platform treats memories as immutable. Mutation requires two-step delete + re-write. For structured fields, use `memory_save` with `shape='property'` instead -- that IS idempotent. |
+| **Locate-anything** | No single tool: chain `memory_retrieve` (by key) → `memory_retrieve` (`mode='filter'`) → `context_retrieve` | When the agent has a name or description but no exact key, it must resolve the key through a lookup cascade. |
+| **Bulk-update** | No single tool: `memory_retrieve` (`mode='filter'`) + `memory_save` loop, or `personize_cookbook` | Updating a property across many records requires either a cookbook recipe or a hand-written batch loop with manual rate limiting. |
+| **Cross-tab join** | Composite: parallel `memory_retrieve` (`mode='filter'`) + `context_retrieve` | No single call retrieves both record data and applicable governance rules. The two-call parallel pattern is the canonical workaround. |
 | **Graph.Neighbors / Traverse** | Live -- not a gap | `retrieve_unified(mode='scout', record={id}, sources={graph:true})` on agent2_0, or `POST /api/v1.1/memory/retrieve` with `sources.graph`. See `graph-relations.md`. |
 | **Graph.AddEdge** | No manual API, by design | Edges are inferred automatically from foreign-key-shaped properties (`company`, `assigned_to_email`, ...) at memorize time; manual seeding is rarely needed. |
 
@@ -619,34 +638,36 @@ These gaps are tracked in the spec `Docs/superpowers/specs/2026-05-14-agent-memo
 
 ---
 
-## agent2_0 — Collapsed Routing Reference
+## agent2_0: Collapsed Routing Reference
 
 For agents on the `agent2_0` profile (5-tool surface). All legacy retrieval tools collapse into `retrieve_unified` modes.
 
-| If you want to... | Old call (legacy profiles) | agent2_0 call |
+| If you want to... | Canonical call (core tool list) | agent2_0 call |
 |---|---|---|
 | Find a contact by email | `memory_retrieve({ email })` | `retrieve_unified(mode='scout', email='...')` |
 | Find a company by domain | `memory_retrieve({ website_url })` | `retrieve_unified(mode='scout', website_url='...')` |
-| Search by keyword/description | `memory_search({ query })` | `retrieve_unified(mode='scout', query='...')` |
-| Filter by structured property | `memory_filter_by_property({ filters })` | `retrieve_unified(mode='filter', filters=[...])` |
-| See properties on a record | `memory_get_properties({ key })` | `retrieve_unified(mode='fetch', fetch={propertyNames:[{recordId:'...', names:[...]}]})` — or `mode='scout', record={email:'...'}, sources={properties:true, memories:false}` |
+| Search by keyword/description | `memory_retrieve({ mode: 'filter', filters })` | `retrieve_unified(mode='scout', query='...')` |
+| Filter by structured property | `memory_retrieve({ mode: 'filter', filters })` | `retrieve_unified(mode='filter', filters={groups: [{conditions: [...]}]})` |
+| See properties on a record | `memory_retrieve({ mode: 'fetch', ... })` | `retrieve_unified(mode='fetch', fetch={propertyNames:[{recordId:'...', names:[...]}]})`, or `mode='scout', record={email:'...'}, sources={properties:true, memories:false}` |
 | Find similar records | `memory_find_similar({ seed_email })` | `retrieve_unified(mode='scout', query='similar to ...')` |
 | Retrieve governance rules | `context_retrieve({ message })` | `retrieve_unified(mode='scout', message='...', sources={documents:true, memories:false}, intent={perSource:{documents:{types:['guideline','playbook']}}})` |
 | Deepen a prior retrieval session | *(no tool)* | `retrieve_unified(mode='expand', continueFrom=<sessionId>)` |
 | Traverse entity relationships | *(no tool)* | `retrieve_unified(mode='scout', record={id:'...'}, sources={graph:true})` |
 | Save a new memory (free text) | `memory_save({ email, content })` | `memory_save({ email, content })` *(same)* |
-| Save structured field update | `memory_update_property / memory_update_properties` | `memory_save({ email, properties: { field: value } })` — content optional |
+| Save structured field update | `memory_save({ shape: 'property', record, operations: [{ op: 'set', property: 'field', value }] })` | `memory_save({ email, properties: { field: value } })`, content optional |
 | Save a narrative document | `context_save({ type: 'guideline', value })` | `memory_save({ email, shape: 'document', content: '...' })` |
-| Save an org-level document | `context_save({ type: 'guideline' })` | `memory_save({ shape: 'document', type: 'guideline' })` — no record key |
-| Recall self preferences | `memory_retrieve({ about: 'self' })` | `retrieve_feedback()` |
+| Save an org-level document | `context_save({ type: 'guideline' })` | `memory_save({ shape: 'document', type: 'guideline' })`, no record key |
+| Recall self preferences | `memory_retrieve({ about: 'self' })` | *(no direct equivalent among the 5 tools -- `memory_retrieve` requires `MCP_ENABLE_LEGACY_MEMORY_RETRIEVE`; otherwise rely on `personize_md`'s handoffs)* |
 | Scale op (5+ records) | `personize_cookbook` | `personize_cookbook` *(same)* |
-| Bootstrap / orient | `personize_skill` → `personize_context` | `personize_md` |
+| Bootstrap / orient | `personize_cookbook` → `personize_md` | `personize_md` |
+
+Note: the canonical column's MCP cells (`memory_retrieve` mode=filter/fetch, `memory_save` shape=property with record/operations) need the core MCP tool list. On the legacy tool list `memory_retrieve` is hidden and `memory_save` accepts only `shape` shortform|document|freeform, so legacy sessions use `memory_save({ email, properties })`.
 
 **Key behavioral rules for agent2_0:**
 1. Call `retrieve_unified` TWICE per turn when both memory and governance are needed (scout/filter + contexts).
-2. `memory_save` content is optional — properties-only saves are valid shortform updates.
+2. `memory_save` content is optional; properties-only saves are valid shortform updates.
 3. Call `memory_save` TWICE on the same record key when both a shortform property update AND a narrative document are warranted.
-4. Org-level writes use `memory_save` with no `email`/`website_url` key — they are readable by all agents via `retrieve_unified` with `sources={documents:true}`.
+4. Org-level writes use `memory_save` with no `email`/`website_url` key; they are readable by all agents via `retrieve_unified` with a `message` and `sources={documents:true}`.
 5. Full account brief = 3 retrieve_unified calls typical (company scout + contacts filter + governance contexts).
 
 ---
@@ -655,15 +676,17 @@ For agents on the `agent2_0` profile (5-tool surface). All legacy retrieval tool
 
 For fast lookup without reading the full matrix.
 
+Note: the `memory_retrieve` (mode=filter/fetch) and `memory_save` shape=property (record/operations) cells need the core MCP tool list. On the legacy tool list `memory_retrieve` is hidden and `memory_save` accepts only `shape` shortform|document|freeform, so legacy sessions use `memory_save({ email, properties })`.
+
 | If you want to... | Call this |
 |---|---|
 | Find a contact by email | `memory_retrieve({ email })` |
 | Find a company by domain | `memory_retrieve({ website_url })` |
-| Search by description or keyword | `memory_search({ query, limit })` |
-| Filter by structured property | `memory_filter_by_property({ filters })` |
-| See all properties on a record | `memory_get_properties({ key })` |
-| Set a structured property | `memory_update_property({ key, name, value })` |
-| Set multiple properties at once | `memory_update_properties({ key, properties })` |
+| Search by description or keyword | `memory_retrieve({ mode: 'filter', filters })` |
+| Filter by structured property | `memory_retrieve({ mode: 'filter', filters })` |
+| See all properties on a record | `memory_retrieve({ mode: 'fetch', ... })` |
+| Set a structured property | `memory_save({ shape: 'property', record, operations: [{ op: 'set', property: 'name', value }] })` |
+| Set multiple properties at once | `memory_save({ shape: 'property', record, operations: [{ op: 'set', property: 'a', value }, { op: 'set', property: 'b', value }] })` |
 | Save a new memory (free text) | `memory_save({ email, content })` |
 | Save a workspace handoff | `memory_save({ type: 'workspace', name, content })` |
 | Save a self-scoped note | `memory_save({ about: 'self', content })` |
@@ -676,9 +699,9 @@ For fast lookup without reading the full matrix.
 | List attachments on a guideline | `context_attachment_list({ guidelineId })` |
 | Upload a file to a guideline | `context_attachment_upload({ guidelineId, file, metadata })` |
 | Run a scale operation (5+ records) | `personize_cookbook` -- get a recipe first |
-| Batch ingest (structured, known fields) | `memory_upsert` / `client.memory.upsert({ records })` |
-| Batch ingest (content → extraction) | `client.memory.saveBatch({ records })` (or `personize_cookbook` recipe) |
+| Batch ingest (structured, known fields) | `memory_save({ shape: 'property', record, operations: [{ op: 'set', property: 'name', value }] })` / `client.memory.save({ shape: 'property', record, properties })` |
+| Batch ingest (content → extraction) | `client.memory.save({ shape: 'shortform', items: [...] })` (or `personize_cookbook` recipe) |
 
 ---
 
-*Last updated: 2026-05-31. Corrected `retrieve_unified` schema to match the actual zod definition in `src/modules/internal/mcp-connector/tools/retrieve-unified.tools.ts`: real modes are `scout` / `brief` / `expand` / `filter` / `fetch`. Earlier drafts listed `properties` / `contexts` / `graph` as modes — those are actually `sources` toggles (independent on/off knobs), not modes. Governance retrieval = `mode='scout'` with `sources={documents:true}` + `intent.perSource.documents.types`. Graph traversal = any mode with `sources.graph:true`. Property discovery on a record = `mode='fetch'` + `fetch.propertyNames` (or `sources.properties` in scout). Legacy routing matrix (section 4) remains accurate for `agent`, `developer`, and `governance` profiles. When MCP tool names or SDK method signatures change, update section 4 AND the agent2_0 collapsed reference, then re-run `seed-platform-guidelines.ts --force` to propagate to the cookbook.*
+*Last updated: 2026-05-31. Corrected `retrieve_unified` schema to match the actual zod definition in `src/modules/internal/mcp-connector/tools/retrieve-unified.tools.ts`: real modes are `scout` / `brief` / `expand` / `filter` / `fetch`. Earlier drafts listed `properties` / `contexts` / `graph` as modes; those are actually `sources` toggles (independent on/off knobs), not modes. Governance retrieval = `mode='scout'` with `sources={documents:true}` + `intent.perSource.documents.types`. Graph traversal = any mode with `sources.graph:true`. Property discovery on a record = `mode='fetch'` + `fetch.propertyNames` (or `sources.properties` in scout). Section 4's MCP cells use canonical names and need the core MCP tool list. On the legacy tool list use `memory_save({ email, properties })`; `memory_retrieve` is hidden and `memory_save` rejects `shape: 'property'`. When MCP tool names or SDK method signatures change, update section 4 AND the agent2_0 collapsed reference, then re-run `seed-platform-guidelines.ts --force` to propagate to the cookbook.*

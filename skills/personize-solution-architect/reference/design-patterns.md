@@ -2,8 +2,8 @@
 
 | Pattern | Summary | When to Use |
 |---|---|---|
-| **Event-Driven Ingest** | CRM webhooks -> memorize -> extract properties | Any CRM/data source integration |
-| **CQRS for AI Context** | Separate write (memorize) and read (recall) paths | All integrations (this is the default) |
+| **Event-Driven Ingest** | CRM webhooks -> memory_save -> extract properties | Any CRM/data source integration |
+| **CQRS for AI Context** | Separate write (memory_save) and read (memory_retrieve) paths | All integrations (this is the default) |
 | **Workspace-as-Coordination** | Patient chart model for multi-agent collaboration | 2+ agents or humans sharing an entity |
 | **Progressive Enrichment** | Start with basic data, enrich over time | External API enrichment, data building |
 | **Governance-as-Guardrails** | Guidelines constrain output, not prescribe it | Any AI generation with brand/compliance rules |
@@ -13,14 +13,14 @@
 
 ## Event-Driven Ingest
 
-**Pattern:** External system emits event -> webhook/integration catches it -> `memorize()` stores raw content -> extraction pipeline pulls structured properties.
+**Pattern:** External system emits event -> webhook/integration catches it -> `memory.save({ shape: 'text' })` stores raw content -> extraction pipeline pulls structured properties.
 
 **Why it matters:** Personize's extraction engine handles the hard work of turning unstructured data (emails, call transcripts, form submissions) into structured properties. You don't need to pre-process -- just send the raw content.
 
 **Architecture:**
 
 ```
-CRM/Source  -->  Webhook Endpoint  -->  memorize({ content, email/url })
+CRM/Source  -->  Webhook Endpoint  -->  memory_save({ shape: 'text', content, record })
                                               |
                                     Extraction Pipeline
                                               |
@@ -34,9 +34,10 @@ CRM/Source  -->  Webhook Endpoint  -->  memorize({ content, email/url })
 app.post('/webhooks/hubspot', async (req, res) => {
     const { contact, event } = req.body;
 
-    await client.memory.memorize({
+    await client.memory.save({
+        shape: 'text',
         content: `${event.type}: ${event.details}`,
-        email: contact.email,
+        record: { email: contact.email },
         tags: [`source:hubspot`, `event:${event.type}`],
     });
 
@@ -45,16 +46,16 @@ app.post('/webhooks/hubspot', async (req, res) => {
 ```
 
 **Key decisions:**
-- Tag by source system so you can filter later with `recall({ tags: ['source:hubspot'] })`
-- Use `email` or `website_url` as the CRM key -- Personize generates deterministic record IDs from these
-- For high-volume sources, use `memorizeBatch()` instead of individual calls
+- Tag by source system so you can filter later with `memory_retrieve` (`mode=filter`)
+- Use `record.email` or `record.websiteUrl` as the CRM key -- Personize generates deterministic record IDs from these
+- For high-volume sources, pass `items[]` to `memory.save` instead of individual calls
 - Let extraction handle property mapping -- define good property descriptions in your collection schema
 
 ---
 
 ## CQRS for AI Context
 
-**Pattern:** Write path (memorize) and read path (recall/smartDigest) are separate, optimized differently.
+**Pattern:** Write path (memory_save) and read path (memory_retrieve scout/fetch) are separate, optimized differently.
 
 **Why it matters:** Write operations go through extraction and indexing. Read operations go through vector search and context compilation. Optimizing them independently gives better results than a unified path.
 
@@ -62,9 +63,10 @@ app.post('/webhooks/hubspot', async (req, res) => {
 
 ```typescript
 // Store everything -- extraction will structure it
-await client.memory.memorize({
+await client.memory.save({
+    shape: 'text',
     content: fullCallTranscript,  // Don't pre-filter
-    email: contact.email,
+    record: { email: contact.email },
     tags: ['source:gong', 'type:call-transcript'],
 });
 ```
@@ -72,18 +74,18 @@ await client.memory.memorize({
 **Read path (optimized for relevance):**
 
 ```typescript
-// Recall retrieves only what's relevant to the current task
-const context = await client.memory.recall({
-    query: 'pricing objections and budget concerns',
-    email: contact.email,
-    limit: 10,
+// Scout retrieves only what's relevant to the current task
+const context = await client.memory.retrieve({
+    mode: 'scout',
+    message: 'pricing objections and budget concerns',
+    record: { email: contact.email, entityType: 'Contact' },
 });
 
-// SmartDigest compiles a structured overview
-const digest = await client.memory.smartDigest({
-    email: contact.email,
-    type: 'Contact',
-    token_budget: 3000,
+// Brief compiles a budgeted overview of the record
+const digest = await client.memory.retrieve({
+    mode: 'brief',
+    record: { email: contact.email, entityType: 'Contact' },
+    message: 'Give me an overview of this contact',
 });
 ```
 
@@ -91,7 +93,7 @@ const digest = await client.memory.smartDigest({
 - Write liberally -- store raw content, let extraction do the work
 - Read precisely -- use specific queries, set token budgets, filter by tags
 - Never pre-filter data on the write side to "help" the read side -- you lose information
-- Use `smartDigest` for broad entity understanding, `recall` for specific questions
+- Use `mode: 'brief'` for broad entity understanding, `mode: 'scout'` for specific questions
 
 ---
 
@@ -149,17 +151,19 @@ Stage 5: Interaction History  ->  call summaries, email threads, support tickets
 
 ```typescript
 // Stage 1: Basic import
-await client.memory.memorize({
+await client.memory.save({
+    shape: 'text',
     content: `Contact: ${name} at ${company}, role: ${role}`,
-    email: contact.email,
+    record: { email: contact.email },
     tags: ['source:crm', 'stage:import'],
 });
 
 // Stage 2: Enrichment (scheduled agent)
 const enrichment = await fetchFromClearbit(contact.email);
-await client.memory.memorize({
+await client.memory.save({
+    shape: 'text',
     content: `Company enrichment: ${JSON.stringify(enrichment)}`,
-    email: contact.email,
+    record: { email: contact.email },
     tags: ['source:clearbit', 'stage:enrichment'],
 });
 
@@ -169,7 +173,7 @@ await client.memory.memorize({
 **Key decisions:**
 - Don't wait for "complete" data before starting -- the system works with partial information
 - Tag each memorization with its source and stage for traceability
-- Use `smartDigest` to see the compiled view at any point -- it synthesizes whatever is available
+- Use `memory_retrieve` with `mode=brief` (compiled view) to see the record at any point -- it returns whatever is available
 - Schedule enrichment agents to run periodically, not just once
 
 ---
@@ -218,7 +222,7 @@ const result = await client.ai.prompt({
 
 ## Memory-First Architecture
 
-**Pattern:** Every agent action starts with recall (what do we already know?) and ends with memorize (what did we learn?). The agent's knowledge compounds over time.
+**Pattern:** Every agent action starts with retrieve (what do we already know?) and ends with save (what did we learn?). The agent's knowledge compounds over time.
 
 **Why it matters:** Without memory-first, agents start from zero every invocation. With it, each run builds on everything learned before -- across all agents, all interactions, all data sources.
 
@@ -236,13 +240,13 @@ const result = await client.ai.prompt({
 ```typescript
 // 1. Recall
 const [digest, relevant] = await Promise.all([
-    client.memory.smartDigest({ email, type: 'Contact', token_budget: 2500 }),
-    client.memory.recall({ query: 'recent interactions and open issues', email }),
+    client.memory.retrieve({ mode: 'brief', record: { email, entityType: 'Contact' }, message: 'Summarize what we know about this contact' }),
+    client.memory.retrieve({ mode: 'scout', message: 'recent interactions and open issues', record: { email } }),
 ]);
 
 // 2. Reason + 3. Act
 const result = await client.ai.prompt({
-    context: [digest.data?.compiledContext, relevant.data].filter(Boolean).join('\n\n'),
+    context: [digest.answer ?? digest.documents?.compiledContext, JSON.stringify(relevant.memories)].filter(Boolean).join('\n\n'),
     instructions: [
         { prompt: 'Analyze current situation based on all available context...', maxSteps: 3 },
         { prompt: 'Generate the appropriate response/action...', maxSteps: 5 },
@@ -250,9 +254,10 @@ const result = await client.ai.prompt({
 });
 
 // 4. Store
-await client.memory.memorize({
+await client.memory.save({
+    shape: 'text',
     content: `Action taken: ${result.data?.output}. Outcome: [observed result]`,
-    email,
+    record: { email },
     tags: ['source:agent', 'type:action-log'],
 });
 ```
@@ -261,5 +266,5 @@ await client.memory.memorize({
 - Always recall before acting, even if you think you know the answer -- context may have changed
 - Store outcomes, not just actions -- "sent email" is less useful than "sent email about pricing, they responded positively"
 - Tag agent observations differently from raw data -- enables filtering by source
-- Use `smartDigest` for entity-level recall, `recall` for situation-specific queries
+- Use `mode: 'brief'` for entity-level context, `mode: 'scout'` for situation-specific queries
 - The compounding effect is the main value -- each agent run makes all future runs smarter

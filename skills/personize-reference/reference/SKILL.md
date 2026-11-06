@@ -27,68 +27,68 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
-| Store with AI extraction | memory_save | client.memory.memorize() | memory memorize | POST /api/v1/memorize |
-| Batch store | memory_batch_store | client.memory.memorizeBatch() | memory batch | POST /api/v1/batch-memorize |
-| Smart recall (recommended) | smartRecall | client.memory.smartRecall() | memory smart-recall | POST /api/v1/smart-recall |
-| Smart recall unified | smartRecall | client.smartRecallUnified() | -- | POST /api/v1/smart-recall-unified |
-| Entity digest | memory_digest | client.memory.smartDigest() | memory digest | POST /api/v1/smart-memory-digest |
-| Direct recall | memory_recall_pro | client.memory.recall() | memory recall | POST /api/v1/recall |
-| Search/export | memory_search | client.memory.search() | memory search | POST /api/v1/search |
-| Find similar | memory_find_similar | client.memory.similar() | memory similar | POST /api/v1/similar |
+| Store with AI extraction | memory_save (shape=text) | client.memory.save({ shape: 'text', content, record }) | save --shape text | POST /api/v1.1/memory/save |
+| Structured save (no AI extraction) | memory_save (shape=property) | client.memory.save({ shape: 'property', record, properties }) | save --shape property | POST /api/v1.1/memory/save |
+| Batch store | memory_save (items[]) | client.memory.save({ shape: 'shortform', items: [...] }) | save --items-file <f> | POST /api/v1.1/memory/save |
+| Brief / digest of one record | memory_retrieve (mode=brief) | client.memory.retrieve({ mode: 'brief', record, message }) | retrieve brief | POST /api/v1.1/memory/retrieve |
+| Scout (multi-source recall) | memory_retrieve (mode=scout) | client.memory.retrieve({ mode: 'scout', record }) | retrieve scout | POST /api/v1.1/memory/retrieve |
+| Filter / export | memory_retrieve (mode=filter) | client.memory.retrieve({ mode: 'filter', filters }) | retrieve filter | POST /api/v1.1/memory/retrieve |
+| Find similar | -- (REST/SDK only) | client.memory.retrieve({ mode: 'similar', seed: { record } }) | retrieve similar | POST /api/v1.1/memory/retrieve |
+| Fetch properties | memory_retrieve (mode=fetch) | client.memory.retrieve({ mode: 'fetch', fetch: { recordIds, propertyNames } }) | retrieve fetch --fetch-file <f> | POST /api/v1.1/memory/retrieve |
 | Segment audience | memory_segment | client.memory.segment() | memory segment | POST /api/v1/segment |
-| Get properties | memory_get_properties | client.memory.properties() | -- | POST /api/v1/properties |
-| Upsert | -- | -- | -- | POST /api/v1/upsert |
 | Export | -- | -- | -- | POST /api/v1/export |
 
-**Cost optimization:** `filterByProperty` is free (no LLM, no credits) for structured queries. Prefer over `smartRecall` when conditions map to known property names and values.
+**Cost optimization:** `mode=filter` is free (no LLM, no credits) for structured queries. Prefer it over `mode=brief` when conditions map to known property names and values.
 
 ## Memory CRUD and Key Management Reference
 
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
-| Update property | memory_update_property | client.memory.update() | memory update | POST /api/v1/memory/update |
-| Bulk update | -- | client.memory.memory_update_properties() | -- | POST /api/v1/memory/bulk-update |
-| Delete memories | -- | client.memory.delete() | memory delete | POST /api/v1/memory/delete |
-| Delete record | -- | client.memory.deleteRecord() | -- | POST /api/v1/memory/delete-record |
+| Update property | memory_save (shape=property) | client.memory.save({ shape: 'property', record, properties }) | save --shape property | POST /api/v1.1/memory/save |
+| Bulk update | memory_save (shape=property), one call per record | client.memory.save({ shape: 'property', record, properties }), one call per record | save --shape property | POST /api/v1.1/memory/save |
+| Delete memories | memory_delete | client.memory.delete({ type, ids?, record?, hard? }) | personize delete <type> --yes (record: add `--record-id <id> --entity-type <type>`) | `delete` (v1.1) |
+| Delete record | memory_delete (type=record) | client.memory.delete({ type: 'record', record }) | personize delete record --record-id <id> --entity-type <type> --yes | `delete type=record` |
 | Cancel deletion | -- | client.memory.cancelDeletion() | -- | POST /api/v1/memory/cancel-deletion |
-| Property history | -- | client.memory.propertyHistory() | -- | POST /api/v1/memory/property-history |
-| Query properties (LLM) | -- | client.memory.queryProperties() | -- | POST /api/v1/memory/query-properties |
-| Filter by property | -- | client.memory.filterByProperty() | -- | POST /api/v1/memory/filter-by-property |
-| Update CRM keys | memory_update_keys | client.memory.updateKeys() | -- | POST /api/v1/memory/update-keys |
-| Batch update keys | -- | client.memory.updateKeysBatch() | -- | POST /api/v1/memory/update-keys-batch |
-| List keys | memory_list_keys | client.memory.listKeys() | -- | POST /api/v1/memory/list-keys |
-| Delete keys | memory_delete_keys | client.memory.deleteKeys() | -- | POST /api/v1/memory/delete-keys |
+| Property history | memory_retrieve (mode=fetch, fetch.propertyHistory) | client.memory.retrieve({ mode: 'fetch', fetch: { propertyHistory: [{ recordId, propertyName }] } }) | retrieve fetch --fetch-file <f> | POST /api/v1.1/memory/retrieve |
+| Query properties | memory_retrieve (mode=scout, with filters) | client.memory.retrieve({ mode: 'scout', filters }) | retrieve scout | POST /api/v1.1/memory/retrieve |
+| Filter by property | memory_retrieve (mode=filter) | client.memory.retrieve({ mode: 'filter', filters }) | retrieve filter | POST /api/v1.1/memory/retrieve |
+| Update CRM keys | memory_save (shape=identifiers) | client.memory.save({ shape: 'identifiers', record, add: [{ name, value }] }) | save --shape identifiers | POST /api/v1.1/memory/save |
+| Batch update keys | memory_save (shape=identifiers), one call per record | client.memory.save({ shape: 'identifiers', record, add }), one call per record | save --shape identifiers | POST /api/v1.1/memory/save |
+| List keys | memory_retrieve (mode=fetch, fetch.identifiers) | client.memory.retrieve({ mode: 'fetch', record, fetch: { identifiers: true } }) | retrieve fetch --record-id <id> --entity-type <type> --fetch-identifiers | POST /api/v1.1/memory/retrieve |
+| Delete keys | memory_delete (type=identifier) | client.memory.delete({ type: 'identifier', record, propertyNames }) | personize delete identifier --record-id <id> --entity-type <type> --property-names <a,b> --yes | `delete type=identifier` |
 
-**Concurrency:** `memory_update_properties` supports `expectedVersion` for optimistic concurrency. Returns 409 on version mismatch -- re-read and retry with fresh data. Use when multiple agents may update the same record.
+Legacy (still works): the old per-operation methods and endpoints (`deleteRecord`, `propertyHistory`, `queryProperties`, `filterByProperty`, `listKeys`, `deleteKeys` and their `/api/v1/memory/*` routes) translate to the canonical forms above. Full list: `Docs/generated/migration-table.json`. `queryProperties` was LLM-ranked; the canonical filter form is exact match.
 
-**Recovery:** `delete` and `deleteRecord` are soft deletes with 30-day recovery. Use `cancelDeletion` to restore within the window.
+**Concurrency:** Optimistic concurrency (`expectedVersion`, 409 on mismatch) exists on the legacy `memory_update_properties` tool, which is still translated. Canonical `memory_save shape=property` takes the version per operation as `operations[].ifMatch` (sent to the server as `expectedVersion`; 409 on mismatch). The legacy `memory_update_properties` tool takes `expectedVersion` directly. See the migration table (`Docs/generated/migration-table.json`, above).
+
+**Recovery:** `delete type=record` is a soft delete with 30-day recovery. Use `cancelDeletion` to restore within the window.
 
 ## Governance Operations Reference
 
 | Operation | MCP Tool | SDK Method | CLI | API |
 |-----------|----------|------------|-----|-----|
-| List guidelines | guideline_list | client.guidelines.list() | guidelines list | GET /api/v1/guidelines |
+| List guidelines | context_manage_list | client.guidelines.list() | guidelines list | GET /api/v1/guidelines |
 | Create guideline | context_save | client.guidelines.create() | guidelines create | POST /api/v1/guidelines |
-| Read guideline structure | guideline_read | client.guidelines.getStructure() | -- | GET /api/v1/guidelines/:id/structure |
-| Read guideline section | guideline_read | client.guidelines.getSection() | -- | GET /api/v1/guidelines/:id/section |
-| Update guideline | guideline_update | client.guidelines.update() | guidelines update | PATCH /api/v1/guidelines/:id |
-| Delete guideline | guideline_delete | client.guidelines.delete() | guidelines delete | DELETE /api/v1/guidelines/:id |
+| Read guideline structure | context_manage_read | client.guidelines.getStructure() | -- | GET /api/v1/guidelines/:id/structure |
+| Read guideline section | context_manage_read | client.guidelines.getSection() | -- | GET /api/v1/guidelines/:id/section |
+| Update guideline | context_manage_update | client.guidelines.update() | guidelines update | PATCH /api/v1/guidelines/:id |
+| Delete guideline | context_manage_delete | client.guidelines.delete() | guidelines delete | DELETE /api/v1/guidelines/:id |
 | Smart update (AI merge) | -- | client.guidelines.smartUpdate() | -- | POST /api/v1/smart-update |
-| Smart guidelines query | ai_smart_guidelines | client.ai.smartGuidelines() | context guidelines | POST /api/v1/ai/smart-guidelines |
-| List attachments | guideline_attachment_list | client.guidelines.listAttachments() | guidelines attachments list | GET /api/v1/guidelines/:id/attachments |
-| Read attachment | guideline_attachment_read | client.guidelines.getAttachment() | -- | GET /api/v1/guidelines/:id/attachments/:attId |
+| Guideline query | context_retrieve | client.memory.retrieve({ mode: 'scout', message: '<task>', sources: { documents: true, memories: false } }) | retrieve "<task>" | POST /api/v1.1/memory/retrieve (message + sources.documents) |
+| List attachments | context_attachment_list | client.guidelines.listAttachments() | guidelines attachments list | GET /api/v1/guidelines/:id/attachments |
+| Read attachment | context_attachment_read | client.guidelines.getAttachment() | -- | GET /api/v1/guidelines/:id/attachments/:attId |
 | Upload attachment | context_attachment_upload | -- | -- | POST /api/v1/guidelines/:id/attachments |
-| Delete attachment | guideline_attachment_delete | client.guidelines.deleteAttachment() | -- | DELETE /api/v1/guidelines/:id/attachments/:attId |
+| Delete attachment | context_attachment_delete | client.guidelines.deleteAttachment() | -- | DELETE /api/v1/guidelines/:id/attachments/:attId |
 
 ## Workspace Operations Reference
 
 | Operation | MCP Tool | SDK | Notes |
 |-----------|----------|-----|-------|
-| Contribute update | memory_update_property | client.memory.update() | operation: "set", "push", "remove", "increment", "patch" |
-| Add task | memory_update_property | client.memory.update() | propertyName: "[Tasks]", operation: "push" |
-| Add issue | memory_update_property | client.memory.update() | propertyName: "[Issues]", operation: "push" |
-| Add note | memory_save | client.memory.memorize() | Store with workspace collection actionId |
-| Read workspace | memory_digest | client.memory.smartDigest() | Returns workspace properties in digest |
+| Contribute update | memory_save (shape=property) | client.memory.save({ shape: 'property', ... }) | operation: "set", "push", "remove", "increment", "patch" |
+| Add task | memory_save (shape=property) | client.memory.save({ shape: 'property', ... }) | propertyName: "[Tasks]", operation: "push" |
+| Add issue | memory_save (shape=property) | client.memory.save({ shape: 'property', ... }) | propertyName: "[Issues]", operation: "push" |
+| Add note | memory_save | client.memory.save({ shape: 'text', ... }) | Store with workspace collection actionId |
+| Read workspace | memory_retrieve (mode=brief) | client.memory.retrieve({ mode: 'brief', record }) | Returns workspace properties in the brief |
 
 ## Content Generation Reference
 
@@ -113,7 +113,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | Update collection | collection_update | client.collections.update() | -- | PATCH /api/v1/collections/:id |
 | Delete collection | collection_delete | client.collections.delete() | -- | DELETE /api/v1/collections/:id |
 | Collection history | collection_history | client.collections.history() | -- | GET /api/v1/collections/:id/history |
-| List entity types | entity_type_list | client.entityTypes.list() | entities list | GET /api/v1/entities |
+| List entity types | -- (no MCP tool; see entity_type_get for single-id lookup) | client.entityTypes.list() | entities list | GET /api/v1/entities |
 | Update entity type | -- | client.entityTypes.update() | -- | PATCH /api/v1/entity-types/:id |
 
 ## RAG and Knowledge Base Reference
@@ -136,10 +136,10 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 
 | Operation | MCP Tool | SDK Method | API |
 |-----------|----------|------------|-----|
-| Get org | organization_list | client.organizations.get() | GET /api/v1/organizations |
+| Get org | organization_get | client.organizations.get() | GET /api/v1/organizations |
 | Create org | organization_create | client.organizations.create() | POST /api/v1/organizations |
-| List members | member_list | client.members.list() | GET /api/v1/members |
-| Invite member | member_invite | client.members.invite() | POST /api/v1/members/invite |
+| List members | members_list | client.members.list() | GET /api/v1/members |
+| Invite member | members_invite | client.members.invite() | POST /api/v1/members/invite |
 | Update role | -- | client.members.updateRole() | PATCH /api/v1/members/:id/role |
 | List MCPs | mcp_list | client.mcps.list() | GET /api/v1/mcps |
 | Create MCP | -- | client.mcps.create() | POST /api/v1/mcps |
@@ -188,7 +188,7 @@ Events track async operations (batch memorize, etc.):
 | Get event | -- | GET /api/v1/events/:id |
 | Get event details | -- | GET /api/v1/events/:id/details |
 
-Critical for batch tracking: `memory_batch_store` returns `eventId`. Poll `GET /api/v1/events/{eventId}` for status updates.
+Critical for batch tracking: a batch `client.memory.save({ items })` returns `jobId` (HTTP 202 on the async/bulk lanes, 207 with per-item results on sync). Poll with `client.memory.getJob(jobId)` / `GET /api/v1.1/memory/jobs/:jobId`.
 
 ## Authentication and Keys
 
@@ -218,7 +218,7 @@ Key return shapes:
 - **SmartRecall:** `{ results: [{ content, score, recordId, properties }], answer?, confidence? }`
 - **Digest:** `{ digest: string, properties: [...], memories: [...] }`
 - **Responses:** `{ status: "completed", steps: [...], outputs: [...] }` or `{ status: "requires_action", required_action: { tool_calls } }`
-- **Batch:** `{ eventId }` (async, poll events endpoint)
+- **Batch:** `{ jobId }` (poll `getJob`)
 - **Error:** `{ success: false, error: string, message: string }`
 
 ## Go Deeper

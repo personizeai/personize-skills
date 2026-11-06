@@ -58,7 +58,7 @@ Recruiting is a matching problem with massive personalization surface. The indus
 
 ## Integration Patterns
 
-**ATS (Greenhouse, Lever, Workable):** Daily `memorizeBatch()`. Candidate profiles, application status, interview feedback, hiring manager notes. This is the foundation.
+**ATS (Greenhouse, Lever, Workable):** Daily `memory_save` with `items[]`. Candidate profiles, application status, interview feedback, hiring manager notes. This is the foundation.
 
 **LinkedIn/sourcing data:** Memorize per candidate with extraction. Skills, career trajectory, publications, side projects. Builds richer profiles than the ATS alone.
 
@@ -88,13 +88,13 @@ Recruiting is a matching problem with massive personalization surface. The indus
 
 **Sourcing:** Memory anchors on candidate skills and career trajectory. Agents find connections between a specific candidate's background and the role -- concrete reasons why it's a fit, not generic reasons the role is "exciting."
 
-**Screening:** Every phone screen is memorized immediately. Not just what the candidate said, but their motivations, concerns, and energy level. This context informs all downstream communication and matching.
+**Screening:** Every phone screen is saved immediately. Not just what the candidate said, but their motivations, concerns, and energy level. This context informs all downstream communication and matching.
 
 **Interview coordination:** Agents generate interviewer briefs (what to probe based on candidate history and role requirements) and candidate prep guides (what to expect, who they'll meet, company culture context) from the same memory pool.
 
 **Offer stage:** Memory surfaces the candidate's stated compensation expectations, competing processes, and motivations -- gives the hiring team an informed negotiation strategy rather than guessing.
 
-**Post-placement:** 30/60/90-day check-ins are generated from placement context and early signals. Outcomes are memorized and feed back into matching quality for future similar roles.
+**Post-placement:** 30/60/90-day check-ins are generated from placement context and early signals. Outcomes are saved and feed back into matching quality for future similar roles.
 
 ---
 
