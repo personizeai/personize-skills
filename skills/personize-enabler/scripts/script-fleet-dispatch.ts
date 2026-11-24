@@ -9,7 +9,7 @@
  * cost = records x per-record token envelope x tier -- forecastable before you spend a credit.
  *
  * What it does:
- *   - Selects the record set via filterByProperty (free, deterministic) or a JSON list.
+ *   - Selects the record set via retrieve mode 'filter' (free, deterministic) or a JSON list.
  *   - Forecasts cost before dispatch and asks for confirmation past a threshold.
  *   - Processes records with a concurrency cap (a fleet, not a stampede).
  *   - Hard isolation: each subagent's recall is scoped to its own record key.
@@ -38,8 +38,8 @@
  *
  * Flags:
  *   --task <id>              Per-record chain to run: enrich|score|summarize (default: summarize)
- *   --type <entityType>      Entity type for filterByProperty + recall scoping (default: contact)
- *   --filter <json>          JSON array of { propertyName, operator, value } conditions
+ *   --type <entityType>      Entity type for retrieve mode 'filter' + recall scoping (default: contact)
+ *   --filter <json>          JSON array of { propertyName, operator, value } conditions (`property` is also accepted)
  *   --records <json>         JSON array of { email?|websiteUrl?|recordId? } (overrides --filter)
  *   --limit <n>              Max records to select via filter (default: 100, max: 200)
  *   --concurrency <n>        Max records processed in parallel (default: 4, max: 20)
@@ -107,7 +107,7 @@ if (!VALID_TASKS.includes(task)) {
 // Per-record token envelope -> credit cost, by tier. The whole point of the fleet:
 // total spend = records x this number. Tune to your account's measured rates.
 const TIER_CREDITS: Record<typeof tier, number> = { basic: 1, pro: 3, ultra: 6 };
-// recall (smartRecall, fast) + govern (smartGuidelines, fast) + act (ai.prompt @ tier).
+// recall (memory.retrieve, brief) + govern (smartGuidelines, fast) + act (ai.prompt @ tier).
 const CREDITS_PER_RECORD = 1 /* recall */ + 1 /* govern */ + TIER_CREDITS[tier];
 
 // ── Record selection ─────────────────────────────────────────────────────────
@@ -125,11 +125,24 @@ async function selectRecords(): Promise<FleetRecord[]> {
     const parsed = JSON.parse(recordsArg) as FleetRecord[];
     return parsed.filter(r => r.recordId || r.email || r.websiteUrl);
   }
-  // Otherwise select via filterByProperty: free, deterministic, no LLM cost.
-  const conditions = filterArg ? JSON.parse(filterArg) : [];
-  const result = await client.memory.filterByProperty({ type: entityType, conditions, limit });
-  const records = (result.data?.records ?? []) as Array<{ recordId: string }>;
-  return records.map(r => ({ recordId: r.recordId }));
+  // Otherwise select via retrieve mode 'filter': deterministic, no LLM cost.
+  const raw = filterArg ? (JSON.parse(filterArg) as any[]) : [];
+  const conditions = raw.map(c => ({
+    property: c.property ?? c.propertyName,
+    operator: c.operator,
+    value: c.value,
+  }));
+  const filters: any = conditions.length === 0
+    ? { crmFilter: { type: entityType }, listAll: true, pageSize: limit }
+    : { crmFilter: { type: entityType }, groups: [{ conditions }], pageSize: limit };
+  let result: any;
+  try {
+    result = await client.memory.retrieve({ mode: 'filter', filters });
+  } catch (err) {
+    throw new Error('Fleet selection failed: ' + (err as Error).message + ' (filter: ' + (filterArg ?? 'none') + ')');
+  }
+  const records = (result.records ?? []) as Array<{ record_id?: string; recordId?: string }>;
+  return records.slice(0, limit).map(r => ({ recordId: (r.record_id ?? r.recordId) as string }));
 }
 
 // ── Checkpointing (resume support) ───────────────────────────────────────────
@@ -160,21 +173,22 @@ async function runChain(record: FleetRecord): Promise<ChainResult> {
   const key = keyOf(record);
   // Identity scope -- the SAME object is passed to every step so recall, govern, and
   // write-back all stay locked to this one record. Hard isolation, no cross-bleed.
-  const scope: { recordId?: string; email?: string; websiteUrl?: string; type: string } = {
-    ...(record.recordId  ? { recordId: record.recordId }   : {}),
+  const scope: { id?: string; email?: string; websiteUrl?: string; entityType: string } = {
+    ...(record.recordId  ? { id: record.recordId }         : {}),
     ...(record.email     ? { email: record.email }         : {}),
     ...(record.websiteUrl ? { websiteUrl: record.websiteUrl } : {}),
-    type: entityType,
+    entityType,
   };
 
   // 1. RECALL -- the record's own compacted history, scoped to its key (isolation).
-  const recall = await client.memory.smartRecall({
-    ...scope,
-    query: `everything known about this ${entityType} relevant to: ${task}`,
-    mode: 'fast',
+  const recall = await client.memory.retrieve({
+    mode: 'scout',
+    compile: true,
+    record: scope as any,
+    message: `everything known about this ${entityType} relevant to: ${task}`,
   });
-  const context = (recall as any).data?.results?.map((r: any) => r.text).join('\n')
-    ?? (recall as any).data?.answer ?? '';
+  const context = (recall as any).documents?.compiledContext
+    ?? (recall as any).answer ?? '';
 
   // 2. GOVERN -- the org guidelines that apply to this task (selective, not all of them).
   const gov = await client.ai.smartGuidelines({ message: `${task} a ${entityType}`, mode: 'fast' });
@@ -208,12 +222,15 @@ async function runChain(record: FleetRecord): Promise<ChainResult> {
   if (!dryRun) {
     // Identity passed via `scope` (recordId | email | websiteUrl) -- the backend resolves
     // whichever is present to the canonical recordId before applying the append.
-    await client.memory.update({
-      ...scope,
-      propertyName: `fleet_${task}_log`,
-      arrayPush: { items: [{ at: new Date().toISOString(), tier, result: summary.slice(0, 2000) }] },
-      reason: `fleet-dispatch:${task}`,
-    } as any);
+    await client.memory.save({
+      shape: 'property',
+      record: scope,
+      operations: [{
+        property: `fleet_${task}_log`,
+        op: 'push',
+        value: { at: new Date().toISOString(), tier, result: summary.slice(0, 2000) },
+      }],
+    });
   }
 
   return { key, status: 'succeeded', summary: summary.slice(0, 240) };

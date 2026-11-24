@@ -46,7 +46,7 @@ creates:     follow-up task type (if any)
 
 | Task Type | AI? | Credits | Input | Output | After |
 |---|---|---|---|---|---|
-| `enrich-contact` | yes | ~3 | email, fields[] | title, company, industry, confidence | memory_update_properties contact, append Notes |
+| `enrich-contact` | yes | ~3 | email, fields[] | title, company, industry, confidence | memory_save shape=property contact, append Notes |
 | `score-icp` | yes | ~3 | email, criteria | icp_score (1-5), reasoning, signals | update ICP Score, if >= 4 → MQL |
 | `qualify-lead` | yes | ~4 | email, framework (BANT/MEDDIC) | qualified, scores, next_step | update stage, if qualified → creates `schedule-meeting` |
 | `update-stage` | no | 0 | email, new_stage | previous_stage | update Campaign Stage, append Updates |
@@ -74,11 +74,11 @@ creates:     follow-up task type (if any)
 
 | Task Type | AI? | Credits | Input | Output | After |
 |---|---|---|---|---|---|
-| `research-company` | yes | ~5 | website_url, fields[] | summary, industry, headcount, funding, tech_stack, icp_fit | memory_update_properties company; if icp_fit → create enrich tasks for contacts |
+| `research-company` | yes | ~5 | website_url, fields[] | summary, industry, headcount, funding, tech_stack, icp_fit | memory_save shape=property company; if icp_fit → create enrich tasks for contacts |
 | `find-contacts` | yes | ~5 | company, titles[], max_results | contacts[] (name, title, email, linkedin) | create `enrich-contact` per found contact |
 | `detect-buying-signals` | yes | ~3 | website_url | signals[] (type, detail, strength) | append Buying Signals; if strong → create outreach task |
 | `deduplicate-contacts` | no | ~1 | email, threshold | duplicates[], action (merge/review) | merge or create review task |
-| `import-contacts` | no | ~1/contact | source, file_path, max_records | imported, skipped, errors | batch memorize, dedup, skip opt-outs |
+| `import-contacts` | no | ~1/contact | source, file_path, max_records | imported, skipped, errors | batch memory_save (shortform items), dedup, skip opt-outs |
 
 ## Campaign Management
 

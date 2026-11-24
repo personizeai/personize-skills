@@ -1,7 +1,7 @@
 # Workspace FAQ
 
 **Q: What is a workspace?**
-A workspace is a collaboration surface attached to any record — a contact, deal, company, or custom entity. It holds tasks, issues, notes, and status fields that agents and humans share to coordinate work on that record.
+A workspace is a collaboration surface attached to any record, a contact, deal, company, or custom entity. It holds tasks, issues, notes, and status fields that agents and humans share to coordinate work on that record.
 
 **Q: How do I create a workspace?**
 Define workspace properties in your collection schema (e.g. `tasks`, `status`, `assignee`, `priority`). The workspace comes into existence when any agent or user writes the first property to a record via `memory_update_property`.

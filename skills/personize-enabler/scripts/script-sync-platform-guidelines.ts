@@ -6,7 +6,7 @@
  * Uses manifest.json content hashes to detect changes.
  *
  * Useful when working offline, in CI environments, or when you prefer local search
- * over the personize_skill MCP tool.
+ * over the personize_md (topic=bulk) MCP tool.
  *
  * Usage:
  *   npx ts-node script-sync-platform-guidelines.ts

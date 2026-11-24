@@ -29,14 +29,14 @@ Use this matrix to pick the right integration mode for your use case:
 
 ## MCP (Model Context Protocol)
 
-**What it is:** A tool interface that lets AI agents call Personize capabilities as native tools. The agent sees tools like `memory_memorize`, `memory_recall`, `ai_smart_guidelines` and calls them directly.
+**What it is:** A tool interface that lets AI agents call Personize capabilities as native tools. The agent sees tools like `memory_save`, `memory_retrieve`, `personize_md` and calls them directly.
 
 **Architecture:**
 
 ```
 AI Agent (Claude, GPT, etc.)
     |
-    |-- tool_call: memory_recall({ query: "...", email: "..." })
+    |-- tool_call: memory_retrieve({ mode: "scout", record: { email: "..." } })
     |
 MCP Server (Personize)
     |
@@ -93,8 +93,8 @@ MCP Server (Personize)
 ```
 Your Application (TypeScript/Node.js)
     |
-    |-- client.memory.memorize({ ... })
-    |-- client.memory.recall({ ... })
+    |-- client.memory.save({ shape: 'text', ... })
+    |-- client.memory.retrieve({ mode: 'scout', ... })
     |-- client.ai.smartGuidelines({ ... })
     |
 Personize API (HTTPS)
@@ -104,7 +104,7 @@ Personize API (HTTPS)
 - TypeScript/Node.js applications
 - Production pipelines (Trigger.dev, custom schedulers)
 - Applications needing full type safety and IDE autocompletion
-- Batch operations (memorizeBatch, bulk recall)
+- Batch operations (`memory.save` with `items[]`, bulk retrieve)
 - Custom agent frameworks built in TypeScript
 
 **Installation:**
@@ -121,10 +121,10 @@ import { Personize } from '@personize/sdk';
 const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 
 // Typed methods with full autocompletion
-const result = await client.memory.recall({
-    query: 'recent pricing discussions',
-    email: 'sarah@acme.com',
-    limit: 10,
+const result = await client.memory.retrieve({
+    mode: 'scout',
+    message: 'recent pricing discussions',
+    record: { email: 'sarah@acme.com' },
 });
 ```
 
@@ -156,9 +156,9 @@ const result = await client.memory.recall({
 ```
 Your Application (any language)
     |
-    |-- POST https://agent.personize.ai/api/v1/memory/memorize
+    |-- POST https://agent.personize.ai/api/v1.1/memory/save
     |       Headers: { X-Api-Key: "your-key" }
-    |       Body: { content: "...", email: "..." }
+    |       Body: { shape: "text", content: "...", record: { email: "..." } }
     |
 Personize API
 ```
@@ -176,11 +176,12 @@ Personize API
 import requests
 
 response = requests.post(
-    'https://agent.personize.ai/api/v1/memory/memorize',
+    'https://agent.personize.ai/api/v1.1/memory/save',
     headers={'X-Api-Key': 'your-api-key'},
     json={
+        'shape': 'text',
         'content': 'Meeting notes from Q2 planning...',
-        'email': 'sarah@acme.com',
+        'record': {'email': 'sarah@acme.com'},
         'tags': ['source:manual', 'type:meeting-notes'],
     },
 )
@@ -189,10 +190,10 @@ response = requests.post(
 **Example (curl):**
 
 ```bash
-curl -X POST https://agent.personize.ai/api/v1/memory/memorize \
+curl -X POST https://agent.personize.ai/api/v1.1/memory/save \
     -H "X-Api-Key: your-api-key" \
     -H "Content-Type: application/json" \
-    -d '{"content": "...", "email": "sarah@acme.com"}'
+    -d '{"shape": "text", "content": "...", "record": {"email": "sarah@acme.com"}}'
 ```
 
 **Key considerations:**
@@ -225,7 +226,7 @@ curl -X POST https://agent.personize.ai/api/v1/memory/memorize \
 ```
 Terminal
     |
-    |-- personize memory recall --query "..." --email "..."
+    |-- personize retrieve scout --email sarah@acme.com --message "pricing discussions"
     |
 Personize API (HTTPS)
 ```
@@ -250,9 +251,9 @@ npm install -g @personize/cli
 export PERSONIZE_API_KEY="your-api-key"
 
 # Memory operations
-personize memory memorize --content "Meeting notes..." --email sarah@acme.com
-personize memory recall --query "pricing discussions" --email sarah@acme.com
-personize memory smart-digest --email sarah@acme.com --type Contact
+personize save --shape text --content "Meeting notes..." --email sarah@acme.com
+personize retrieve scout --email sarah@acme.com --message "pricing discussions"
+personize retrieve brief --email sarah@acme.com --message "What did Sarah say about pricing?"
 
 # Governance
 personize governance list
@@ -299,7 +300,7 @@ Most production integrations use multiple modes:
 ```
 HubSpot webhook --> API (receiver endpoint)
                         |
-                    SDK (pipeline: memorize + enrich)
+                    SDK (pipeline: save + enrich)
                         |
                     MCP (AI agent: analyze + act)
                         |

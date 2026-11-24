@@ -203,11 +203,15 @@ async function main() {
 
     try {
       await withRetry(() =>
-        client.memory.upsert({
-          records,
-          tier,
-          source: 'csv-import',
-        })
+        // One property save per record (replaces the old batch upsert). `buildRecord` output is
+        // passed through as-is: map its identity fields to `record` and its values to `properties`.
+        Promise.all(records.map((r: any) =>
+          client.memory.save({
+            shape: 'property',
+            record: { email: r.email, websiteUrl: r.websiteUrl },
+            properties: r.properties,
+          })
+        ))
       );
       summary.succeeded += records.length;
     } catch (err) {

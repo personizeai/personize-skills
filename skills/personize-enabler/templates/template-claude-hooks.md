@@ -118,7 +118,7 @@ Marks STATUS.md as stale after workspace changes. Agent regenerates on next sess
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "mcp__personize__memory_save|mcp__personize__memory_update_property",
+        "matcher": "mcp__personize__memory_save",
         "command": "node scripts/hooks/mark-stale.js"
       }
     ]

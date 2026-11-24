@@ -1,4 +1,4 @@
-# Inbound Event Handling — Personize as the Brain
+# Inbound Event Handling: Personize as the Brain
 
 When an event arrives from any external source (reply, webhook, CRM update, form submission), Personize handles the thinking. The external tool handles the doing.
 
@@ -6,26 +6,26 @@ When an event arrives from any external source (reply, webhook, CRM update, form
 
 | Step | What Personize Does | Tool |
 |------|---|---|
-| **Read** | Recall full context on this entity | `memory_digest` or `smartRecall` |
-| **Reason** | Classify the event, check governance | `ai_smart_guidelines`, property inspection |
+| **Read** | Recall full context on this entity | `memory_retrieve(mode='brief')` |
+| **Reason** | Classify the event, check governance | `memory_retrieve` on documents, property inspection |
 | **Strategize** | Decide next action based on context + rules | Agent reasoning with recalled context |
 | **Write** | Draft response or output governed by guidelines | `ai.prompt` with `evaluate` |
-| **Update** | Store the event + classification + response in memory | `memory_save`, `memory_update_property` |
-| **Coordinate** | Mark handled in workspace, clear pending follow-ups | `memory_update_property` on workspace |
+| **Update** | Store the event + classification + response in memory | `memory_save` (shortform (tagged), then shape:"property") |
+| **Coordinate** | Mark handled in workspace, clear pending follow-ups | `memory_save` shape:"property" on workspace |
 
 ## Reply Handling (any channel)
 
-The reply arrives from Smartlead, Apollo, HubSpot, Gmail MCP, or pasted by user. Personize doesn't care where — it cares about what to DO:
+The reply arrives from Smartlead, Apollo, HubSpot, Gmail MCP, or pasted by user. Personize doesn't care where, it cares about what to DO:
 
-1. **Read context**: `memory_digest(email=reply_sender)` — get full history, campaign stage, ICP score, prior emails sent
+1. **Read context**: `memory_retrieve(mode='brief', record={email:reply_sender})`: get full history, campaign stage, ICP score, prior emails sent
 2. **Classify**: Is this positive interest, not interested, OOO, bounce, question, or unsubscribe?
-3. **Check governance**: `ai_smart_guidelines` — load opt-out policy, email standards, ICP criteria
-4. **Store the reply**: `memory_save(content=reply_text, email=sender, tags=["reply", "campaign:{name}"])`
+3. **Check governance**: `memory_retrieve(mode='scout', message='opt-out policy, email standards, ICP criteria', sources={documents:true, memories:false})`: load opt-out policy, email standards, ICP criteria
+4. **Store the reply**: `memory_save(content=reply_text, record={email:sender}, tags=["reply", "campaign:{name}"])` (default shortform save, which forwards `tags`)
 5. **Update properties**:
    - `reply_classification` = classified value
    - `campaign_stage` = updated stage (Replied, Opted Out, etc.)
    - `last_contact_date` = now
-6. **Coordinate — prevent duplicate follow-ups**:
+6. **Coordinate: prevent duplicate follow-ups**:
    - Clear any pending follow-up tasks for this contact in workspace
    - If positive: create task "book meeting" or "hand off to human"
    - If opted out: mark `opted_out=true`, remove from all send queues
@@ -47,10 +47,10 @@ Personize prevents this by making contact properties and workspace state the sin
 
 | Event | Read | Reason | Update |
 |---|---|---|---|
-| CRM deal stage changed | `memory_digest(email=...)` | Did we already know? Is this a buying signal? | Store change, update properties |
-| Form submission | `smartRecall(email=...)` | New or existing contact? | `memory_save`, set `source:form` |
-| Webhook from external tool | `smartRecall` by identifier | What does governance say about this event type? | Store, update, trigger next action |
-| Meeting booked | `memory_digest(email=...)` | Recall context for meeting prep | Store, update `campaign_stage=Meeting Set` |
+| CRM deal stage changed | `memory_retrieve(mode='brief', record={email:...})` | Did we already know? Is this a buying signal? | Store change, update properties |
+| Form submission | `memory_retrieve(mode='scout', record={email:...})` | New or existing contact? | `memory_save`, set `source:form` |
+| Webhook from external tool | `memory_retrieve` by identifier | What does governance say about this event type? | Store, update, trigger next action |
+| Meeting booked | `memory_retrieve(mode='brief', record={email:...})` | Recall context for meeting prep | Store, update `campaign_stage=Meeting Set` |
 
 ## Key Principle
 

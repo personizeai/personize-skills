@@ -90,7 +90,7 @@ These patterns solve architectural challenges when building production systems o
 | Program conflict | Children with different active `program_id` | Multiple active programs |
 | Strategy alignment | Parent workspace `context` | Action contradicts stated strategy |
 
-**Cross-entity rollup:** Store summary stats on the parent (active_children_count, last_action_date, overall_sentiment). Update via `memory_update_property` after each child action. Enables `filterByProperty` at the parent level.
+**Cross-entity rollup:** Store summary stats on the parent (active_children_count, last_action_date, overall_sentiment). Update via `memory_save shape=property` after each child action. Enables `filterByProperty` at the parent level.
 
 **Examples:**
 - Sales: account-level coordination across multiple contacts at same company
@@ -224,13 +224,13 @@ This returns all entities due for their next step. The properties ARE the task q
 
 | Step | Action | Tool |
 |---|---|---|
-| 1. Snapshot | Save current guideline content | `guideline_read` → store locally |
+| 1. Snapshot | Save current guideline content | `memory_retrieve` (`mode=fetch` with `fetch.documentIds` and `fetch.includeContent`) → store locally |
 | 2. Validate | Check for truncation, contradictions, missing MUST rules | Agent reasoning |
 | 3. Dry-run | Generate test content with proposed governance | `ai.prompt` with `evaluate` |
 | 4. Compare | Show old vs new output to user | Agent presents diff |
-| 5. Apply | Update with `historyNote` explaining why | `guideline_update` |
+| 5. Apply | Update with `historyNote` explaining why | `memory_save shape=document` (`targetIds` + `updateMode`) |
 | 6. Verify | Generate another test, confirm quality | `ai.prompt` with `evaluate` |
-| 7. Rollback (if needed) | Restore from `guidelines.history()` | `guideline_update` with old value |
+| 7. Rollback (if needed) | Restore from `guidelines.history()` | `memory_save shape=document` (`targetIds`, `restoreVersionId` or old content) |
 
 **Validation checks:**
 - Content length: did the update truncate? (compare character counts)
@@ -442,8 +442,8 @@ At 10,000 records: all-AI = ~30,000 credits, 83 min. With routing: ~14,000 credi
 | Notes | Array (append) -- comments and feedback |
 
 **Key operations:**
-- **Create:** `memory_save` (creates record) → `memory_update_properties` (set properties) → `memory_update_property` (set Body verbatim)
-- **Read:** `filterByProperty(Record Type=notebook)` for list (0 credits), `memory_get_properties` for body
+- **Create:** `memory_save` (creates record) → `memory_save shape=property` (set properties, including Body verbatim)
+- **Read:** `filterByProperty(Record Type=notebook)` for list (0 credits), `memory_retrieve` (`mode=fetch` with `fetch.propertyNames: [{ recordId: record.id, names: ['Body'] }]`; read the Body from the response's `properties[]`) for body
 - **Update body:** Save old body to Versions array FIRST, then overwrite Body
 - **Discover:** `filterByProperty` on Type, Channel, Status, Tags -- all free
 
@@ -474,6 +474,8 @@ At 10,000 records: all-AI = ~30,000 credits, 83 min. With routing: ~14,000 credi
 **The shift:** From open-ended autonomous agents (unpredictable cost and output) to **one bounded subagent per record** executing a fixed instruction chain. The unit of work -- not model capability -- is what makes this production-viable.
 
 **The pattern:** A dispatcher selects the record set (`filterByProperty`, a program's enrollment, or a `Pending Tasks` queue), then fans out one subagent per record with a concurrency cap. Each subagent runs the same chain -- Plan → Gather → Reason → Act → Write back -- and is automatically grounded in two things: the **governed memory scoped to that record** (recall) and the **org guidelines** (govern). It writes results back to the record (properties + `updates`), then exits.
+
+**Hosted option:** on the managed cloud, a sweep (Pattern Q) runs this dispatcher for you, up to 10,000 records per sweep. Run your own dispatcher when you need more records, custom routing between steps, Personize Private, or a model without an org key.
 
 **What you trade, and what you get:**
 
@@ -541,7 +543,7 @@ At 10,000 records: all-AI = ~30,000 credits, 83 min. With routing: ~14,000 credi
 
 **When:** One agent's work needs to wake another agent (a researcher finishes, a writer should start), or an action is high-stakes enough that a human or a manager agent must approve it before it goes out. Both are coordination problems, and both hinge on one fact about the platform.
 
-**The platform fact:** Personize is *passive*. It stores state, guidelines, and memory; it does not run loops or fire events on its own. Personize coordinates state -- an external scheduler or runner executes. Any "trigger" is something outside Personize polling or reacting to a state change you wrote.
+**The platform fact:** Personize is *passive*. It stores state, guidelines, and memory; it does not run loops or fire events on its own. Personize coordinates state -- an external scheduler or runner executes. Any "trigger" is something outside Personize polling or reacting to a state change you wrote. (Exception on the managed cloud: agent runs, sweeps and scheduled agent runs execute on Personize, see Pattern Q. They still do not react to state changes on their own.)
 
 ### (a) How Agent A wakes Agent B
 
@@ -568,7 +570,7 @@ For anything that leaves the building (an email, a public post, a customer-facin
 | `rejected` | Manager / review agent | Bounced back with a reason; generator may revise |
 
 **Wiring it:**
-- Generation is **compliance-gated before it runs** -- the generator loads governance (`ai_smart_guidelines` / `context_retrieve`) and refuses to draft if a hard rule blocks it. Don't generate first and filter later.
+- Generation is **compliance-gated before it runs** -- the generator loads governance (`memory_retrieve` with `sources.documents`) and refuses to draft if a hard rule blocks it. Don't generate first and filter later.
 - Governance marks the send action **REVIEW** (the AUTO / REVIEW / MANUAL boundary from Pattern K). REVIEW means: the agent may *produce* and *propose*, but a human or a designated review agent must flip the status before the send step is allowed to fire.
 - The **manager/review agent owns the status transition.** A separate review pass (its own poll over `filterByProperty(status = "pending-review")`) reads the draft, checks it against guidelines, and sets `approved` or `rejected`. Audit/rewrite separation (Pattern N) applies: review is a distinct step from generation so the generator can't rubber-stamp itself.
 - Only on `approved` does the external sender act, then set `sent`. The status IS the gate -- the runner refuses to send anything not in `approved`.
@@ -582,3 +584,31 @@ For anything that leaves the building (an email, a public post, a customer-facin
 **Anti-pattern:** an agent that generates and sends in one uninterrupted step for high-stakes output -- there is no point at which a human or reviewer can intervene, and a single bad generation reaches the customer. Equally wrong: expecting Personize to "trigger" Agent B by itself. Nothing runs without an external scheduler or runner; the platform only holds the state they react to.
 
 **Relationship to other patterns:** the approval lifecycle is the concrete state machine behind Escalation & Human-in-the-Loop (K) -- K decides *when* to require review, P defines the *statuses and transitions* that enforce it. The review agent flipping status is a handoff governed by Responsibility Routing (H): generation and approval are different roles, and ownership moves with the status. Triggering (a) is how a Fleet Dispatch (N) of generators hands its drafts to a separate fleet of reviewers.
+
+---
+
+## Q. Durable Agent Runs & Sweeps (Hosted Execution)
+
+**When:** A per-record task needs tools, web search or many steps (minutes, not seconds), and the caller should not have to hold a connection or run its own worker -- research an account, score a lead, enrich a ticket. Or the same task must run across a filtered group of records.
+
+**Availability:** managed cloud only (not Personize Private), and the org must have its own model key. Billing is measured usage, see `cheat-credit-costs.md` in `personize-agent-core`.
+
+**The pattern:**
+1. **One record:** start an agent run (`agent_run` / `POST /api/v1.1/agent/runs`) with `record`, typed `outputs` and an `idempotencyKey`. It returns a `runId` and keeps running server-side; poll `agent_run_get`, read events, or take the webhook. Outputs whose names match record properties save to the record when the outcome is `done`; `skipped` and `needs_review` save nothing, so route `needs_review` into Escalation (K).
+2. **Many records:** preview → pilot → review → continue. `sweep_preview` returns the count, samples and a cost estimate and runs nothing. `sweep_launch` runs a pilot batch (default 10), then stops at `awaiting_review` with a projection for the rest. A human (or a manager agent under Pattern K rules) checks the pilot runs and calls `sweep_continue` or `sweep_cancel`.
+3. **On a timer:** a v1.1 schedule with `taskPayload.agentRun`. Sweeps do not recur.
+
+**Limits to design around:**
+
+| Limit | Value |
+|---|---|
+| Records per sweep | 10,000 (narrow the filter or split by segment) |
+| Active sweeps per organization | 1 |
+| Runs at once inside a sweep | 4 |
+| Per run | `maxSteps` 50 (max 500), `maxMinutes` 30 (max 240), `maxWrites` 20 (max 500) |
+| Sweep auto-pause | 10 failures in a row, credits run out, or credentials expire |
+| Idle sweep | cancelled after 7 days in `awaiting_review` or `paused` |
+
+**Anti-patterns:** retrying a run that is still `running` (start nothing new; poll it, or pass the same `idempotencyKey`); launching a sweep without showing the preview count and estimate; setting `autoContinue: true` before the template has passed one reviewed pilot.
+
+**Relationship to other patterns:** a sweep is a hosted Fleet Dispatch (N) with a built-in pilot gate. Typed outputs give the uniform result shape Typed Task Dispatch (L) asks for, and each run's outcome can feed the Interaction Ledger (E).

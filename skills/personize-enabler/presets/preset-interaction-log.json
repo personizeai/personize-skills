@@ -1,5 +1,5 @@
 {
-  "$description": "Collection preset for interaction ledgers (outreach logs, visit logs, communication logs). Deploy via collection_create. Each record is one interaction, not one entity.",
+  "$description": "Collection preset for interaction ledgers (outreach logs, visit logs, communication logs). Deploy via collection({op:'create', ...}). Each record is one interaction, not one entity. On Personize Private use collection_create.",
   "collectionName": "Interaction Log",
   "entityType": "interaction",
   "definition": "Every touchpoint recorded for attribution, learning, and audit. Each record is one interaction linked to an entity and program.",

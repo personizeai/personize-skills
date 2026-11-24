@@ -1,6 +1,6 @@
 # Workspace Patterns
 
-Workspace is a shared collection every record can use — contacts, companies, and agent self-records all use the same schema (Context, Pending Tasks, Updates, Issues, Notes, Decisions, etc.).
+Workspace is a shared collection every record can use: contacts, companies, and agent self-records all use the same schema (Context, Pending Tasks, Updates, Issues, Notes, Decisions, etc.).
 
 ---
 
@@ -8,7 +8,7 @@ Workspace is a shared collection every record can use — contacts, companies, a
 
 | Layer | Mechanism | Content | Scope |
 |-------|-----------|---------|-------|
-| **Knowledge** | Guidelines + smart_update | Learnings, policies, best practices | Org-wide (all agents) |
+| **Knowledge** | Guidelines + memory_save(shape:'document') | Learnings, policies, best practices | Org-wide (all agents) |
 | **State** | Workspace collection | Tasks, notes, issues, context summary | Per-record |
 | **Identity** | Profile properties | Name, role, preferences, active projects | Per-record |
 
@@ -48,14 +48,14 @@ BAD:  customKeyValue: "gtm-os"   ← collides across all agents in the org
 
 ---
 
-## about: "self" vs customKeyName — Do Not Mix
+## about: "self" vs customKeyName: Do Not Mix
 
 These are two separate identity mechanisms. Combining them causes inconsistent behaviour across tools.
 
 | Tool | about: "self" behaviour | With customKeyName added |
 |------|------------------------|--------------------------|
-| `memory_update_property` | Routes to userId-based record | customKeyValue wins — routes to customKey record instead |
-| `memorize` | Routes to email-based user record | customKey added as secondary index on email record |
+| `memory_save` shape:"property" | Routes to userId-based record | customKeyValue wins, routes to customKey record instead |
+| `memory_save` shape:"text" | Routes to email-based user record | customKey added as secondary index on email record |
 
 They write to **different records**. Pick one:
 
@@ -69,7 +69,7 @@ BAD:  about: "self" + customKeyName + customKeyValue  ← ambiguous, tool-depend
 
 ## Discovery: Finding All Workspace Records
 
-You cannot filter by "all records where customKeyName = Self_Project" — the filter engine matches exact `customKey` values, not key names.
+You cannot filter by "all records where customKeyName = Self_Project": the filter engine matches exact `customKey` values, not key names.
 
 Use `Workspace Name IS_SET` instead:
 
@@ -126,17 +126,18 @@ If Status is already `running` with a different Assignee, MUST NOT claim -- anot
 
 ## Session Flow
 
-**Session start — read before acting:**
+**Session start: read before acting:**
 ```
-1. memory_get_properties(about: "self") → who am I, active projects
-2. memory_get_properties(customKeyName: "Self_Project", customKeyValue: "{userId}_gtm-os")
-   → propertyNames: ["Context", "Pending Tasks", "Open Issues"]
-3. personize_skill("current task") → org guidelines
-4. filterByProperty(Status=pending, Assignee=agent) → find claimable work
+1. memory_retrieve(about:'self', mode:'scout', message:"who am I, active projects")
+2. memory_retrieve(mode:'fetch',
+     fetch:{propertyNames:[{recordId:"<id>", names:["Context","Pending Tasks","Open Issues"]}]})
+   → the record id must be known first (from step 1 or mode:'brief', record={customKey:{name:"Self_Project", value:"{userId}_gtm-os"}}); otherwise use fetch:{recordIds:["<id>"]}
+3. memory_retrieve(mode='scout', message:"current task", sources={documents:true, memories:false}) → org guidelines
+4. memory_retrieve(mode:'filter', Status=pending, Assignee=agent) → find claimable work
 5. For each pending record: check Depends On → skip if blocker is not completed
 ```
 
-**During session — claim then execute:**
+**During session: claim then execute:**
 ```
 1. CLAIM: set Status=running, Assignee={agent}, append to Updates
 2. READ: Context property contains instructions for this record
@@ -145,12 +146,12 @@ If Status is already `running` with a different Assignee, MUST NOT claim -- anot
 5. COMPLETE: set Status=completed, append to Updates with summary
 ```
 
-**Session end — always close the loop:**
+**Session end: always close the loop:**
 ```
-memory_update_property → set Context with updated summary
-memory_update_property → push completed tasks to Tasks (history), remove from Pending Tasks
-memory_update_property → resolve Open Issues that were fixed
-memory_update_property(about: "self") → update Active Projects list on profile
+memory_save(shape:"property") → set Context with updated summary
+memory_save(shape:"property") → push completed tasks to Tasks (history), remove from Pending Tasks
+memory_save(shape:"property") → resolve Open Issues that were fixed
+memory_save(shape:"property", about: "self", operations) → update Active Projects list on profile
 ```
 
 ---
@@ -177,10 +178,10 @@ Both formats coexist in the same array. Agents check `type` field: present = typ
 
 ### Querying at Scale
 
-`filterByProperty` cannot search inside array values. The operator pattern:
+`memory_retrieve` `mode:'filter'` cannot search inside array values. The operator pattern:
 
 ```
-1. filterByProperty(Pending Tasks, operator: IS_SET)
+1. memory_retrieve(mode:'filter', Pending Tasks, operator: IS_SET)
    → Returns all records that have tasks. 0 credits.
 
 2. Parse arrays client-side → extract individual tasks
@@ -239,8 +240,8 @@ The `Status` property on a record is for **entity lifecycle** (project: planning
 | `customKeyValue: "gtm-os"` (no userId) | Collides across all agents in org | Prefix with userId |
 | `about: "self"` + `customKeyName` | Inconsistent routing across tools | Pick one identity mechanism |
 | Single self record for all projects | Arrays grow unbounded, no isolation | One record per project via customKeyName |
-| Never updating Context | Next agent starts blind | Set Context at session end — always |
-| Storing org-wide learnings in workspace Notes | Only one record benefits | Use smart_update → guidelines instead |
+| Never updating Context | Next agent starts blind | Set Context at session end, always |
+| Storing org-wide learnings in workspace Notes | Only one record benefits | Use memory_save(shape:'document', type:'guideline') instead |
 | Creating workspace without Workspace Name | Invisible to IS_SET discovery filter | Always set Workspace Name on creation |
 | Renaming customKeyValue to rename a project | Old record abandoned, new one created | Keep customKeyValue stable; update Workspace Name property instead |
 
@@ -253,7 +254,7 @@ Warn the user when:
 - `about: "self"` and `customKeyName`/`customKeyValue` are both provided in the same call
 - Session ends without updating `Context` on any workspace that was written to
 - A workspace record is being created without setting `Workspace Name`
-- `smart_update` has not been called after discovering a reusable learning (missed knowledge capture)
+- `memory_save(shape:'document')` has not been called after discovering a reusable learning (missed knowledge capture)
 
 ---
 
@@ -264,51 +265,52 @@ Warn the user when:
 ```
 Step 1: memory_save
   content: "Project: Q2 Outbound Push"
-  type: "workspace"           (or "contact" — workspace properties work on any entity type)
+  type: "workspace"           (or "contact": workspace properties work on any entity type)
   customKeyName: "slug"
   customKeyValue: "{userId}_project:q2-outbound"
   tier: "basic"
   → Returns recordId
 
-Step 2: WAIT — memorize is async (1-3 seconds)
-  Retry memory_update_properties with backoff. Do NOT call immediately.
+Step 2: WAIT: save is async (1-3 seconds)
+  Retry memory_save shape:"property" with backoff. Do NOT call immediately.
 
-Step 3: memory_update_properties (once record is queryable)
-  recordId: (from step 1)
-  updates:
-    - Workspace Name = "Q2 Outbound Push"
-    - Workspace Type = "project"
-    - Status = "planning"
-    - Context = "Initial setup. Waiting for ICP criteria and first campaign design."
+Step 3: memory_save shape:"property" (once record is queryable)
+  record={id:"<recordId from step 1>"}
+  operations:
+    - {op:"set", property:"Workspace Name", value:"Q2 Outbound Push"}
+    - {op:"set", property:"Workspace Type", value:"project"}
+    - {op:"set", property:"Status", value:"planning"}
+    - {op:"set", property:"Context", value:"Initial setup. Waiting for ICP criteria and first campaign design."}
 ```
 
 ### READ workspace records
 
 ```
-List by status (FREE — no credits):
-  filterByProperty(type="workspace", conditions=[
-    { propertyName: "Status", operator: "equals", value: "pending" },
-    { propertyName: "Assignee", operator: "equals", value: "agent" }
-  ])
+List by status (1 credit per call for API-key callers, 0 in the UI and MCP):
+  memory_retrieve(mode:'filter', type="workspace", filters={groups:[{conditions:[
+    { property: "Status", operator: "EQ", value: "pending" },
+    { property: "Assignee", operator: "EQ", value: "agent" }
+  ]}]})
 
 Get specific record properties:
-  memory_get_properties(recordId=..., nonEmpty=true)
+  memory_retrieve(mode:'fetch', fetch:{recordIds:["<id>"]})   ← full snapshot
+  memory_retrieve(mode:'fetch', fetch:{propertyNames:[{recordId:"<id>", names:["Context","Pending Tasks","Open Issues"]}]})
 
 Full digest:
-  memory_digest(customKeyName="slug", customKeyValue="{userId}_project:q2-outbound")
+  memory_retrieve(mode='brief', record={customKey:{name:"slug", value:"{userId}_project:q2-outbound"}})
 ```
 
 ### UPDATE properties
 
 ```
 Replace a text property (Status, Context, Assignee):
-  memory_update_property(recordId=..., propertyName="Status", propertyValue="active")
+  memory_save(shape:"property", record={id:"<recordId>"}, operations=[{op:"set", property:"Status", value:"active"}])
 
 Append to an array property (Notes, Updates, Tasks, Issues, Decisions):
-  memory_update_property(recordId=..., propertyName="Notes",
-    arrayPush={ items: ["[2026-04-11 09:30] Found 47 leads, exported to CSV"], unique: false })
+  memory_save(shape:"property", record={id:"<recordId>"}, operations=[{op:"push", property:"Notes",
+    value:"[2026-04-11 09:30] Found 47 leads, exported to CSV"}])
 
-⚠️ NEVER use propertyValue on append-only array properties — it overwrites the entire array.
+⚠️ NEVER use op:"set" on append-only array properties: it overwrites the entire array.
 ```
 
 ### Cross-entity workspace
@@ -317,35 +319,36 @@ Workspace properties work on ANY entity type, not just workspace records:
 
 ```
 Add a task to a CONTACT:
-  memory_update_property(email="john@acme.com", propertyName="Pending Tasks",
-    arrayPush={ items: ["Follow up on pricing question"], unique: false })
+  memory_save(shape:"property", record={email:"john@acme.com"},
+    operations=[{op:"push", property:"Pending Tasks", value:"Follow up on pricing question"}])
 
 Add notes to a COMPANY:
-  memory_update_property(websiteUrl="acme.com", propertyName="Notes",
-    arrayPush={ items: ["[2026-04-11] CTO leaving Q3"], unique: false })
+  memory_save(shape:"property", record={websiteUrl:"acme.com"},
+    operations=[{op:"push", property:"Notes", value:"[2026-04-11] CTO leaving Q3"}])
 ```
 
 ## Quick Reference
 
 ```
 Create workspace:
-  memorize(customKeyName, customKeyValue, type: "contact", content: "...")
+  memory_save(shape:"text", customKeyName, customKeyValue, type: "contact", content: "...")
   WAIT for async indexing (retry with backoff)
-  memory_update_properties → set Workspace Name, Workspace Type, Context
+  memory_save(shape:"property") → set Workspace Name, Workspace Type, Context
 
 Read workspace:
-  memory_get_properties(customKeyName, customKeyValue, propertyNames: [...])
-  memory_digest(customKeyName, customKeyValue)  ← full picture in one call
-  filterByProperty(conditions=[...])  ← FREE, no credits
+  memory_retrieve(mode:'fetch', fetch:{propertyNames:[{recordId:"<id>", names:["Context","Pending Tasks","Open Issues"]}]})
+    (resolve the record id first, e.g. via mode='brief', mode='filter' or a prior save result; fetch:{recordIds:["<id>"]} returns the whole snapshot)
+  memory_retrieve(mode='brief', record={customKey:{name, value}})  ← full picture in one call
+  memory_retrieve(mode:'filter', filters={groups:[{conditions:[...]}]})  ← 1 credit per call for API-key callers, 0 in the UI and MCP
 
 Update workspace:
-  memory_update_property(propertyName, propertyValue)  ← text properties
-  memory_update_property(propertyName, arrayPush)  ← array properties
+  memory_save(shape:"property", operations:[{op:"set", property, value}])  ← text properties
+  memory_save(shape:"property", operations:[{op:"push", property, value}])  ← array properties
 
 Find all workspaces:
-  search(groups: [{ conditions: [{ property: "Workspace Name", operator: "IS_SET" }] }])
+  memory_retrieve(mode:'filter', filters={groups:[{conditions:[{ property: "Workspace Name", operator: "IS_SET" }]}]})
 
 Agent profile (not project-scoped):
-  memory_get_properties(about: "self")
-  memory_update_property(about: "self", propertyName: "Active Projects", ...)
+  memory_retrieve(about:'self', mode:'scout', ...)
+  memory_save(shape:"property", about: "self", operations:[{op:"push", property:"Active Projects", value:...}])
 ```

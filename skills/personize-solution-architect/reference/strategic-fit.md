@@ -11,7 +11,7 @@ How to evaluate whether Personize is the right fit for a company — at both the
 ### Lens 1 — Immediate Tactical Fit
 Could Personize create measurable value for one or more specific workflows in the next 30-90 days? Evaluate against:
 - **Current pain** — what the team does manually or badly today
-- **Data readiness** — is source data clean enough to memorize?
+- **Data readiness**: is source data clean enough to save?
 - **Workflow specificity** — is there a concrete, repeated workflow to improve?
 - **Ownership** — is there someone who would own and measure this?
 
@@ -100,11 +100,11 @@ Memory from CRM, support, product, email, calls, forms, enrichment, and custom s
 **Why:** Every point tool is its own silo. Five AI tools = five partial views of each customer. Personize gives one complete view all tools recall.
 
 ### 2. Shared Governance
-Governance variables (brand voice, ICPs, compliance rules, playbooks, escalation policies) are defined once via `context_save({ type: 'guideline' })` and enforced everywhere via SmartContext.
+Governance variables (brand voice, ICPs, compliance rules, playbooks, escalation policies) are defined once via `memory_save shape=document` (type 'guideline') and enforced everywhere via SmartContext.
 **Why:** Without it, every tool invents its own rules — five people across three tools = fifteen "brands." Governance is the only way to stay consistent as adoption scales.
 
 ### 3. Multi-Agent Coordination via Workspaces
-Workspaces implement the "patient chart" pattern: many agents and humans contribute to the same record independently. No orchestrator, no message bus — the record IS the coordination. Each contributor reads via `smartDigest()`, acts within its expertise, writes back via `memorize()`, and moves on. (See [`workspace-schemas.md`](./workspace-schemas.md) and the `personize-agent-workspace` skill.)
+Workspaces implement the "patient chart" pattern: many agents and humans contribute to the same record independently. No orchestrator, no message bus: the record IS the coordination. Each contributor reads via `memory_retrieve` (`mode=brief`, with a `message`), acts within its expertise, writes back via `memory_save`, and moves on. (See [`workspace-schemas.md`](./workspace-schemas.md) and the `personize-agent-workspace` skill.)
 **Why:** The future of enterprise AI is many agents across many tools, not one copilot. Without a shared coordination layer agents duplicate work, contradict each other, and lose context — exactly what single-user point tools can't fix.
 
 ### 4. Autonomous Workflow Support
@@ -112,7 +112,7 @@ Built for agents that act within governance, not just copilots that draft for re
 **Why:** As companies scale AI they need agents that act independently inside defined rules. Governance + memory + workspaces make autonomous execution trustworthy.
 
 ### 5. Durable Enterprise Memory Asset
-Every interaction, note, signal, call, and outcome memorized becomes a permanent, queryable, recallable asset that compounds over time.
+Every interaction, note, signal, call, and outcome saved becomes a permanent, queryable, recallable asset that compounds over time.
 **Why:** Most AI tools are stateless — process and forget. Personize builds institutional memory that gets richer with use.
 
 ### 6. Compaction Economics

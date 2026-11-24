@@ -1,5 +1,5 @@
 {
-  "$description": "Collection preset for coordinated programs (campaigns, care plans, enrollment drives, renewal programs). Deploy via collection_create, then customize properties for your domain.",
+  "$description": "Collection preset for coordinated programs (campaigns, care plans, enrollment drives, renewal programs). Deploy via collection({op:'create', ...}), then customize properties for your domain. On Personize Private use collection_create.",
   "collectionName": "Programs",
   "entityType": "program",
   "definition": "Coordinated execution units with their own rules, enrollment, metrics, and lifecycle. Each record is one program instance.",

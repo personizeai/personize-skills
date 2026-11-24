@@ -46,7 +46,7 @@ Personize compacts the corpus into a small structured payload before calling the
 
 ## Memorize-once economics (write cost, amortized over 12 months)
 
-Initial extraction when a record is first memorized — one-time per record. Two discounts compound:
+Initial extraction when a record is first saved: one-time per record. Two discounts compound:
 
 - **Bedrock prompt cache** — 90% of input is the system prompt + per-org schema and gets cached → input billed at 10% of list (90% off).
 - **Bedrock Batch API** — whole call runs through batch → 50% off both input and output.
@@ -193,7 +193,7 @@ Then translate to business-side metrics using common multipliers:
 | User mentions multi-step reasoning, complex synthesis | **Professional** — balanced cost/quality |
 | User mentions legal, compliance, regulated outputs | **Frontier** — quality matters more than $/call |
 | Cost ratio is bad (savings < 50%) | Check if context profile is right-sized. Often the user picks "large" when "small" fits their actual workload |
-| Recalls per record < 10/yr | Reconsider whether memorize amortization makes sense — at very low recall rates, the write cost dominates and Personize may not save money |
+| Recalls per record < 10/yr | Reconsider whether save amortization makes sense: at very low recall rates, the write cost dominates and Personize may not save money |
 
 ## BYOK delta
 

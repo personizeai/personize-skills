@@ -24,10 +24,9 @@ npx personize test
 ## For AI Agents (MCP)
 
 1. Connect Personize MCP server (configured by admin or user)
-2. MUST call `personize_skill` first -- loads platform guidance
-3. Call `personize_context` -- discovers org state
-4. Recall self-memory: `memory_recall_pro(about:"self")`
-5. Check governance: `ai_smart_guidelines`
+2. MUST call `personize_md` first -- discovers org state and platform guidance in one call
+3. Recall self-memory: `memory_retrieve(about:"self")`
+4. Check governance: `memory_retrieve(mode='scout', message='<task or rule topic>', sources={documents:true, memories:false})`
 
 ## Fresh Org Setup Order
 
@@ -35,25 +34,26 @@ A brand-new org is EMPTY -- no collections, no guidelines. The fastest way to pr
 
 When collections are empty and no guidelines exist:
 
+> **Personize Private:** use the granular names instead: `collection_list`, `collection_create`, `collection_update`, `collection_delete`, `collection_delete_property`, `context_manage_list` / `context_manage_read` / `context_manage_history`.
+
 | Step | Tool | What |
 |------|------|------|
-| 1 | `personize_skill` | Load platform guidance |
-| 2 | `personize_context` | Discover org state (confirm it's empty) |
-| 3 | `kits_list` | List installable kits (`personize-starter`, `engineering-memory`) |
-| 4 | `kits_install` | Provision the empty org from a built-in kit (poll with `kits_get_status`) |
-| 5 | Ask user | What are you building? Who are your entities? (if no kit fits, build manually) |
-| 6 | `collection_create` | Create entity collections with properties |
-| 7 | Verify: `collection_list` | Confirm collections exist with properties |
-| 8 | `context_save` | Create governance guidelines (rules, policies) |
-| 9 | Verify: `guideline_list` | Confirm guidelines exist |
-| 10 | `memory_save(about:"self")` | Store what was configured |
+| 1 | `personize_md` | Discover org state (confirm it's empty) + platform guidance |
+| 2 | `kits_list` | List installable kits (`personize-starter`, `engineering-memory`) |
+| 3 | `kits_install` | Provision the empty org from a built-in kit (poll with `kits_get_status`) |
+| 4 | Ask user | What are you building? Who are your entities? (if no kit fits, build manually) |
+| 5 | `collection({op:'create', ...})` | Create entity collections with properties |
+| 6 | Verify: `collection({op:'list', ...})` | Confirm collections exist with properties |
+| 7 | `memory_save(shape:'document', type:'guideline', content:'...')` | Create governance guidelines (rules, policies) |
+| 8 | Verify: `memory_retrieve(mode='filter', filters={documents:{docType:['guideline']}})` | Confirm guidelines exist |
+| 9 | `memory_save(about:"self")` | Store what was configured |
 
 ## What Goes Where
 
 | Thing | Tool | Examples |
 |-------|------|----------|
-| Entity data (has identity) | `collection_create` | Contacts, Companies, Deals, Campaigns |
-| Behavioral rules/policies | `context_save` | ICP criteria, email standards, send limits |
+| Entity data (has identity) | `collection({op:'create', ...})` | Contacts, Companies, Deals, Campaigns |
+| Behavioral rules/policies | `memory_save(shape:'document')` | ICP criteria, email standards, send limits |
 | Content to remember | `memory_save` | Meeting notes, emails, research |
 | Structured field on entity | Property in collection | deal_stage, budget, title |
 | Agent's own learnings | `memory_save(about:"self")` | Preferences, decisions, patterns |

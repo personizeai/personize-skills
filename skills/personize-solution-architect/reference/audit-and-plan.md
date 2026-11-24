@@ -10,7 +10,7 @@ Ask three concrete numbers before anything else. **Without these, you can't size
 
 | Question | Where to find the answer | What it unlocks |
 |---|---|---|
-| **How many records?** | HubSpot contacts count; SF `SELECT COUNT() FROM Account`; Postgres `SELECT COUNT(*) FROM customers`; CSV line count | Decides single vs. batch vs. async-batch; estimates initial memorize cost |
+| **How many records?** | HubSpot contacts count; SF `SELECT COUNT() FROM Account`; Postgres `SELECT COUNT(*) FROM customers`; CSV line count | Decides single vs. batch vs. async-batch; estimates initial save cost |
 | **How many entity types?** | List CRM object types (Contact, Company, Deal, Ticket); product DB tables; auxiliary stores | Decides how many collections to create; reveals whether multi-tenant patterns are needed |
 | **How much unstructured content per record?** | Per-contact: # call notes, # emails, # support tickets, avg word count of each | Decides extraction tier (basic / pro / pro_fast / ultra) and whether `extractMemories: true` is needed |
 
@@ -33,7 +33,7 @@ const inventory = await Promise.all([
   client.salesforce.query("SELECT COUNT() FROM Opportunity"),
 ]);
 
-// Existing Personize footprint (what's already memorized for this org)
+// Existing Personize footprint (what's already saved for this org)
 const orgUsage = await client.analytics.overview();
 // orgUsage.data — records, memories, attachments
 ```
@@ -44,7 +44,7 @@ For each entity type, ask the user:
 
 1. **What free-text fields exist?** (call notes, ticket descriptions, email bodies, meeting transcripts)
 2. **What structured fields exist?** (industry, ARR, stage, tags) — these become properties with `extractMemories: false`
-3. **What external content references exist?** (linked docs, recordings, PDFs) — decide attachment vs. transcribe-then-memorize
+3. **What external content references exist?** (linked docs, recordings, PDFs): decide attachment vs. transcribe-then-save
 
 Output a one-line summary per type:
 ```
@@ -59,9 +59,9 @@ Three destinations for incoming data; pick one per data type before importing:
 
 | Destination | What goes here | Tool |
 |---|---|---|
-| **Collection record** | Anything with an identity key (email, domain, external_id) — entities you'll recall *by key* | `client.memory.upsert()` (known field values) / `client.memory.save()` (content → AI extraction) |
-| **Context doc** | Behavioral rules, ICP criteria, brand voice, playbooks, account briefs that aren't entity-shaped | `client.context.create()` / `context_save` MCP tool — or `client.v1_1.context.saveBatch()` for 10+ at once |
-| **Workspace property on existing record** | Coordination state (tasks, issues, notes) that lives alongside an entity | `client.memory.update()` with `operation: 'push'` |
+| **Collection record** | Anything with an identity key (email, domain, external_id) — entities you'll recall *by key* | `client.memory.save({ shape: 'property', ... })` (known field values) / `client.memory.save({ shape: 'text', ... })` (content → AI extraction) |
+| **Context doc** | Behavioral rules, ICP criteria, brand voice, playbooks, account briefs that aren't entity-shaped | `memory_save shape=document` (SDK `client.memory.save({ shape: 'document', ... })`), or the batch import path for 10+ at once |
+| **Workspace property on existing record** | Coordination state (tasks, issues, notes) that lives alongside an entity | `client.memory.save({ shape: 'property', record, operations: [{ op: 'push', ... }] })` |
 
 **The most common mistake:** importing "Sales Playbook" as a contact record. It has no identity, can't be filtered by, and won't reach agents via SmartContext. It belongs in `context` with `type: 'playbook'`. The reverse mistake — modeling a deal as a context doc — loses recall and segmentation. **Test:** if you would ever say "show me all the X", it's a collection. If you would say "remind agents of X when relevant", it's a context doc.
 
@@ -72,31 +72,31 @@ Order matters because Personize extracts properties from content, and properties
 ### Recommended ordering
 
 1. **Entity types first.** `client.entityTypes.update(...)` — set display names matching domain language ("Candidate" vs. "Contact" for recruiting). Cheaper to fix names now than to migrate records later.
-2. **Collections second.** `client.collections.create({ entityType, properties })` — define property schemas BEFORE memorize. Otherwise extraction lands in a generic bucket and you re-extract on re-import.
-3. **Context docs third.** Org-level rules (ICP, brand voice, playbooks) get seeded via async `client.v1_1.context.saveBatch()` for bulk imports (10+) or `client.context.create()` for one-offs. This populates SmartContext so subsequent memorize calls benefit from governance from day one.
+2. **Collections second.** `client.collections.create({ entityType, properties })`: define property schemas BEFORE `memory_save`. Otherwise extraction lands in a generic bucket and you re-extract on re-import.
+3. **Context docs third.** Org-level rules (ICP, brand voice, playbooks) get seeded via the batch import path for bulk imports (10+) or a single `memory_save shape=document` call for one-offs. This populates SmartContext so subsequent `memory_save` calls benefit from governance from day one.
 4. **Companies before contacts.** Contact records reference companies via `websiteUrl`. Importing companies first means `extractMemories` on contact text can correlate against existing company records.
 5. **Contacts before deals.** Deals reference contact emails. Same reasoning.
 6. **Interaction content last.** Call notes, support tickets, emails — these are the longest tail and the highest-volume. Run as async batch after the entity scaffolding is in place.
 
 ### Batch sizing decision table
 
-> **Structured records first:** if you already have the field values (e.g. a CSV of typed columns), use `client.memory.upsert()` (single or batch) -- it sets properties directly, no extraction, no sizing concerns. The tiers below are for **content that needs AI extraction**.
+> **Structured records first:** if you already have the field values (e.g. a CSV of typed columns), use `client.memory.save({ shape: 'property', ... })` (one call per record) -- it sets properties directly, no extraction, no sizing concerns. The tiers below are for **content that needs AI extraction**.
 
 | Record count | Tool | Why |
 |---|---|---|
-| 1–9 records | Per-record `client.memory.memorize()` — synchronous | Latency fine, no event polling needed |
-| 10–500 records | `client.memory.saveBatch()` (legacy `memorizeBatch`, deprecated) | Shared extraction context, lower per-call overhead, ~1 credit/record |
-| 500–10,000 records | `client.v1_1.memory.saveBatch()` — async with eventId polling | State machine handles partial failures; doesn't block your script |
+| 1–9 records | Per-record `client.memory.save({ shape: 'text', ... })`, synchronous | Latency fine, no event polling needed |
+| 10–500 records | `client.memory.save({ shape: 'shortform', items })` | Shared extraction context, lower per-call overhead, ~1 credit/record |
+| 500–10,000 records | `client.memory.save({ shape: 'shortform', items })` — async with eventId polling | State machine handles partial failures; doesn't block your script |
 | 10,000+ records | Chunked async batches of 5,000 with backoff | Avoid `SCHEDULE_CAP_EXCEEDED`-style guardrails; respect plan rate limits |
 
-For **context docs** specifically: use `client.v1_1.context.saveBatch()` for any GitOps-style import (10+ docs from a folder of `.md` files). Single-doc `context_save` is fine for 1–9.
+For **context docs** specifically: use the batch import path for any GitOps-style import (10+ docs from a folder of `.md` files). A single-doc `memory_save shape=document` is fine for 1–9.
 
 ### Credit budget estimate
 
 Rule of thumb (for sizing — not exact billing):
 
 ```
-Initial memorize cost ≈ records × avg_content_pages × 1 credit/page × tier_multiplier
+Initial save cost ≈ records × avg_content_pages × 1 credit/page × tier_multiplier
                       ÷ batch_discount (0.5x when using batch APIs)
 ```
 
@@ -127,15 +127,17 @@ const overview = await client.analytics.overview();
 // Compare overview.data.recordCount to your source-system count
 
 // 2. Properties extracted (spot-check 5 random records)
-const sample = await client.memory.search({ query: '*', limit: 5 });
-for (const rec of sample.data.results) {
-  console.log(rec.email, rec.properties);  // Should show populated structured fields
+// listAll: true matches any record; use a real `groups` filter for a narrower spot-check
+const sample = await client.memory.retrieve({ mode: 'filter', filters: { listAll: true, pageSize: 5 } });
+for (const rec of sample.records) {
+  console.log(rec); // Should show populated structured fields
 }
 
 // 3. Recall works (run a question you know the answer to)
-const recall = await client.memory.smartRecall({
-  query: 'who works at acme corp?',
-  mode: 'fast',
+const recall = await client.memory.retrieve({
+  mode: 'scout',
+  message: 'who works at acme corp?',
+  sources: { properties: true },
 });
 // Should return the expected contacts
 ```
@@ -151,11 +153,11 @@ const recall = await client.memory.smartRecall({
 | Situation | Default |
 |---|---|
 | Source is a CRM with structured + unstructured fields | Collections per entity type; `extractMemories: true` on text fields |
-| Source is a folder of `.md` files (playbooks, runbooks) | `client.v1_1.context.saveBatch()` with `type: 'playbook'` |
-| Source is a single ICP doc | `client.context.create({ type: 'guideline' })` |
-| Source is an Apollo/LinkedIn export | `memorizeBatch` with field mapping; tag `source:apollo` |
-| Source is a transcript / call recording | `memorize({ content, email, tags: ['type:transcript'] })` per call; extraction tier `pro` |
-| 10,000+ records, mixed structured + text | Run entity-types + collections + context first, then async `saveBatch` per entity type, sequenced (companies → contacts → deals → interactions) |
+| Source is a folder of `.md` files (playbooks, runbooks) | `client.memory.save({ shape: 'document', items })` with `type: 'playbook'` per item |
+| Source is a single ICP doc | `client.memory.save({ shape: 'document', type: 'guideline', name, content })` (MCP `memory_save shape=document`) |
+| Source is an Apollo/LinkedIn export | `memory_save` with `items[]` and field mapping; tag `source:apollo` |
+| Source is a transcript / call recording | `memory_save({ shape: 'text', content, record: { email }, tags: ['type:transcript'] })` per call; extraction tier `pro` |
+| 10,000+ records, mixed structured + text | Run entity-types + collections + context first, then async `memory_save shape=shortform` per entity type, sequenced (companies → contacts → deals → interactions) |
 
 ## See also
 
