@@ -37,7 +37,7 @@ With the brief in hand, lead with what you know and validate. Ask conversational
 6. **"Do your users have dashboards or reporting views?"** — prime territory for AI-generated, memory-grounded insights.
 
 ### Data Landscape
-7. **"What data do you already have about your users?"** — CRM, product analytics, support tickets, purchase history, behavior logs. This is what can be memorized today.
+7. **"What data do you already have about your users?"**: CRM, product analytics, support tickets, purchase history, behavior logs. This is what can be saved today.
 8. **"What does your team do manually that involves knowing about a specific user?"** — reps researching before calls, CS checking health, marketers segmenting. These are the workflows to automate first, and the fleet-dispatch candidates.
 9. **"Do you run any ML models — churn, lead scoring, recommendations?"** — store predictions + explanations as properties for agents to reference.
 10. **"What external data do you pull in — CRM, enrichment, social, news?"** — every external source is memorization material.
@@ -81,12 +81,12 @@ The user/customer/entity schema is the spine; every field is a candidate propert
 - `Grep -i "hubspot|salesforce|pipedrive|apollo|clearbit|zoominfo|nango|@hubspot|jsforce"`.
 - Inspect API-client wrappers and any `sync`/`import` jobs.
 
-**Maps to:** inbound topology (CRM→Personize). HubSpot/Salesforce → passthrough (org-managed connection); enrichment payloads → memorize as properties + provenance tags. If they already sync CRM↔product, that's a bidirectional pipeline candidate.
+**Maps to:** inbound topology (CRM→Personize). HubSpot/Salesforce → passthrough (org-managed connection); enrichment payloads → save as properties + provenance tags. If they already sync CRM↔product, that's a bidirectional pipeline candidate.
 
 ### Step 3 — Find event / analytics tracking
 - `Grep -i "analytics.track|analytics.identify|posthog|segment|mixpanel|amplitude|rudderstack|datadog"`.
 
-**Maps to:** behavioral signals → memory. High-frequency events → roll up to a weekly summary memory or crystallize as a counter property (don't memorize every click). Stored ML predictions → properties.
+**Maps to:** behavioral signals → memory. High-frequency events → roll up to a weekly summary memory or crystallize as a counter property (don't save every click). Stored ML predictions → properties.
 
 ### Step 4 — Find outbound channels
 - Email: `Grep -i "sgMail|nodemailer|ses\.|postmark|resend|sendEmail"`.
@@ -115,7 +115,7 @@ The classic pattern→opportunity map, extended:
 
 | Code pattern | What it means | Personize opportunity |
 |---|---|---|
-| `user.email`, `user.name`, `user.role` | User data model | Identity properties to memorize |
+| `user.email`, `user.name`, `user.role` | User data model | Identity properties to save |
 | `analytics.track()`, `analytics.identify()` | Event tracking | Behavioral signals → memory (rolled up) |
 | `sgMail.send()`, `ses.send()`, `resend.emails` | Email sends | Personalize content; outbound delivery point |
 | `notify()`, `pushNotification()` | Notifications | Signal: decide if/what/when/how to notify |
@@ -137,7 +137,7 @@ For every finding from Steps 1-8, add a row. This is what you carry into PROPOSE
 |---|---|---|---|
 | `schema.prisma:Contact` | Data model | Collection `Contact` + 8 properties | Identity = email; quick win |
 | `lib/hubspot.ts:syncContacts` | CRM integration | Inbound sync + passthrough | Bidirectional candidate |
-| `lib/ai.ts:buildPrompt` | Prompt assembly | **Compaction** — `retrieve_unified` vs raw dump | High-value; est. 80-90% token cut |
+| `lib/ai.ts:buildPrompt` | Prompt assembly | **Compaction**: `memory_retrieve` vs raw dump | High-value; est. 80-90% token cut |
 | `jobs/nightly-score.ts` | Cron/batch | Fleet dispatch (1 subagent/record) | ~12k records; predictable cost |
 | `lib/email.ts:sendWelcome` | Outbound | Personalized generation + delivery | Priority channel? |
 | `if user.plan===` (checkout.ts) | Decision branch | Guideline + memory-grounded decision | Rewrite rules as governance |
@@ -151,17 +151,17 @@ After the recon, classify each source by **what becomes what**. Three destinatio
 ```
 Source: [their database / CRM / analytics / corpus]
 ├── Structured field values you already have
-│   └── → memory.upsert()   (memory_upsert / POST /api/v1.1/memory/upsert)
+│   └── → memory.save({ shape: 'property' })   (memory_save shape=property)
 │         sets properties directly, no extraction. Single or batch.
 │         email · name · plan_tier · last_login · industry · ARR
 │
 ├── Unstructured content needing AI extraction
-│   └── → client.memory.saveBatch()  (content → per-property extraction)
+│   └── → memory_save shape=shortform  (content → per-property extraction)
 │         support_tickets · call_notes · transcripts · research_reports
 │         each item: own tier (basic/pro/ultra), schema, max_properties
 │
 ├── Behavioral rules / policies / playbooks / ICP / brand voice
-│   └── → context_save({ type: 'guideline' })   (NOT a collection)
+│   └── → memory_save shape=document (type guideline)   (NOT a collection)
 │         reaches agents via SmartContext routing
 │
 ├── Coordination state alongside an entity
@@ -169,7 +169,7 @@ Source: [their database / CRM / analytics / corpus]
 │
 └── Connections between entities (works_at, reports_to, ...)
     └── → graph: collectionGraph/smartGraph on save (auto-inferred from
-          FK-shaped props), query via sources.graph / retrieve_unified(scout)
+          FK-shaped props), query via sources.graph / memory_retrieve(scout)
 ```
 
 **Empty-org note:** `createOrganization()` no longer seeds content — new orgs are **empty**. Provision the modeling layer in one shot with `kits_install` (`kits_list` → `kits_install({kitId})` → `kits_get_status`). Built-ins: `personize-starter` (Contact/Company/Standard Profile/Workspace + base guideline), `engineering-memory`. Author/fork a kit when the prospect's domain doesn't match a built-in.

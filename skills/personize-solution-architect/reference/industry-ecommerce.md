@@ -59,7 +59,7 @@ E-commerce has the most diverse personalization surfaces of any industry: produc
 
 ## Integration Patterns
 
-**Order history (Shopify, WooCommerce):** Daily `memorizeBatch()`. Extracts categories, spend patterns, return rates, gift behavior. This is the foundation -- do this first.
+**Order history (Shopify, WooCommerce):** Daily `memory_save` with `items[]`. Extracts categories, spend patterns, return rates, gift behavior. This is the foundation -- do this first.
 
 **Browse/search behavior:** Memorize session summaries, not individual page views. Captures category interests, search intent, and price range browsing without feeling surveillant.
 
@@ -69,7 +69,7 @@ E-commerce has the most diverse personalization surfaces of any industry: produc
 
 **Email engagement:** Memorize per campaign. Captures click patterns and content preferences -- informs future category recommendations.
 
-**Wishlist / saved items:** Batch-memorize on change. Strong desire signals and price sensitivity indicators (saving expensive items = aspirational buyer).
+**Wishlist / saved items:** Batch-save on change. Strong desire signals and price sensitivity indicators (saving expensive items = aspirational buyer).
 
 ---
 
@@ -139,7 +139,7 @@ When a high-LTV customer opens a support ticket, route to senior support automat
 Never challenge the return reason. Always empathize first. Then offer alternatives matched to what they returned -- if they returned a dress for fit reasons, suggest styles with different cuts. If they returned because the color wasn't as expected, suggest products with verified-accurate color photography. The goal is to keep the relationship, not just the transaction.
 
 ### Sizing Intelligence
-After a customer reports a sizing issue (via support, review, or return), memorize their sizing notes for that brand or category. Future recommendations can flag when a product runs small or large based on their history -- "you mentioned Brand X runs small for you; this brand also runs small so we'd suggest sizing up."
+After a customer reports a sizing issue (via support, review, or return), save their sizing notes for that brand or category. Future recommendations can flag when a product runs small or large based on their history -- "you mentioned Brand X runs small for you; this brand also runs small so we'd suggest sizing up."
 
 ---
 

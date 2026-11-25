@@ -12,10 +12,13 @@ Use SMART UPDATE when the admin has **raw unstructured material** and wants AI t
 - Processing batch feedback, post-mortems, or policy docs
 
 **Choose manual UPDATE when:**
-- The admin knows exactly which section to edit → `context_manage_update`
-- The change is a simple word/phrase replacement → `context_manage_update` (section mode)
-- Only one guideline needs a targeted fix → `context_manage_update`
-- Creating a new doc with explicit name/tags/type (no AI routing needed) → `context_manage_create`
+
+> **Personize Private:** use the granular names instead: `collection_list`, `collection_create`, `collection_update`, `collection_delete`, `collection_delete_property`, `context_manage_list` / `context_manage_read` / `context_manage_history`.
+
+- The admin knows exactly which section to edit → `context_manage({op:'update', ...})`
+- The change is a simple word/phrase replacement → `context_manage({op:'update', ...})` (section mode)
+- Only one guideline needs a targeted fix → `context_manage({op:'update', ...})`
+- Creating a new doc with explicit name/tags/type (no AI routing needed) → `context_manage({op:'create', ...})`
 
 ---
 

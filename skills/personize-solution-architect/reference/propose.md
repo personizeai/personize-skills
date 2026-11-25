@@ -27,7 +27,7 @@ For every proposed use case ask: **"Could they build this with their CRM + a sin
 - **Fails:** role-based greeting (CRM lookup + if/else), segment feature flags, template onboarding (path A/B/C). These look up a field and branch.
 - **Passes:** AI *writes* an onboarding guide synthesizing CRM + support + usage in the org's voice under compliance rules; AI *generates* a per-visitor landing headline governed by messaging rules; AI *composes* an alert that fuses 3 sources into one narrative. These **generate** original output using all three layers.
 
-The three layers are **governance** (`context_save` guidelines — one brand, applied to every AI touchpoint regardless of who/which tool created it), **unified memory** (structured `memory.upsert` + content `saveBatch`, recalled cross-source so the AI sees everything in one window), and **generation** (`instructions[]` multi-step: analyze → apply rules → generate → evaluate). If a use case needs only one or two layers, it is not showcasing Personize.
+The three layers are **governance** (`memory_save shape=document` guidelines: one brand, applied to every AI touchpoint regardless of who/which tool created it), **unified memory** (structured `memory_save shape=property` + content `shape=text`, retrieved cross-source so the AI sees everything in one window), and **generation** (`instructions[]` multi-step: analyze → apply rules → generate → evaluate). If a use case needs only one or two layers, it is not showcasing Personize.
 
 ---
 
@@ -74,7 +74,7 @@ Pull the profile from [`discover.md`](./discover.md) — it changes *what* you p
 | Communication-heavy | Email/notification generation w/ governance guardrails; before/after examples |
 | Analysis-heavy | Research synthesis, health narratives; deep recall, high token budgets |
 | Decision-heavy | Scoring/routing with structured JSON; governance scoring criteria, learning loop |
-| Execution-heavy | Batch sync/enrichment/webhooks; `saveBatch` + rate math. Show data flow, minimize prose |
+| Execution-heavy | Batch sync/enrichment/webhooks; `memory_save` with `items[]` + rate math. Show data flow, minimize prose |
 | Collaboration-heavy | Workspace patterns, multi-agent coordination; contribution protocols |
 
 | Company profile | Lead use cases (see source patterns) |
@@ -122,12 +122,12 @@ A concrete first cut of the business modeled as memory (not a final schema — t
 
 ### Collections vs guidelines (the most common mistake)
 - Collection = a thing with identity (member, account, deal)
-- Guideline  = how to behave (ICP, tone, compliance) → context_save, MUST/SHOULD/MAY
+- Guideline  = how to behave (ICP, tone, compliance) → memory_save shape=document, MUST/SHOULD/MAY
 
 ### Governance (5-15 guidelines, one concern each)
 - brand-voice · <vertical>-compliance · scoring-criteria · notification-policy
 
-### Graph (only if a relation is traversed — edges inferred at memorize time)
+### Graph (only if a relation is traversed: edges inferred at save time)
 - <Member> works_at <Account>   (auto-seeded from a company/domain property)
 - <Account> has_open <Ticket>
 ```
@@ -144,7 +144,7 @@ One recommendation, with the runner-up noted. Map to how they'll actually use it
 |---|---|---|
 | **MCP** (Claude/ChatGPT/agent) | No/light dev team; agent-driven work | "You say 'write a follow-up for Sarah' → it recalls, fetches guidelines, drafts." |
 | **SDK** (`@personize/sdk`) | Production pipelines, code owners | TypeScript with `client.*`, error handling, rate budget |
-| **No-code** (n8n/Zapier) | Ops/marketing, visual builders | Trigger → AI node (recall + generate) → send node → memorize outcome |
+| **No-code** (n8n/Zapier) | Ops/marketing, visual builders | Trigger → AI node (recall + generate) → send node → save outcome |
 | **REST API** | Any other language / webhooks | Endpoint sequence with structured outputs |
 
 Default: MCP for agents, SDK for production pipelines. Provisioning in every mode is the same first move — `kits_install` (below).
@@ -161,8 +161,8 @@ kits_install <starter or custom kit>  → entity types + collections + guideline
   (createOrganization seeds nothing; kits ARE provisioning. Author/fork a kit to encode THEIR model.)
 
 ### Phase 1 — Quick win (week 1) — ONE use case, end to end
-- Seed core guidelines (context_save: brand-voice + one vertical rule)
-- Load a sample: memory.upsert for structured fields; saveBatch for content → extraction
+- Seed core guidelines (memory_save shape=document: brand-voice + one vertical rule)
+- Load a sample: memory_save shape=property for structured fields; shape=text for content → extraction
 - Wire ONE generation flow (instructions[]); review queue, human-in-loop
 - Verify: recall returns expected; extraction populated; one real output approved
 

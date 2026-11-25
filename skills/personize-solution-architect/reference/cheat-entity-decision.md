@@ -4,7 +4,7 @@
 
 | Question | Answer | Go To |
 |----------|--------|-------|
-| **Does it describe how to behave?** (rules, policies, criteria, standards, playbooks, tone) | Yes → **Guideline** (`context_save`, type:'guideline') | STOP -- do not continue to the collection tree |
+| **Does it describe how to behave?** (rules, policies, criteria, standards, playbooks, tone) | Yes → **Guideline** (`memory_save shape=document`, type:'guideline') | STOP -- do not continue to the collection tree |
 | **Does it describe a thing with identity?** (person, company, deal, ticket) | Yes → Continue below | ↓ |
 
 ## Collection Decision Tree (only for data entities)
@@ -34,8 +34,10 @@ MUST use `select`/`multi-select` when values are enumerable -- storing "Active" 
 
 ## Type Reference
 
-**Guidelines:** ICP criteria, email standards, sales playbooks, compliance policies, brand voice, send limits, opt-out rules -- anything that governs agent behavior. Created via `context_save` (type:'guideline'). Delivered to agents via `ai_smart_guidelines`.
-**Collections:** Contacts, Companies, Products, Tickets, Projects, Campaigns -- anything with identity. Created via `collection_create`.
+> **Personize Private:** use the granular names instead: `collection_list`, `collection_create`, `collection_update`, `collection_delete`, `collection_delete_property`, `context_manage_list` / `context_manage_read` / `context_manage_history`.
+
+**Guidelines:** ICP criteria, email standards, sales playbooks, compliance policies, brand voice, send limits, opt-out rules -- anything that governs agent behavior. Created via `memory_save shape=document` (type:'guideline'). Delivered to agents via `memory_retrieve`.
+**Collections:** Contacts, Companies, Products, Tickets, Projects, Campaigns -- anything with identity. Created via `collection({op:'create', ...})`.
 **Properties:** Structured fields on a collection (name, email, deal_stage, budget)
 **Workspace:** Coordination layer on a record (tasks, issues, notes, context)
 **Freeform memory:** Unstructured observations, notes, temporal context

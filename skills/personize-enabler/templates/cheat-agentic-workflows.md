@@ -8,20 +8,22 @@ client.ai.prompt({
   memorize: true,                   // auto-saves output to memory
 })
 
-## responses.create -- Multi-step with client tools
-client.responses.create({
+## agent.run -- Durable multi-step run with tools (managed cloud, own model key)
+client.agent.run({
   instructions: "For each contact, research and draft outreach",
-  tools: {
-    search_web: { description: "...", parameters: {...}, execute: async (args) => {...} }
-  }
+  input: "Research this account and draft outreach",
+  personize: { record: { email: "sarah@acme.com" }, webSearch: true, idempotencyKey: "acme-outreach-1" }
 })
-// SDK auto-loops: requires_action -> execute tools -> send results -> repeat (max 20 rounds)
+// Returns { runId }; poll with client.agent.waitFor(runId). See agent-runs.md in personize-reference
 
 ## Batch-apply pattern
 for (const record of records) {
-  const context = await client.memory.smartDigest({ email: record.email });
-  const result = await client.responses.create({ instructions: "...", input: context });
-  await client.memory.memorize({ content: result.output, email: record.email });
+  const res = await client.memory.retrieve({ mode: 'scout', record: { email: record.email }, compile: true, message: 'everything relevant' });
+  const context = res.documents?.compiledContext; // read documents.compiledContext
+  const result = await client.ai.prompt({ prompt: `...
+
+${context}` });
+  await client.memory.save({ shape: 'text', content: result.text, record: { email: record.email } });
   // Checkpoint every 10 records to workspace
 }
 

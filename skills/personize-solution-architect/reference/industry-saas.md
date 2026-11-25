@@ -60,7 +60,7 @@ SaaS companies accumulate rich behavioral data across product usage, support, bi
 
 ## Integration Patterns
 
-**CRM (HubSpot, Salesforce):** Batch-memorize contacts and companies. Use `extractMemories: false` for structured fields, `true` for notes and descriptions.
+**CRM (HubSpot, Salesforce):** Batch-save contacts and companies. Use `extractMemories: false` for structured fields, `true` for notes and descriptions.
 
 **Product analytics (Mixpanel, Amplitude, PostHog):** Memorize per-event batches with extraction enabled. Patterns surface: power user identification, feature gaps, drop-off signals.
 
@@ -147,4 +147,4 @@ The Contact-Company split is critical. Contacts hold individual intelligence (us
 
 Deals are optional but valuable: if the sales motion is complex (multiple stakeholders, long cycles), a Deal entity captures the pipeline state independently from Contact or Company. This enables deal-level context (blockers, decision criteria, competing evaluations) to accumulate without polluting the account record.
 
-Tag all generated content for the feedback loop. When an email is sent, memorize what was sent, when, and to whom. This prevents duplicate outreach across agents, provides the audit trail for compliance, and enables A/B analysis of what content drives responses.
+Tag all generated content for the feedback loop. When an email is sent, save what was sent, when, and to whom. This prevents duplicate outreach across agents, provides the audit trail for compliance, and enables A/B analysis of what content drives responses.

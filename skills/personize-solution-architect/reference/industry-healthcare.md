@@ -60,7 +60,7 @@ Healthcare personalization must balance empathy with compliance. Patients want t
 
 **EHR/EMR:** Memorize AI-summarized encounter notes, not raw clinical text. Use `extractMemories: true` to convert clinical language into useful-but-deidentified categories.
 
-**Appointment system:** Batch-memorize appointment history. Extraction off -- dates and types are already structured. Use patterns to predict no-shows and adherence risk.
+**Appointment system:** Batch-save appointment history. Extraction off -- dates and types are already structured. Use patterns to predict no-shows and adherence risk.
 
 **Patient portal:** Memorize session summaries (content viewed, messages sent, help requests). Never individual page views.
 
@@ -87,7 +87,7 @@ Healthcare personalization must balance empathy with compliance. Patients want t
 
 ## HIPAA Compliance Notes
 
-**Never memorize raw PHI:** No Social Security numbers, full medical record numbers, exact diagnosis text verbatim from records. Store AI-extracted summaries and categories instead.
+**Never save raw PHI:** No Social Security numbers, full medical record numbers, exact diagnosis text verbatim from records. Store AI-extracted summaries and categories instead.
 
 **Subject lines:** Never include name + condition together. Use "Your upcoming appointment" not "Your diabetes check-up."
 
@@ -136,6 +136,6 @@ Healthcare is inherently multi-agent. Multiple providers, care coordinators, and
 
 **Longitudinal profile:** Patient properties (age group, conditions list, care plan status, communication preference) are updated at each encounter. The history accumulates in memory. After 6 months, an agent can surface which patients have shown consistent adherence improvement, which have lapsed multiple times, and which have never engaged -- enabling genuinely differentiated outreach.
 
-**Caregiver integration:** For patients with identified caregivers, the caregiver relationship and communication preferences are memorized separately. Outreach can be routed to the caregiver when appropriate (always with patient consent and authorization verified). The system tracks which communications went to the patient vs the caregiver to maintain a clean audit trail.
+**Caregiver integration:** For patients with identified caregivers, the caregiver relationship and communication preferences are saved separately. Outreach can be routed to the caregiver when appropriate (always with patient consent and authorization verified). The system tracks which communications went to the patient vs the caregiver to maintain a clean audit trail.
 
-**Consent and opt-out tracking:** Before every outbound message, check the patient's communication consent status in memory. HIPAA requires opt-out to be honored immediately. The memory layer is the source of truth for consent -- always memorize consent changes as they happen, and always query consent status before sending.
+**Consent and opt-out tracking:** Before every outbound message, check the patient's communication consent status in memory. HIPAA requires opt-out to be honored immediately. The memory layer is the source of truth for consent -- always save consent changes as they happen, and always query consent status before sending.

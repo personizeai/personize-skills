@@ -25,7 +25,7 @@ You can assign different models to different Personize functions:
 | `recall` | RAG-powered memory retrieval |
 | `smartContext` | Context document routing |
 | `smartUpdate` | Document evolution and analysis |
-| `generate` | Chat completions and responses |
+| `generate` | Text generation (`ai.prompt`, agent runs) |
 
 Example: Use a fast model for memorize (high volume) and a premium model for recall (quality matters).
 

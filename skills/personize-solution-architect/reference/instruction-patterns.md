@@ -16,7 +16,7 @@ Companion to architectural design-patterns. These patterns are about authoring t
 | Branch on account tier (enterprise/mid-market/SMB), each needs a different artifact | **A. Conditional Specialize** |
 | Reconcile the same entity across CRM, web scrape, and an uploaded doc | **B. Multi-Source Reconciliation** |
 | Score or classify when data is partial — abort wastes good signal | **C. Soft Degradation** |
-| Generate outreach that must pass compliance/legal/brand before memorize writes it | **D. Compliance-Gated Generation** |
+| Generate outreach that must pass compliance/legal/brand before auto-save writes it | **D. Compliance-Gated Generation** |
 | Write N personalized variants for different personas on the same account | **E. Multi-Recipient Fanout** |
 | Research current events and verify claims across 3+ sources before trusting them | **F. Tool-Bounded Research** |
 | Classify replies where adjacent labels drift run-to-run | **G. Few-Shot Calibrated Classification** |
@@ -29,7 +29,7 @@ Pick the **lightest** tier that covers the real risk. Don't stack blindly.
 
 | Tier | Mechanism | On failure | Best for |
 |---|---|---|---|
-| **T1 Hard abort** | `<abort reason='...'>` | Halts chain, skips auto-memorize, returns `success: false, aborted: true` | Identity fails, mandatory data missing, fundamental contradiction |
+| **T1 Hard abort** | `<abort reason='...'>` | Halts chain, skips the auto-save, returns `success: false, aborted: true` | Identity fails, mandatory data missing, fundamental contradiction |
 | **T2 Soft degrade** | `<output name='confidence'>low\|medium\|high</output>` + optional `warnings` | Returns `success: true` with partial outputs; caller routes by confidence | Partial data, ambiguous signal, low-stakes classification |
 | **T3 Self-correct** | Audit instruction rewrites violations before emit | Internal correction, success unaffected | Math drift, format slips, brand-voice violations |
 | **T4 Blast-radius bound** | `maxSteps`, `mcpTools` allowlist, "retry once then skip" inline rule | Tool failure isolated; run continues | MCP/HTTP flakiness, rate-limit windows |
@@ -132,7 +132,7 @@ Caller routes: `high` → auto-send; `medium` → human review; `low` → enrich
 
 ### D. Compliance-Gated Generation
 
-Gate compliance at instruction 1, not after generation. Bad drafts shouldn't reach auto-memorize.
+Gate compliance at instruction 1, not after generation. Bad drafts shouldn't reach the auto-save.
 
 ```
 Instruction 1: Read the compliance policy (context: '...'). Verify the user's request is allowed.

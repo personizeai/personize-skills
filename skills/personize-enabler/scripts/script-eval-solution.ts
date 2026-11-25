@@ -9,7 +9,7 @@
  *
  * Eval types -> the call each makes -> what it proves:
  *   extraction -> client.evaluate.memorizationAccuracy() -> schema pulls the right typed values
- *   recall     -> client.memory.smartRecall()            -> query returns the expected record in top-K
+ *   recall     -> client.memory.retrieve()               -> query returns the expected record in top-K
  *   governance -> client.ai.smartGuidelines()            -> task routes to the expected guideline
  *
  * Scenario file = JSON array of { name, type, input, expected }. One example per type:
@@ -121,22 +121,27 @@ async function runExtraction(client: Personize, s: Scenario): Promise<Partial<Re
 
 /** (2) Recall quality: expected record present in top-K. Precision proxy = 1/|results|. */
 async function runRecall(client: Personize, s: Scenario): Promise<Partial<Result>> {
-  const mode = (s.expected.mode === 'deep' ? 'deep' : 'fast') as 'fast' | 'deep';
-  const res: any = await client.memory.smartRecall({
-    query: s.input, mode, limit: RECALL_TOP_K,
-    ...(s.expected.email && { email: s.expected.email }),
-    ...(s.expected.recordId && { recordId: s.expected.recordId }),
-    ...(s.expected.websiteUrl && { websiteUrl: s.expected.websiteUrl }),
-  });
+  // The old fast/deep switch is gone: brief mode takes the query as `message`.
+  // RECALL_TOP_K is applied locally to the results below.
+  const want = String(s.expected.email ?? s.expected.recordId ?? s.expected.websiteUrl ?? '').trim().toLowerCase();
+  if (!want) return { pass: false, score: 0, detail: 'expected.email|recordId|websiteUrl required' };
+  const res: any = await client.memory.retrieve({ mode: 'brief', message: s.input, sources: { properties: true } });
 
-  const results: any[] = res?.data?.results ?? res?.results ?? [];
-  const want = String(s.expected.email ?? s.expected.recordId ?? s.expected.websiteUrl ?? '').toLowerCase();
-  const hit = results.some(r =>
-    [r.email, r.recordId, r.websiteUrl].filter(Boolean).some(v => String(v).toLowerCase() === want));
+  const usable = (list: unknown): any[] =>
+    (Array.isArray(list) ? list : []).filter((r: any) => r && r.id !== 'unresolved' && r.resolutionState !== 'unresolved');
+  const idsOf = (r: any) =>
+    [r.id, r.primaryKeys?.email, r.primaryKeys?.website_url, r.primaryKeys?.websiteUrl, r.email, r.record_id, r.recordId, r.websiteUrl]
+      .filter(Boolean).map(v => String(v).toLowerCase());
+  const check = (list: any[]) => {
+    const top = list.slice(0, RECALL_TOP_K);
+    return { top, hit: top.some(r => idsOf(r).includes(want)) };
+  };
+  let { top: results, hit } = check(usable(res?.records));
+  if (!hit) ({ top: results, hit } = check(usable(res?.memories?.tier1)));
   return {
-    pass: want ? hit : results.length > 0,
+    pass: hit,
     score: results.length ? Number(((hit ? 1 : 0) / results.length).toFixed(3)) : 0,
-    detail: want ? `${hit ? 'found' : 'MISSED'} "${want}" in top ${results.length}` : `${results.length} result(s)`,
+    detail: `${hit ? 'found' : 'MISSED'} "${want}" in top ${results.length}`,
   };
 }
 

@@ -1,22 +1,22 @@
 # Graph Relations — Design & Modeling Guide
 
-Personize records can be connected as a graph. Edges are bi-temporal (valid_from / valid_to) and live in a PostgreSQL `edges` table. Traversal is exposed via `POST /api/v1.1/memory/retrieve` with `sources.graph: true` (and via `retrieve_unified(mode='scout', sources={graph:true})` on the agent2_0 MCP profile — graph is a *source*, not a mode).
+Personize records can be connected as a graph. Edges are bi-temporal (valid_from / valid_to) and live in a PostgreSQL `edges` table. Traversal is exposed via `POST /api/v1.1/memory/retrieve` with `sources.graph: true` (and via `memory_retrieve` with `mode=scout` and `sources.graph` on MCP; graph is a *source*, not a mode).
 
-**The key insight:** for the common cases, **you don't seed edges manually.** The edge-inference registry watches incoming memorize calls and writes edges automatically when it sees identity-bearing properties (`company`, `linkedin_url`, `attendees`, `assigned_to_email`, etc.). Custom relations require either extending the registry or — in the future — direct edge API calls.
+**The key insight:** for the common cases, **you don't seed edges manually.** The edge-inference registry watches incoming `memory_save` calls and writes edges automatically when it sees identity-bearing properties (`company`, `linkedin_url`, `attendees`, `assigned_to_email`, etc.). Custom relations require either extending the registry or, in the future, direct edge API calls.
 
 This guide covers: how edges actually get created, the built-in relation types, when to model as graph vs. nested property, and how to query the graph.
 
 ## How edges get created (today)
 
-Edge writes are **opt-in per memorize/save call** via three independent channels. All three default OFF; combine freely.
+Edge writes are **opt-in per save call** via three independent channels. All three default OFF; combine freely.
 
 | Channel | Request flag | When it fires | Sync/async | Billed |
 |---|---|---|---|---|
 | **A — Declared** | `relations: [...]` | You hand the platform the edge directly: `{relationType, toRecordId \| toIdentity, toEntityType?, confidence?}` | Synchronous (edge persisted before response returns) | Free |
 | **B — Property-inferred** | `collectionGraph: true` | Extracted structured properties point at another entity (e.g. `company: 'acme.com'` on a Contact) → registry resolves target by alias, writes edge with the matching `relation_type` | Async (2-10 s after response) | Deterministic, ~free at typical sizes (3 credits/M processed tokens) |
-| **C — LLM-inferred** | `smartGraph: true` | Free-text memories mention identity-bearing entities (emails, domains, phones) → Bedrock Nova Micro proposes edges grounded in strong identifiers | Async (2-10 s after response) | Per LLM input token at the memorize tier |
+| **C: LLM-inferred** | `smartGraph: true` | Free-text memories mention identity-bearing entities (emails, domains, phones) → Bedrock Nova Micro proposes edges grounded in strong identifiers | Async (2-10 s after response) | Per LLM input token at the save tier |
 
-Channel B is the workhorse for CRM-shaped data. Save a contact with `properties.company = 'acme.com'` and `collectionGraph: true`, and you implicitly get a `works_at` edge from that contact to the Acme company record — even if the company record didn't exist yet (it gets stubbed, then promoted when memorized against).
+Channel B is the workhorse for CRM-shaped data. Save a contact with `properties.company = 'acme.com'` and `collectionGraph: true`, and you implicitly get a `works_at` edge from that contact to the Acme company record, even if the company record didn't exist yet (it gets stubbed, then promoted when saved against).
 
 Channel A is for cases where you already know the edges (a CRM sync, an enrichment vendor, your own classifier). Channels B/C never invent edges of types not in your org's `relation_types` registry; A drops items whose `relationType` isn't registered.
 
@@ -37,11 +37,11 @@ await client.memory.save({
 });
 ```
 
-Full channel semantics, stub rules, confidence thresholds, and pricing: `Docs/memorize-graph-guide.md`.
+Full channel semantics, stub rules, confidence thresholds, and pricing: the graph guide in `Docs/`.
 
 ### Built-in inference rules (Channel B registry)
 
-These rules run automatically when `collectionGraph: true` is set on the save/memorize call — no configuration needed:
+These rules run automatically when `collectionGraph: true` is set on the save call, no configuration needed:
 
 | Property name(s) on source record | Target type | Default relation | Notes |
 |---|---|---|---|
@@ -79,7 +79,7 @@ Each `RelationType` row carries:
 
 The `relation_types` registry is manageable end-to-end via the v1.1 API:
 
-- **SDK:** `client.v1_1.memory.relationTypes.{list,get,create,update,delete,createBatch}`
+- **SDK:** the relation-type methods `listRelationTypes`, `getRelationType`, `createRelationType`, `updateRelationType`, `deleteRelationType` and `batchCreateRelationTypes` on the v1.1 memory client
 - **MCP:** the same surface via the `agent2_0` profile
 - **CLI:** `personize v1.1 memory relation-types {list,get,create,update,delete}`
 
@@ -122,7 +122,7 @@ Examples:
 Graph traversal is a *source* in the unified retrieve API. Two pieces to wire:
 
 ```ts
-const result = await client.retrieve({
+const result = await client.memory.retrieve({
   mode: 'scout',
   record: { id: 'contact_jane@acme.com' },     // anchor node
   sources: { graph: true },                     // turn graph fan-out on
@@ -142,7 +142,7 @@ Each returned neighbor carries its shortest `hop` distance — so even at `hops:
 Via the **agent2_0 MCP profile**, it's simpler:
 
 ```
-retrieve_unified(
+memory_retrieve(
     mode='scout',
     record={id: 'contact_jane@acme.com'},
     sources={graph: true}
@@ -189,4 +189,4 @@ State this explicitly in agent outputs — never hallucinate connections. The ag
 - [audit-and-plan.md](./audit-and-plan.md) — How graph-modeled data fits into the import sequence (companies before contacts so `works_at` edges land correctly)
 - [schema-design-guide.md](./schema-design-guide.md) — Property design that *feeds* the edge inference engine
 - [relation-types-examples.json](../../personize-enabler/presets/relation-types-examples.json) — Concrete example relation-type definitions per use case (now in the `personize-enabler` skill's presets)
-- Reference persona's [mcp-tools.md](../../personize-reference/reference/mcp-tools.md) `retrieve_unified` section — agent2_0 graph mode invocation
+- Reference persona's [mcp-tools.md](../../personize-reference/reference/mcp-tools.md) `memory_retrieve` section: graph source invocation

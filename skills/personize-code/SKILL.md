@@ -354,19 +354,14 @@ After deployment, help the user evaluate results and improve:
 | Signal Quickstart | `pipelines/signals/signal-quickstart.ts` | Minimal Signal setup: one source, one channel, trigger a test event |
 | Signal Multi-Team | `pipelines/signals/signal-multi-team.ts` | Product + Sales + Marketing contribute events; Signal decides notify/defer/skip |
 
-### Generation (Responses API)
+### Generation (agent runs / `client.ai.prompt()`)
 
-The `responses.create()` endpoint is the primary generation endpoint. Supports multi-step orchestration, governance injection, memory recall, client-executed tools, streaming, and BYOK. Use instead of raw LLM calls when you need governance + memory + structured output together.
+Use `client.ai.prompt()` for governed, memory-aware generation, or agent runs (`POST /api/v1.1/agent/runs`) for multi-step orchestration.
 
-| Pattern | File | Description |
-|---|---|---|
-| All patterns | `pipelines/generation/responses-api.ts` | Single-step, multi-step, client tools, BYOK — all in one annotated file |
-
-**When to use Responses API over direct SDK calls:**
+**When to use agent runs or `client.ai.prompt()` over raw LLM calls:**
 - You need governance (guidelines injected automatically per request)
 - You need memory context recalled before generation
 - You need multi-step orchestration (research → draft → review)
-- You need client-executed tools with HMAC-signed state
 - You want BYOK (own OpenAI / Anthropic / Google / OpenRouter key)
 
 ---

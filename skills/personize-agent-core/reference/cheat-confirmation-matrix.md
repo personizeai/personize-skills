@@ -3,7 +3,7 @@
 | Action | Risk | Behavior |
 |--------|------|----------|
 | Read, recall, search, list | Low | Act immediately |
-| Memorize, update property | Medium | Act, inform user |
+| Save, update property | Medium | Act, inform user |
 | Create guideline/collection | Medium | Act, inform user |
 | Bulk update (>10 records) | High | Confirm first |
 | Delete memories/record | High | Confirm first |

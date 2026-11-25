@@ -52,6 +52,7 @@ metadata: {"author": "personize-ai", "version": "2.0", "homepage": "https://pers
 | "Download platform skills locally" | script-sync-platform-guidelines.ts | `npx tsx script-sync-platform-guidelines.ts` |
 | "Import this CSV" | script-csv-import.ts | `npx tsx script-csv-import.ts --file data.csv` |
 | "Send outreach to my leads" | script-cold-outreach.ts | `npx tsx script-cold-outreach.ts --campaign "Q2"` |
+| "Run this research/scoring on all matching records" | No script: a sweep (managed cloud, own model key) | MCP `sweep_preview` → `sweep_launch`; see `agent-runs.md` in `personize-reference` |
 
 ## Scripts -- Ready-to-Run TypeScript
 
@@ -77,7 +78,9 @@ How to use: download ZIP, extract, import JSON into n8n, configure the Personize
 
 These `presets/*.json` schemas are for post-kit customization. First provision the org with a kit (`client.kits.install({ kitId })` or the `kits_install` MCP tool; built-in kits: `personize-starter`, `engineering-memory`), then customize or extend it with these presets. To author your own kit, see the kit-authoring guide: `Docs/setup-kits/kit-authoring-guide.md`.
 
-Pre-designed schemas with 8-12 properties, ready to deploy via `client.collections.create(preset)` or the `collection_create` MCP tool.
+> **Personize Private:** use the granular names instead: `collection_list`, `collection_create`, `collection_update`, `collection_delete`, `collection_delete_property`, `context_manage_list` / `context_manage_read` / `context_manage_history`.
+
+Pre-designed schemas with 8-12 properties, ready to deploy via `client.collections.create(preset)` or the `collection({op:'create', ...})` MCP tool.
 
 - **preset-sales-contact.json** -- name, email, company, title, deal stage, ARR, last contact, notes
 - **preset-company.json** -- domain, industry, headcount, ARR, health score, CRM owner, renewal date
@@ -88,7 +91,7 @@ SHOULD customize before deploying -- add, remove, or rename properties to match 
 
 ## Governance Templates -- Starter Guidelines
 
-Ready-to-use guideline bodies deployable via `context_save`. Written in MUST/SHOULD/MAY format that SmartContext understands.
+Ready-to-use guideline bodies deployable via `memory_save shape=document`. Written in MUST/SHOULD/MAY format that SmartContext understands.
 
 - **template-brand-voice.md** -- tone rules, vocabulary list, dos/don'ts, rewrites
 - **template-icp.md** -- three-tier qualification (Tier 1/2/3), firmographic and behavioral signals
@@ -100,7 +103,7 @@ SHOULD customize before deploying. At minimum replace bracketed placeholders (`[
 ## Customization Patterns
 
 - **Swap identity keys** -- replace `email` with `website_url` for company-focused workflows
-- **Change collection IDs** -- get real IDs from `personize_context` or `collection_list`
+- **Change collection IDs** -- get real IDs from `personize_md` or `collection({op:'list', ...})`
 - **Adjust extraction hints** -- pass a `schema` parameter with domain-specific properties
 - **Modify governance constraints** -- change MUST to SHOULD for softer rules, add domain examples
 - **Adjust preset properties** -- match the schema to actual data before deploying
