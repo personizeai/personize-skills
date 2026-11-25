@@ -18,6 +18,8 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 
 ## 1. Set Up & Configure
 
+> **Personize Private:** use the granular names instead: `collection_list`, `collection_create`, `collection_update`, `collection_delete`, `collection_delete_property`, `context_manage_list` / `context_manage_read` / `context_manage_history`.
+
 | What | SDK Method | MCP Tool |
 |------|-----------|----------|
 | Get org | `client.organizations.get()` | `organization_get` |
@@ -30,10 +32,10 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 | Get entity type | `client.entityTypes.get(id)` | `entity_type_get` |
 | Update entity type | `client.entityTypes.update(id, opts)` | `entity_type_update` |
 | Archive entity type | `client.entityTypes.archive(id)` | `entity_type_archive` |
-| List collections | `client.collections.list()` | `collection_list` |
-| Create collection | `client.collections.create(opts)` | `collection_create` |
-| Update collection | `client.collections.update(id, opts)` | `collection_update` |
-| Delete collection | `client.collections.delete(id)` | `collection_delete` |
+| List collections | `client.collections.list()` | `collection({op:'list', ...})` |
+| Create collection | `client.collections.create(opts)` | `collection({op:'create', ...})` |
+| Update collection | `client.collections.update(id, opts)` | `collection({op:'update', ...})` |
+| Delete collection | `client.collections.delete(id)` | `collection({op:'delete', ...})` |
 | Test MCP server | `client.mcps.test(opts)` | `mcp_test` |
 | Create MCP server | `client.mcps.create(opts)` | `mcp_create` |
 | List MCP servers | `client.mcps.list()` | `mcp_list` |
@@ -146,8 +148,7 @@ console.log(`Balance: ${credits.data.balance}/${credits.data.included}`);
 
 | What | SDK Method | MCP Tool |
 |------|-----------|----------|
-| Responses (orchestration) | `client.responses.create(opts)` | -- |
-| Chat completions | `client.chat.completions.create(opts)` | -- |
+| Agent run (multi-step, tools, durable) | `client.agent.run(body)`, `client.agent.waitFor(runId)` | `agent_run`, `agent_run_get` |
 | AI prompt | `client.ai.prompt(opts)` | -- |
 | Multi-step prompt (agent-style run) | `client.ai.prompt({ instructions: [...] })` | -- |
 | RAG | `client.rag.ingest()`, `.searchProject()`, `.listProjects()` | -- |
@@ -156,20 +157,22 @@ console.log(`Balance: ${credits.data.balance}/${credits.data.included}`);
 
 **BYOK providers:** `openai`, `anthropic`, `google`, `deepseek`, `xai`, `openrouter`
 
-### Example: Multi-Step Generation
+`client.responses.create()` and `client.chat.completions.create()` were removed. Agent runs need a model key saved on the org (403 `byok_required` without one).
+
+### Example: Multi-Step Generation (agent run)
 
 ```typescript
-const result = await client.responses.create({
-    steps: [
-        { prompt: 'Research Acme Corp.', tools: ['web_search'] },
-        { prompt: 'Draft outreach email based on research.' },
-    ],
+const started = await client.agent.run({
+    input: 'Research Acme Corp, then draft an outreach email.',
     personize: {
-        governance: { guideline_ids: ['gdl_brand_voice'] },
-        memory: { record_id: 'rec_abc', recall: true },
+        record: { email: 'jane@acme.com' },
+        context: { governance: { auto: true } },
+        webSearch: true,
+        outputs: [{ name: 'subject' }, { name: 'body', required: true }],
     },
-    tier: 'pro',
 });
+const run = await client.agent.waitFor(started.runId);
+console.log(run.status, run.properties);
 ```
 
 ---

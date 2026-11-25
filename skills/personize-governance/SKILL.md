@@ -67,7 +67,7 @@ This skill works identically whether the LLM accesses guidelines via the **SDK**
 | `client.guidelines.delete(id)` | `guideline_delete(guidelineId)` | Delete guideline |
 | `client.guidelines.history(id)` | `guideline_history(guidelineId)` | View change history |
 | `client.ai.smartGuidelines({ message })` | `ai_smart_guidelines(message)` | Verify/fetch guidelines |
-| `client.context.save(opts)` | `context_save(type, instruction, material, ...)` | AI-powered bulk create/update from raw material |
+| `client.context.save(opts)` | `context_save(type, instruction, material, ...)` | AI-powered bulk create/update from raw material. With `target_ids`, default `update_mode` is `replace` (whole body); `append`/`section`/`appendToSection` available; name kept unless `name` passed |
 | `client.guidelines.uploadAttachment(id, opts)` | `guideline_attachment_upload` | Attach a file (script, config, template, etc.) to a guideline |
 | `client.guidelines.listAttachments(id)` | `guideline_attachment_list` | List all attachments on a guideline |
 | `client.guidelines.getAttachmentContent(id, attachmentId)` | `guideline_attachment_read` | Read the full content of an attachment |
@@ -92,7 +92,9 @@ Use `/api/v1/context` for all types. `/api/v1/guidelines` remains a stable alias
 
 **SDK:** `client.context.list({ type: 'playbook' })`, `client.context.create({ type: 'playbook', name: '...', value: '...' })`
 
-**MCP:** `context_manage_create({ ..., agentDocType: 'playbook' })`, `context_manage_list({ agentDocType: 'playbook' })`
+> **Personize Private:** use the granular names instead: `collection_list`, `collection_create`, `collection_update`, `collection_delete`, `collection_delete_property`, `context_manage_list` / `context_manage_read` / `context_manage_history`.
+
+**MCP:** `context_manage({ op: 'create', ..., agentDocType: 'playbook' })`, `context_manage({ op: 'list', agentDocType: 'playbook' })`
 
 **Smart retrieval:** Use `ai_smart_docs` (MCP) or `client.ai.smartDocs()` (SDK) to retrieve across all doc types with optional `types` filter. Use `ai_smart_guidelines` when you need guidelines only.
 

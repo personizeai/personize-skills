@@ -796,7 +796,7 @@ const client = new Personize({ secretKey: process.env.PERSONIZE_SECRET_KEY! });
 | `v1_1.context.save.batch(opts)` | `POST /api/v1.1/context/save/batch` | Submit a batch of docs for async save (1-24h SLA). Returns `{ jobId }`. |
 | `v1_1.context.save.batch.status(jobId)` | `GET /api/v1.1/context/save/batch/:jobId` | Poll job status (or subscribe to the webhook the job fires on completion) |
 
-> **v1 endpoints still respond** with RFC 8594 `Deprecation: true` + `Sunset: 2026-07-15` headers. Migrate when convenient; the table above is the canonical surface going forward.
+> **v1 endpoints still respond** with `Deprecation: @1779667200` (RFC 9745 Structured Fields date: `@` plus the Unix seconds of 2026-05-25T00:00:00Z; do not compare it to the string `true`) + `Sunset: 2026-07-15` (RFC 8594) headers. Migrate when convenient; the table above is the canonical surface going forward.
 
 ### Key Type Signatures (v1.1)
 

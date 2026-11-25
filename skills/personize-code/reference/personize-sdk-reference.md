@@ -538,9 +538,9 @@ When `governedMemory=true`, two sub-flags fine-tune what gets fetched in paralle
 - `webSearch: true` — enabled with provider defaults.
 - `webSearch: { enabled, maxUsesPerStep, allowedDomains, blockedDomains }` — fine-grained control.
 
-If the configured `model`/`provider` does not support native search (e.g. older Anthropic models), the API returns HTTP 400 with code `web_search_unsupported`. On `/api/v1/chat/completions` and `/api/v1/responses`, the same error surfaces in the OpenAI-style error envelope.
+If the configured `model`/`provider` does not support native search (e.g. older Anthropic models), the API returns HTTP 400 with code `web_search_unsupported`.
 
-When the provider executes search calls, citations come back in `metadata.sources: Array<{ url, title?, snippet? }>` on `/api/v1/prompt`. The chat-completions and responses surfaces emit the same data as `sources` (and `web_search_uses` count) in their native response shapes.
+When the provider executes search calls, citations come back in `metadata.sources: Array<{ url, title?, snippet? }>` on `/api/v1/prompt`.
 
 #### MCPs
 

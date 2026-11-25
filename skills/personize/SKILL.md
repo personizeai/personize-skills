@@ -26,11 +26,13 @@ const me = await client.me(); // verify auth + see org info
 | 2 | **Store & Retrieve Knowledge** | Memorize, Recall, Smart Recall, Search, Digest, Similar, Segment, Batch, Keys | [Section 2](#2-store--retrieve-knowledge) |
 | 3 | **Govern & Guide** | Guidelines CRUD, Smart Context, Smart Update, Attachments | [Section 3](#3-govern--guide) |
 | 4 | **Monitor & React** | Analytics, Notifications | [Section 4](#4-monitor--react) |
-| 5 | **Build & Automate** | Responses, Chat Completions, Prompts, Multi-Step Instructions, RAG, Evaluation | [Section 5](#5-build--automate) |
+| 5 | **Build & Automate** | Agent Runs, Prompts, Multi-Step Instructions, RAG, Evaluation | [Section 5](#5-build--automate) |
 
 ---
 
 ## 1. Set Up & Configure
+
+> **Personize Private:** use the granular names instead: `collection_list`, `collection_create`, `collection_update`, `collection_delete`, `collection_delete_property`, `context_manage_list` / `context_manage_read` / `context_manage_history`.
 
 | What | SDK Method | MCP Tool | Cost |
 |------|-----------|----------|------|
@@ -45,11 +47,11 @@ const me = await client.me(); // verify auth + see org info
 | Get entity type | `client.entityTypes.get(id)` | `entity_type_get` | Free |
 | Update entity type | `client.entityTypes.update(id, opts)` | `entity_type_update` | Free |
 | Archive entity type | `client.entityTypes.archive(id)` | `entity_type_archive` | Free |
-| List collections | `client.collections.list()` | `collection_list` | Free |
-| Create collection | `client.collections.create(opts)` | `collection_create` | Free |
-| Update collection | `client.collections.update(id, opts)` | `collection_update` | Free |
-| Delete collection | `client.collections.delete(id)` | `collection_delete` | Free |
-| Collection history | `client.collections.history(id)` | `collection_history` | Free |
+| List collections | `client.collections.list()` | `collection({op:'list', ...})` | Free |
+| Create collection | `client.collections.create(opts)` | `collection({op:'create', ...})` | Free |
+| Update collection | `client.collections.update(id, opts)` | `collection({op:'update', ...})` | Free |
+| Delete collection | `client.collections.delete(id)` | `collection({op:'delete', ...})` | Free |
+| Collection history | `client.collections.history(id)` | `collection({op:'history', ...})` | Free |
 | Test MCP server | `client.mcps.test(opts)` | `mcp_test` | Free |
 | Create MCP server | `client.mcps.create(opts)` | `mcp_create` | Free |
 | List MCP servers | `client.mcps.list()` | `mcp_list` | Free |
@@ -357,8 +359,8 @@ await client.notifications.send({
 
 | What | SDK Method | MCP Tool | Cost |
 |------|-----------|----------|------|
-| Step-driven orchestration | `client.responses.create(opts)` | `ai_responses_create` | Tiered |
-| Chat completions (OpenAI-compat) | `client.chat.completions.create(opts)` | `ai_chat_completions` | Tiered |
+| Agent run (multi-step, tools, durable) | `client.agent.run(body)` | `agent_run` | Own model key (BYOK) |
+| Read / wait for an agent run | `client.agent.get(runId)`, `client.agent.waitFor(runId)` | `agent_run_get` | Free |
 | AI prompt | `client.ai.prompt(opts)` | -- | Tiered |
 | AI prompt (streaming) | `client.ai.promptStream(opts)` | -- | Tiered |
 | Multi-step prompt (agent-style run) | `client.ai.prompt({ instructions: [...] })` | -- | Tiered |
@@ -375,7 +377,9 @@ await client.notifications.send({
 | Delete schedule | `client.schedules.delete(id)` | `schedule_delete` | Free |
 | List schedule executions | `client.schedules.executions(id)` | `schedule_executions` | Free |
 
-### Generation Tiers (Responses, Chat Completions, Prompt)
+> `client.responses.create()`, `client.chat.completions.create()` and their routes (`/api/v1.1/responses`, `/api/v1/chat/completions`) were removed. Use `client.ai.prompt()` for plain generation and `client.agent.run()` (`POST /api/v1.1/agent/runs`) for multi-step or tool-using work.
+
+### Generation Tiers (Prompt)
 
 | Tier | Best For |
 |------|----------|
@@ -388,76 +392,55 @@ await client.notifications.send({
 Supported providers: `openai`, `anthropic`, `google`, `deepseek`, `xai`, `openrouter`, **`bedrock`**.
 
 ```typescript
-// Standard BYOK — your own API key
-const result = await client.responses.create({
+// Standard BYOK — your own API key (model + provider are required with a key)
+const result = await client.ai.prompt({
+    prompt: 'Analyze this sales pipeline...',
     model: 'claude-sonnet-4-20250514',
     provider: 'anthropic',
-    llm_api_key: process.env.ANTHROPIC_API_KEY,
-    steps: [{ prompt: 'Analyze this sales pipeline...' }],
+    openrouterApiKey: process.env.ANTHROPIC_API_KEY, // OpenRouter or direct provider key
 });
 
 // Bedrock IAM — no API key needed when Bedrock is enabled in the deployment
-const result = await client.responses.create({
+const result = await client.ai.prompt({
+    prompt: 'Analyze this sales pipeline...',
     model: 'anthropic.claude-sonnet-4-20250514-v1:0',
-    provider: 'bedrock',
-    // no llm_api_key — uses the deployment's IAM role
-    steps: [{ prompt: 'Analyze this sales pipeline...' }],
+    provider: 'bedrock', // no key — uses the deployment's IAM role
 });
 ```
+
+Agent runs use the model key saved on the org (Settings → AI Providers) instead of a key in the request. Without one they answer 403 `byok_required`.
 
 **Bedrock notes:** `provider: 'bedrock'` requires Bedrock to be enabled in your Personize deployment (`BEDROCK_ENABLED`). On BYOC deployments this is configured via Terraform. The API returns HTTP 400 `bedrock_not_enabled` if Bedrock is not available in the deployment.
 
-### Workflow: Multi-Step Orchestration with Responses
+### Workflow: Multi-Step Work with an Agent Run
+
+An agent run is durable: it runs on the server, can take minutes, and you read the result by `runId`. Managed cloud only (Personize Private does not serve it).
 
 ```typescript
-const result = await client.responses.create({
-    steps: [
-        {
-            prompt: 'Research the company Acme Corp. Find their industry and recent news.',
-            tools: ['web_search', 'memory_recall_pro'],
-            max_steps: 5,
-        },
-        {
-            prompt: 'Draft a personalized outreach email based on the research above.',
-        },
-    ],
+const started = await client.agent.run({
+    instructions: 'You are a B2B researcher. Use the brand voice guideline.',
+    input: 'Research Acme Corp (industry, recent news), then draft a personalized outreach email.',
     personize: {
-        governance: { guideline_ids: ['gdl_brand_voice'], mode: 'fast' },
-        memory: { record_id: 'rec_abc123', recall: true },
-        memorize: { record_id: 'rec_abc123', capture_tool_results: true },
+        record: { email: 'jane@acme.com' },
+        context: { recordOverview: true, governance: { auto: true } },
+        memoryTools: 'read',          // off | read | read_write
+        webSearch: true,
         outputs: [
-            { key: 'subject', type: 'string' },
-            { key: 'body', type: 'string' },
+            { name: 'subject', type: 'string', required: true },
+            { name: 'body', type: 'string', required: true },
         ],
+        save: { properties: false, summary: false },
+        idempotencyKey: 'acme-outreach-2026-11',
     },
-    tier: 'pro',
 });
-console.log(result.outputs); // { subject: '...', body: '...' }
+const run = await client.agent.waitFor(started.runId); // polls every 2 s, up to 10 min
+console.log(run.status, run.outcome, run.properties); // properties holds the named outputs
 ```
 
-### Workflow: Client-Executed Tools
-
-```typescript
-const result = await client.responses.create({
-    steps: [{ prompt: 'Look up the customer and draft a renewal email.' }],
-    tools: [{
-        type: 'function',
-        function: {
-            name: 'lookup_customer',
-            description: 'Look up a customer by email.',
-            parameters: {
-                type: 'object',
-                properties: { email: { type: 'string' } },
-                required: ['email'],
-            },
-            execute: async (args: { email: string }) => {
-                const customer = await db.customers.findByEmail(args.email);
-                return { name: customer.name, plan: customer.plan };
-            },
-        },
-    }],
-});
-```
+- `model` (`provider/model`) is optional; the default is the org's own-key generate model. With no default: 400 `model_required`.
+- Your own tools: pass up to 5 remote MCP servers in `tools: [{ type: 'mcp', server_label, server_url, headers }]` (https only). There is no client-executed function tool; for that, call `client.ai.prompt()` in your own loop.
+- Many records at once: sweeps (`/api/v1.1/agent/sweeps`, MCP `sweep_preview` / `sweep_launch`).
+- Full request, statuses and errors: `POST /api/v1.1/agent/runs` in the API reference.
 
 ### Workflow: Schedule a Recurring Prompt
 
@@ -487,22 +470,6 @@ Use `taskType: 'send_notification'` for in-app/email reminders (no LLM call). On
 Common server errors: `SCHEDULE_CAP_EXCEEDED` (plan limit), `INSUFFICIENT_CREDITS` (can't fund 7 days of fires), `DUPLICATE_NAME` (names unique per-org).
 
 → Full reference: `reference/schedules.md` (recurrence patterns, filters, recipes, gotchas).
-
-### Workflow: OpenAI-Compatible Drop-In
-
-```typescript
-const result = await client.chat.completions.create({
-    messages: [
-        { role: 'system', content: 'You are a helpful sales assistant.' },
-        { role: 'user', content: 'Draft a cold email for a VP of Engineering.' },
-    ],
-    personize: {
-        governance: { guideline_ids: ['gdl_brand_voice'] },
-        memory: { record_id: 'rec_abc123', recall: true },
-    },
-});
-console.log(result.choices[0].message.content);
-```
 
 ---
 
@@ -594,11 +561,11 @@ Complete mapping of every MCP tool to its SDK method.
 | `entity_type_get` | `client.entityTypes.get()` | Platform |
 | `entity_type_update` | `client.entityTypes.update()` | Platform |
 | `entity_type_archive` | `client.entityTypes.archive()` | Platform |
-| `collection_list` | `client.collections.list()` | Platform |
-| `collection_create` | `client.collections.create()` | Platform |
-| `collection_update` | `client.collections.update()` | Platform |
-| `collection_delete` | `client.collections.delete()` | Platform |
-| `collection_history` | `client.collections.history()` | Platform |
+| `collection({op:'list', ...})` | `client.collections.list()` | Platform |
+| `collection({op:'create', ...})` | `client.collections.create()` | Platform |
+| `collection({op:'update', ...})` | `client.collections.update()` | Platform |
+| `collection({op:'delete', ...})` | `client.collections.delete()` | Platform |
+| `collection({op:'history', ...})` | `client.collections.history()` | Platform |
 | `mcp_list` | `client.mcps.list()` | Platform |
 | `mcp_test` | `client.mcps.test()` | Platform |
 | `mcp_create` | `client.mcps.create()` | Platform |
